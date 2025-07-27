@@ -1,3 +1,15 @@
+/**
+ * Main entry point for the Bank Statement Frontend React application.
+ * 
+ * This file initializes the React application by:
+ * - Creating the root React element
+ * - Rendering the main App component
+ * - Setting up performance monitoring with reportWebVitals
+ * 
+ * The application is a React TypeScript frontend for managing bank statements,
+ * including document upload, analysis, and statement viewing capabilities.
+ */
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';

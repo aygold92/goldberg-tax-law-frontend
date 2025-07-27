@@ -1,3 +1,17 @@
+/**
+ * CSS styles for the App component.
+ * 
+ * This file contains styles specific to the main App component:
+ * - Default Create React App styling
+ * - Logo animation and positioning
+ * - Header layout and styling
+ * - Responsive design considerations
+ * - Animation keyframes for logo rotation
+ * 
+ * Note: Most styling in this application uses Material-UI components,
+ * so these styles are primarily for the default CRA template elements.
+ */
+
 .App {
   text-align: center;
 }

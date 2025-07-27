@@ -1,0 +1,7 @@
+### File Documentation
+* at the top of every file there needs to be a brief explanation of what the purpose of the file is, directed at someone who has never seen the codebase before
+* please include external links to dependencies used where relevant
+* on every code change check to see if you need to update class level file documentation or the README.md
+
+### Dependencies
+* when adding new dependencies, always add it to the package.json and then run npm install

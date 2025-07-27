@@ -1,3 +1,21 @@
+/**
+ * TypeScript configuration for the Bank Statement Frontend application.
+ * 
+ * This file configures TypeScript compilation settings:
+ * - Target ES5 for broad browser compatibility
+ * - React JSX support with automatic runtime
+ * - Strict type checking enabled
+ * - Module resolution and import settings
+ * - Source file inclusion patterns
+ * 
+ * Key settings:
+ * - strict: true - Enables all strict type checking options
+ * - jsx: "react-jsx" - Uses the new JSX transform
+ * - moduleResolution: "node" - Uses Node.js module resolution
+ * - skipLibCheck: true - Skips type checking of declaration files
+ * 
+ * Configured for Create React App with TypeScript template.
+ */
 {
   "compilerOptions": {
     "target": "es5",

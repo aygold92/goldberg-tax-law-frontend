@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BankStatement",
+  "description": "A bank statement containing transaction data and metadata",
+  "type": "object",
+  "properties": {
+    "pageMetadata": {
+      "$ref": "#/definitions/ClassifiedPdfMetadata",
+      "description": "PDF metadata including filename, pages, and classification"
+    },
+    "date": {
+      "type": ["string", "null"],
+      "description": "Statement date in string format"
+    },
+    "accountNumber": {
+      "type": ["string", "null"],
+      "description": "Account number for this statement"
+    },
+    "beginningBalance": {
+      "type": ["number", "null"],
+      "description": "Beginning balance for the statement period"
+    },
+    "endingBalance": {
+      "type": ["number", "null"],
+      "description": "Ending balance for the statement period"
+    },
+    "interestCharged": {
+      "type": ["number", "null"],
+      "description": "Interest charged during the statement period"
+    },
+    "feesCharged": {
+      "type": ["number", "null"],
+      "description": "Fees charged during the statement period"
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/TransactionHistoryRecord"
+      },
+      "description": "List of transaction records"
+    },
+    "batesStamps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Mapping of page numbers to bates stamp identifiers"
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/ClassifiedPdfMetadata"
+      },
+      "description": "Mapping of check numbers to their associated PDF metadata"
+    },
+    "netTransactions": {
+      "type": "number",
+      "description": "Computed net of all transactions: total income minus total spending"
+    },
+    "totalSpending": {
+      "type": "number",
+      "description": "Computed total spending (sum of all negative transactions)"
+    },
+    "totalIncomeCredits": {
+      "type": "number",
+      "description": "Computed total income/credits (sum of all positive transactions)"
+    },
+    "suspiciousReasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Computed list of reasons why this statement may be flagged as suspicious"
+    }
+  },
+  "required": ["pageMetadata", "transactions", "batesStamps"],
+  "definitions": {
+    "ClassifiedPdfMetadata": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "description": "Name of the PDF file"
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "Set of page numbers included"
+        },
+        "classification": {
+          "type": "string",
+          "description": "Document classification (e.g., bank type)"
+        }
+      },
+      "required": ["filename", "pages", "classification"]
+    },
+    "TransactionHistoryRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique transaction identifier"
+        },
+        "date": {
+          "type": ["string", "null"],
+          "description": "Transaction date"
+        },
+        "checkNumber": {
+          "type": ["integer", "null"],
+          "description": "Check number, if applicable"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Description of the transaction"
+        },
+        "amount": {
+          "type": ["number", "null"],
+          "description": "Transaction amount (positive for credits, negative for debits)"
+        },
+        "filePageNumber": {
+          "type": "integer",
+          "description": "Page number in the PDF"
+        },
+        "checkDataModel": {
+          "$ref": "#/definitions/CheckDataModel",
+          "description": "Associated check data, if applicable"
+        }
+      },
+      "required": ["id", "filePageNumber"]
+    },
+    "CheckDataModel": {
+      "type": "object",
+      "properties": {
+        "accountNumber": {
+          "type": ["string", "null"],
+          "description": "Account number associated with the check"
+        },
+        "checkNumber": {
+          "type": ["integer", "null"],
+          "description": "Check number"
+        },
+        "to": {
+          "type": ["string", "null"],
+          "description": "Payee name"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Check description"
+        },
+        "date": {
+          "type": ["string", "null"],
+          "description": "Check date"
+        },
+        "amount": {
+          "type": ["number", "null"],
+          "description": "Check amount"
+        },
+        "checkEntries": {
+          "$ref": "#/definitions/CheckEntriesTable",
+          "description": "Nested check entries for composite checks"
+        },
+        "batesStamp": {
+          "type": ["string", "null"],
+          "description": "Bates stamp identifier for the check"
+        },
+        "pageMetadata": {
+          "$ref": "#/definitions/ClassifiedPdfMetadata",
+          "description": "PDF metadata for the check"
+        }
+      },
+      "required": ["pageMetadata"]
+    },
+    "CheckEntriesTable": {
+      "type": "object",
+      "properties": {
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CheckEntriesTableRow"
+          },
+          "description": "List of check entry rows"
+        }
+      },
+      "required": ["images"]
+    },
+    "CheckEntriesTableRow": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": ["string", "null"],
+          "description": "Check date"
+        },
+        "checkNumber": {
+          "type": ["integer", "null"],
+          "description": "Check number"
+        },
+        "to": {
+          "type": ["string", "null"],
+          "description": "Payee name"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Check description"
+        },
+        "amount": {
+          "type": ["number", "null"],
+          "description": "Check amount"
+        },
+        "accountNumber": {
+          "type": ["string", "null"],
+          "description": "Account number"
+        },
+        "page": {
+          "type": "integer",
+          "description": "Page number"
+        }
+      },
+      "required": ["page"]
+    }
+  }
+} 
