@@ -19,7 +19,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { Box, Typography, Alert, CircularProgress, Tooltip, Badge } from '@mui/material';
+import { Box, Typography, Alert, CircularProgress, Tooltip, Badge, Button } from '@mui/material';
 import { Edit, Warning } from '@mui/icons-material';
 import { useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
@@ -29,11 +29,15 @@ import {
   selectCurrentStatementLoading,
   selectCurrentStatementError,
 } from '../redux/features/statements/statementsSelectors';
-import { ReactGrid, Column, Row, Id } from '@silevis/reactgrid';
+import { ReactGrid, Column, Row, Id, CellChange, TextCell, Cell, DefaultCellTypes } from '@silevis/reactgrid';
 import '@silevis/reactgrid/styles.css';
 import { Rnd } from 'react-rnd';
 import apiService from '../services/api';
 import { useState } from 'react';
+import { SortableHeaderCell, sortableHeaderTemplate, SortDirection, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from '../components/SortableHeaderCell';
+
+// Extend the default cell types to include our custom type
+type CustomCellTypes = DefaultCellTypes | SortableHeaderCell;
 
 // Helper to parse query params
 function useQuery() {
@@ -71,6 +75,10 @@ const EditPage: React.FC = () => {
     checkFilePage: 90,
     actions: 90,
   });
+
+  // Sorting state for each table
+  const [pagesSorting, setPagesSorting] = useState<SortCriteria>([]);
+  const [transactionSorting, setTransactionSorting] = useState<SortCriteria>([]);
 
   // Load statement data
   useEffect(() => {
@@ -116,9 +124,17 @@ const EditPage: React.FC = () => {
     }
   }, [clientName, accountNumber, classification, date, statement?.pageMetadata.filename]);
 
+  
+
+  const headerStyle = { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' }
+
   // --- Suspicious Reasons ---
   const apiSuspicious = statement?.suspiciousReasons || [];
   const calcSuspicious: string[] = []; // calculated, always empty for now
+
+  // --- Determine Statement Type ---
+  const isCreditCard = statement?.pageMetadata.classification?.endsWith('CC') || false;
+  const statementType = isCreditCard ? 'CREDIT_CARD' : 'BANK';
 
   // --- Net Income Calculation ---
   let expectedValue: number | null = null;
@@ -127,9 +143,15 @@ const EditPage: React.FC = () => {
   let netError: string | null = null;
   if (statement) {
     if (statement.endingBalance != null && statement.beginningBalance != null) {
-      expectedValue = statement.endingBalance - statement.beginningBalance;
+      if (isCreditCard) {
+        // For CREDIT_CARD: ExpectedValue = beginningBalance - endingBalance
+        expectedValue = statement.beginningBalance - statement.endingBalance;
+      } else {
+        // For BANK: ExpectedValue = endingBalance - beginningBalance
+        expectedValue = statement.endingBalance - statement.beginningBalance;
+      }
       actualValue = statement.transactions.reduce((sum, t) => sum + t.amount, 0);
-      netMatch = expectedValue === actualValue;
+      netMatch = Math.abs(expectedValue - actualValue) < 0.01; // Use small tolerance for floating point
     } else {
       netError = 'Must specify beginning and ending balance';
     }
@@ -142,13 +164,17 @@ const EditPage: React.FC = () => {
   ];
   const detailsRows: Row[] = useMemo(() => {
     if (!statement) return [];
-    return [
-      { rowId: 'date', cells: [ { type: 'text' as const, text: 'Statement Date', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } }, { type: 'text' as const, text: statement.date || '' } ] },
-      { rowId: 'account', cells: [ { type: 'text' as const, text: 'Account Number', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } }, { type: 'text' as const, text: statement.accountNumber || '' } ] },
-      { rowId: 'classification', cells: [ { type: 'text' as const, text: 'Classification', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } }, { type: 'text' as const, text: statement.pageMetadata.classification || '' } ] },
-      { rowId: 'interest', cells: [ { type: 'text' as const, text: 'Interest Charged', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } }, { type: 'text' as const, text: statement.interestCharged?.toString() || '' } ] },
-      { rowId: 'fees', cells: [ { type: 'text' as const, text: 'Fees Charged', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } }, { type: 'text' as const, text: statement.feesCharged?.toString() || '' } ] },
+    const baseRows = [
+      { rowId: 'date', cells: [ { type: 'header' as const, text: `Statement Date`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.date || '' } ] },
+      { rowId: 'account', cells: [ { type: 'header' as const, text: `Account Number`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.accountNumber || '' } ] },
+      { rowId: 'classification', cells: [ { type: 'header' as const, text: `Classification`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.pageMetadata.classification || '' } ] },
+      { rowId: 'beginningBalance', cells: [ { type: 'header' as const, text: `Beginning Balance`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.beginningBalance?.toFixed(2) || '' } ] },
+      { rowId: 'endingBalance', cells: [ { type: 'header' as const, text: `Ending Balance`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.endingBalance?.toFixed(2) || '' } ] },
+      { rowId: 'interest', cells: [ { type: 'header' as const, text: `Interest Charged`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.interestCharged?.toString() || '' } ] },
+      { rowId: 'fees', cells: [ { type: 'header' as const, text: `Fees Charged`, nonEditable: true, style: headerStyle }, { type: 'text' as const, text: statement.feesCharged?.toString() || '' } ] },
     ];
+    
+    return baseRows;
   }, [statement]);
 
   // --- Pages Table ---
@@ -156,25 +182,32 @@ const EditPage: React.FC = () => {
     { columnId: 'filePageNumber', width: pagesColumnWidths.filePageNumber, resizable: true },
     { columnId: 'batesStamp', width: pagesColumnWidths.batesStamp, resizable: true },
   ];
-  const pagesRows: Row[] = useMemo(() => {
+  const pagesRows: Row<DefaultCellTypes | SortableHeaderCell>[] = useMemo(() => {
     if (!statement) return [];
-    return [
-      { 
-        rowId: 'header', 
-        cells: [ 
-          { type: 'text' as const, text: 'Page #', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } }, 
-          { type: 'text' as const, text: 'Bates Stamp', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } } 
-        ] 
-      },
-      ...statement.pageMetadata.pages.map((page) => ({
-        rowId: String(page),
-        cells: [
-          { type: 'text' as const, text: String(page) },
-          { type: 'text' as const, text: statement.batesStamps[page] || '' },
-        ],
-      })),
-    ];
-  }, [statement]);
+    const headerRow = { 
+      rowId: 'header', 
+      cells: [ 
+        { type: 'sortableHeader' as const, text: `Page #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, pagesSorting, setPagesSorting), columnId: 'filePageNumber', sortDirection: getSortDirectionForColumn('filePageNumber', pagesSorting), sortOrder: getSortOrderForColumn('filePageNumber', pagesSorting) }, 
+        { type: 'sortableHeader' as const, text: `Bates Stamp`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, pagesSorting, setPagesSorting), columnId: 'batesStamp', sortDirection: getSortDirectionForColumn('batesStamp', pagesSorting), sortOrder: getSortOrderForColumn('batesStamp', pagesSorting) } 
+      ] 
+    };
+    
+    const dataRows = statement.pageMetadata.pages.map((page) => ({
+      rowId: String(page),
+      cells: [
+        { type: 'text' as const, text: String(page) },
+        { type: 'text' as const, text: statement.batesStamps[page] || '' },
+      ],
+    }));
+    
+    // Apply sorting if needed (skip header row)
+    if (pagesSorting && pagesSorting.length > 0) {
+      const sortedDataRows = sortRows(dataRows, pagesSorting, pagesColumns);
+      return [headerRow, ...sortedDataRows];
+    }
+    
+    return [headerRow, ...dataRows];
+  }, [statement, pagesSorting]);
 
   // --- Transactions Table ---
   const transactionColumns: Column[] = useMemo(() => {
@@ -190,7 +223,7 @@ const EditPage: React.FC = () => {
       { columnId: 'amount', width: transactionColumnWidths.amount, resizable: true },
       { columnId: 'filePageNumber', width: transactionColumnWidths.filePageNumber, resizable: true },
     ];
-    if (true /* BANK */) {
+    if (!isCreditCard) { // Only show check columns for BANK type
       baseCols.push(
         { columnId: 'checkNumber', width: transactionColumnWidths.checkNumber, resizable: true },
         { columnId: 'checkFilename', width: transactionColumnWidths.checkFilename, resizable: true },
@@ -204,52 +237,59 @@ const EditPage: React.FC = () => {
       reorderable: false,
     });
     return baseCols;
-  }, [transactionColumnWidths]);
+  }, [transactionColumnWidths, isCreditCard]);
   const transactionRows: Row[] = useMemo(() => {
     if (!statement) return [];
     const headerCells: any[] = [
-      { type: 'text' as const, text: '' }, // suspiciousReasons - no header
-      { type: 'text' as const, text: 'Date', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
-      { type: 'text' as const, text: 'Description', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
-      { type: 'text' as const, text: 'Amount', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
-      { type: 'text' as const, text: 'Page #', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
+      { columnId: 'suspiciousReasons', type: 'header' as const, text: '', nonEditable: true }, // suspiciousReasons - no header
+      { columnId: 'date', type: 'sortableHeader' as const, text: `Date`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, transactionSorting, setTransactionSorting), sortDirection: getSortDirectionForColumn('date', transactionSorting), sortOrder: getSortOrderForColumn('date', transactionSorting) },
+      { columnId: 'description', type: 'sortableHeader' as const, text: `Description`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, transactionSorting, setTransactionSorting), sortDirection: getSortDirectionForColumn('description', transactionSorting), sortOrder: getSortOrderForColumn('description', transactionSorting) },
+      { columnId: 'amount', type: 'sortableHeader' as const, text: `Amount`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, transactionSorting, setTransactionSorting), sortDirection: getSortDirectionForColumn('amount', transactionSorting), sortOrder: getSortOrderForColumn('amount', transactionSorting) },
+      { columnId: 'filePageNumber', type: 'sortableHeader' as const, text: `Page #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, transactionSorting, setTransactionSorting), sortDirection: getSortDirectionForColumn('filePageNumber', transactionSorting), sortOrder: getSortOrderForColumn('filePageNumber', transactionSorting) },
     ];
-    if (true) {
+    if (!isCreditCard) { // Only show check columns for BANK type
       headerCells.push(
-        { type: 'text' as const, text: 'Check #', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
-        { type: 'text' as const, text: 'Check File', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
-        { type: 'text' as const, text: 'Check Pg', nonEditable: true, style: { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' } },
+        { type: 'text' as const, text: `Check #`, nonEditable: true, style: headerStyle },
+        { type: 'text' as const, text: `Check File`, nonEditable: true, style: headerStyle },
+        { type: 'text' as const, text: `Check Pg`, nonEditable: true, style: headerStyle },
       );
     }
-    headerCells.push({ type: 'text' as const, text: '' }); // actions - no header
+    headerCells.push({ type: 'header' as const, text: '' }); // actions - no header
     
-    return [
-      { rowId: 'header', cells: headerCells },
-      ...statement.transactions.map((txn, idx) => {
-        const cells: any[] = [];
-        cells.push({
-          type: 'text' as const,
-          text: (txn.suspiciousReasons && txn.suspiciousReasons.length > 0) ? '⚠️' : '',
-          nonEditable: true,
-        });
-        cells.push({ type: 'text' as const, text: txn.date });
-        cells.push({ type: 'text' as const, text: txn.description });
-        cells.push({ type: 'text' as const, text: `$${txn.amount.toFixed(2)}` });
-        cells.push({ type: 'text' as const, text: String(txn.filePageNumber) });
-        if (true) {
-          cells.push({ type: 'text' as const, text: txn.checkNumber ? String(txn.checkNumber) : '' });
-          cells.push({ type: 'text' as const, text: txn.checkDataModel?.description || '' });
-          cells.push({ type: 'text' as const, text: txn.checkDataModel?.date || '' });
-        }
-        cells.push({
-          type: 'text' as const,
-          text: '⭯ 📄 🗑️',
-          nonEditable: true,
-        });
-        return { rowId: txn.id, cells };
-      }),
-    ];
-  }, [statement]);
+    const headerRow = { rowId: 'header', cells: headerCells };
+    
+    const dataRows = statement.transactions.map((txn, idx) => {
+      const cells: any[] = [];
+      cells.push({
+        type: 'text' as const,
+        text: (txn.suspiciousReasons && txn.suspiciousReasons.length > 0) ? '⚠️' : '',
+        nonEditable: true,
+      });
+      cells.push({ type: 'text' as const, text: txn.date });
+      cells.push({ type: 'text' as const, text: txn.description });
+      cells.push({ type: 'text' as const, text: `$${txn.amount.toFixed(2)}` });
+      cells.push({ type: 'text' as const, text: String(txn.filePageNumber) });
+      if (!isCreditCard) { // Only show check columns for BANK type
+        cells.push({ type: 'text' as const, text: txn.checkNumber ? String(txn.checkNumber) : '' });
+        cells.push({ type: 'text' as const, text: txn.checkDataModel?.description || '' });
+        cells.push({ type: 'text' as const, text: txn.checkDataModel?.date || '' });
+      }
+      cells.push({
+        type: 'text' as const,
+        text: '⭯ 📄 🗑️',
+        nonEditable: true,
+      });
+      return { rowId: txn.id, cells };
+    });
+    
+    // Apply sorting if needed (skip header row)
+    if (transactionSorting && transactionSorting.length > 0) {
+      const sortedDataRows = sortRows(dataRows, transactionSorting, transactionColumns);
+      return [headerRow, ...sortedDataRows];
+    }
+    
+    return [headerRow, ...dataRows];
+  }, [statement, isCreditCard, transactionSorting]);
 
   // --- Heading and Layout ---
   const heading = statement
@@ -301,7 +341,7 @@ const EditPage: React.FC = () => {
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>Statement Details</Typography>
           <Box>
-            <ReactGrid 
+            <ReactGrid
               columns={detailsColumns} 
               rows={detailsRows} 
               onColumnResized={(columnId: any, width: number) => {
@@ -313,16 +353,18 @@ const EditPage: React.FC = () => {
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>Pages Used</Typography>
           <Box>
-            <ReactGrid 
+            <ReactGrid
               columns={pagesColumns} 
               rows={pagesRows} 
               onColumnResized={(columnId: any, width: number) => {
                 setPagesColumnWidths(prev => ({ ...prev, [columnId]: width }));
               }}
+              customCellTemplates={{ sortableHeader: sortableHeaderTemplate }}
             />
           </Box>
         </Box>
       </Box>
+      {/* Note: Column sorting icons are displayed but require custom click handlers for ReactGrid */}
       {/* Net Income Calculation */}
       <Box sx={{ mb: 2 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>Net Income Calculation</Typography>
@@ -335,13 +377,13 @@ const EditPage: React.FC = () => {
           fontSize: '16px'
         }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {/* Ending Balance */}
+            {/* First Balance */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Typography variant="body1" sx={{ minWidth: '160px', textAlign: 'right' }}>
-                Ending Balance:
+                {isCreditCard ? 'Beginning Balance:' : 'Ending Balance:'}
               </Typography>
               <Typography variant="body1" sx={{ minWidth: '120px', textAlign: 'right', ml: 2 }}>
-                ${statement?.endingBalance?.toFixed(2) || '0.00'}
+                ${isCreditCard ? statement?.beginningBalance?.toFixed(2) || '0.00' : statement?.endingBalance?.toFixed(2) || '0.00'}
               </Typography>
             </Box>
             
@@ -353,13 +395,13 @@ const EditPage: React.FC = () => {
               </Typography>
             </Box>
             
-            {/* Beginning Balance */}
+            {/* Second Balance */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Typography variant="body1" sx={{ minWidth: '160px', textAlign: 'right' }}>
-                Beginning Balance:
+                {isCreditCard ? 'Ending Balance:' : 'Beginning Balance:'}
               </Typography>
               <Typography variant="body1" sx={{ minWidth: '120px', textAlign: 'right', ml: 2 }}>
-                ${statement?.beginningBalance?.toFixed(2) || '0.00'}
+                ${isCreditCard ? statement?.endingBalance?.toFixed(2) || '0.00' : statement?.beginningBalance?.toFixed(2) || '0.00'}
               </Typography>
             </Box>
             
@@ -383,7 +425,7 @@ const EditPage: React.FC = () => {
               </Typography>
               <Typography variant="body1" sx={{ minWidth: '120px', textAlign: 'right', ml: 2 }}>
                 {statement?.endingBalance && statement?.beginningBalance ? (
-                  `$${(statement.endingBalance - statement.beginningBalance).toFixed(2)}`
+                  `$${expectedValue?.toFixed(2)}`
                 ) : (
                   <Tooltip title="Must specify beginning and ending balance">
                     <span>⚠️</span>
@@ -399,7 +441,7 @@ const EditPage: React.FC = () => {
                       '& .MuiBadge-badge': {
                         fontSize: '12px',
                         height: '18px',
-                        minWidth: '100px',
+                        minWidth: '120px',
                         // padding: '0 4px'
                       }
                     }}
@@ -423,6 +465,7 @@ const EditPage: React.FC = () => {
             onColumnResized={(columnId: any, width: number) => {
               setTransactionColumnWidths(prev => ({ ...prev, [columnId]: width }));
             }}
+            customCellTemplates={{ sortableHeader: sortableHeaderTemplate }}
           />
         </Box>
       </Box>

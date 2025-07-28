@@ -19,8 +19,14 @@ The page will take in as url query parameters:
 The page will then call the `LoadBankStatement` API passing those 4 parameters. The output of the API is a `BankStatement` object whose structure is defined in `BankStatement_API_Response_Spec.md`
 
 The loaded object will be stored in the redux store
+
+### Classification as BANK or CREDIT_CARD
+If the `classification` field for the `BankStatement` ends in "CC" then it is a `CREDIT_CARD`; otherwise, it's `BANK`.
+
 ### Components
-Note: tables should include all column headers, unless explicitly stated below (leave that column header blank). Column headers should be bolded, colorized, and resizable, unless explicitly stated.  Column headers should not be editable.
+Note: tables should include all column headers, unless explicitly stated below (leave that column header blank). Column headers should be bolded, colorized, resizable, and sortable (described below) unless explicitly stated.  Column headers should not be editable.  
+
+The sortable columns will work as follows.  There will be be a sorting icon in each sortable header: clicking once will sort the rows in ascending order, clicking again will sort in descending order, and then clicking a 3rd time will remove the sort.  The user can sort on multiple columns.  The header should also display an icon to indicate if it's sorted or not (an up arrow for ascending and a down arrow for descending).  Use ReactGrid Custom Cell Renderer to make the sorting button.  You can use a [custom cell template]( https://reactgrid.com/docs/3.1/5-create-your-own-cell-template/) to implement this.
 
 ##### Heading
 the main heading of the page should be the "Edit Statement <Client> <Classification>-<AccountNumber>: <Date>"
@@ -30,11 +36,11 @@ Below it display the source `filename` from the `ClassifiedPdfMetadata` object
 ##### Suspicious Reasons
 On the right side, if not empty, the suspicious reasons returned from the API call should be displayed in a bulleted list inside a red warning icon.
 
-On the left side, the calculated suspcious reasons should be displayed in a bulleted list inside a red warning icon.  We will calculate this later; for now return empty list
+On the left side, the calculated suspcious reasons should be displayed in a bulleted list inside a red warning icon.  We will calculate this later; for now return empty list.
 
 
 ##### Statement Details
-Some of the `BankStatement` fields should be displayed in another `ReactGrid` table above the transactions with the keys on the left and values on the right. Please treat the keys as a column header based on the guidelines above.  Display the following: 
+Some of the `BankStatement` fields should be displayed in another `ReactGrid` table above the transactions with the keys on the left and values on the right. Please treat the keys as a column header based on the guidelines above, but these are not sortable as they only have 1 value. Display the following: 
 * Statement Date
 * Account Number
 * Classification (from ClassifiedPdfMetadata)
@@ -63,17 +69,21 @@ Actual = the sum of all amounts from the transactions table
 If ExpectedValue == ActualValue, then ActualValue should be displayed in a green success badge; otherwise it should be displayed in a red alert mui badge
 If endingBalance or beginningBalance is null, ExpectedValue should display an error icon with a tooltip that says "Must specify beginning and ending balance"
 
+If the statment is a `CREDIT_CARD` rather than a `BANK`, then the calculation is reverse: `ExpectedValue = beginningBalance - endingBalance`.  The display above should change accordingly to show this.
+
+The beginningBalance and endingBalance values should be editable as a number and formatted as currency.
+
 
 ##### Transactions Table
 The Transactions (from `TransactionHistoryRecord`) should be shown in a (ReactGrid)[https://reactgrid.com/] table with the columns below.  
-* `suspiciousReasons` -- displays if that individual transaction record is suspicious.  We will calculate a list of suspicious reasons and if the list is not empty, it will show a red alert icon with a tooltip that lists all the suspicious reasons.  If the list is empty it will display nothing. We will implement the calculation of the suspicious reasons later, for now it will always be empty list.  Do not include the column header for this column, make it as small as possible, it should not be resizable and should not have a menu.
+* `suspiciousReasons` -- displays if that individual transaction record is suspicious.  We will calculate a list of suspicious reasons and if the list is not empty, it will show a red alert icon with a tooltip that lists all the suspicious reasons.  If the list is empty it will display nothing. We will implement the calculation of the suspicious reasons later, for now it will always be empty list.  Do not include the column header for this column, make it as small as possible, it should not be resizable/sortable and should not have a menu.
 * `date`
 * `description`
 * `amount` (formatted as US currency)
 * `filePageNumber`
-* `actions`: there are 3 actions: `resetValue`, `duplicate`, `delete`.  We will implement these actions later, but for now add them as icons (without text).  Do not include the column header for this column, make it as small as possible, it should not be resizable and should not have a menu.
+* `actions`: there are 3 actions: `resetValue`, `duplicate`, `delete`.  We will implement these actions later, but for now add them as icons (without text).  Do not include the column header for this column, make it as small as possible, it should not be resizable/sortable. and should not have a menu.
 
-If the `BankStatement` has type `BANK` rather than `CREDIT_CARD`, then add 3 additional columns in between `filePageNumber` and `actions`.  We will add that calculation later, for now default to it being `BANK`
+If it has type `BANK` rather than `CREDIT_CARD`, then add 3 additional columns in between `filePageNumber` and `actions`. 
 * `checkNumber`
 * `checkFilename`
 * `checkFilePage`
@@ -110,30 +120,29 @@ All changes should be saved to the redux store whenever a cell changes, and a Sa
 Additionally, we can implement some actions:
 * `duplicate`: create an identical record but with a different Id
 * `delete`: delete the record
-* `newRecord`: there should be an add new record action.  If this is supported by ReactGrid by default then no action is needed
+* `newRecord`: add a new blank record (with generated ID)
 * `invert`: there should be a button on each record to invert the amount, i.e. to change from negative to positive or vice versa
 
 #### Input Validation
 * Each editable cell should only allow valid input.  For example, if the field is a number it shouldn't allow any other characters
 * UI for editing should be modern
   * for transaction `date`, use a date picker (although we store it as a string in `mm/dd/yyyy` format)
-  * for `classification`, use a dropdown with all the options prefilled.  The options are specified below
+  * for `classification`, use a dropdown with all the options prefilled.  The options are specified in `BankStatement_API_Response_Spec`.  Do not include "Checks"
   * for all fields that are currency, they should be edited as a number and then formatted as currency after
 * all fields should allow copy and pasting. The user should be able to select a cell and copy the contents, then select another cell and paste the contents
 * the user should be able to select multiple cells and copy the contents of all the cells, then paste those contents into corresponding multiple other cells, like they would in excel.
 
-`classification` options:
-* "AMEX CC"
-* "C1 CC"
-* "CITI CC"
-* "WF CC"
-* "BofA CC"
-* "NFCU CC"
-* "Eagle Bank"
-* "WF Bank"
-* "WF Bank Joint"
-* "BofA"
-* "NFCU Bank"
+#### Data Validation
+Before saving, we need to ensure that the data is valid.  This involves the following calculations:
+* The following fields are required to have values: [`filename`, `classification`, `statementDate`, `accountNumber`, `beginningBalance`, `endingBalance`]
+* endingBalance - beginningBalance = sum(amount of all transactions)
+* all transactions are valid (see below)
 
+A transaction is valid IFF:
+* these fields are required: [`date`, `description`, `amount`, `page`]
+* the `date` of the transaction is on or before `date` of the statement, but no more than 45 days before the `date` of the statement
+* `page` must be a value from the `pages` table
+
+The calculation above should be used to calculate the `suspciousReasons` table column value as well.
 
 ### Checkpoint 3: Undo/Redo and ResetValue features

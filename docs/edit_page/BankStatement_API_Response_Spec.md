@@ -36,6 +36,20 @@
 | `classification`| `string`       | Document classification (e.g., bank type).   |
 | ...             | ...            | (Other fields as defined in your model)      |
 
+`classification` can be one of the following fields:
+* "AMEX CC"
+* "C1 CC"
+* "CITI CC"
+* "WF CC"
+* "BofA CC"
+* "NFCU CC"
+* "Eagle Bank"
+* "WF Bank"
+* "WF Bank Joint"
+* "BofA"
+* "NFCU Bank"
+* "Checks"
+
 ### TransactionHistoryRecord
 
 | Field             | Type           | Description                                  |
@@ -55,7 +69,7 @@
 |-----------------|----------------|----------------------------------------------|
 | `accountNumber` | `string`       | Account number for the check.                |
 | `checkNumber`   | `int`          | Check number.                                |
-| `payee`         | `string`       | Payee name.                                  |
+| `to`            | `string`       | Payee name.                                  |
 | `description`   | `string`       | Description.                                 |
 | `date`          | `string`       | Date of the check.                           |
 | `amount`        | `number`       | Amount of the check.                         |
