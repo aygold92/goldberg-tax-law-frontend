@@ -31,7 +31,7 @@
 
 import React from 'react';
 import { Box, Button, IconButton, Tooltip } from '@mui/material';
-import { KeyboardArrowUp, KeyboardArrowDown, UnfoldMore } from '@mui/icons-material';
+import { KeyboardArrowUp, KeyboardArrowDown, UnfoldMore, FilterList } from '@mui/icons-material';
 import { Cell, CellTemplate, Column, Compatible, Row, Uncertain, UncertainCompatible, getCellProperty } from '@silevis/reactgrid';
 
 export enum SortDirection {
@@ -48,6 +48,8 @@ export interface SortableHeaderCell extends Cell {
   sortDirection: SortDirection;
   sortOrder: number; // Position in the sort criteria array (1-based)
   onSort: (columnId: string) => void;
+  onFilter?: (columnId: string, event: React.MouseEvent) => void;
+  hasFilter?: boolean;
 }
 
 // Custom cell template for sortable headers
@@ -58,6 +60,22 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
     const sortDirection = getCellProperty(uncertainCell, 'sortDirection', 'string') as SortDirection;
     const sortOrder = getCellProperty(uncertainCell, 'sortOrder', 'number');
     const onSort = getCellProperty(uncertainCell, 'onSort', 'function') || (() => {});
+    
+    // Handle optional properties with try/catch
+    let onFilter: ((columnId: string, event: React.MouseEvent) => void) | undefined;
+    try {
+      onFilter = getCellProperty(uncertainCell, 'onFilter', 'function');
+    } catch {
+      onFilter = undefined;
+    }
+    
+    let hasFilter: boolean;
+    try {
+      hasFilter = getCellProperty(uncertainCell, 'hasFilter', 'boolean');
+    } catch {
+      hasFilter = false;
+    }
+    
     const style = getCellProperty(uncertainCell, 'style', 'object');
     
     const ret =  { 
@@ -67,6 +85,8 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
       sortDirection, 
       sortOrder, 
       onSort, 
+      onFilter,
+      hasFilter,
       nonEditable: true, 
       style,
       value: text 
@@ -129,6 +149,22 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
             </Box>
           )}
         </Box>
+        
+        {/* Filter Icon */}
+        {cell.onFilter && (
+          <Tooltip title="Filter column">
+            <IconButton
+              size="small"
+              onClick={(e) => cell.onFilter!(cell.columnId, e)}
+              sx={{ 
+                p: 0.5,
+                color: cell.hasFilter ? 'primary.main' : 'text.secondary'
+              }}
+            >
+              <FilterList fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
     );
 
