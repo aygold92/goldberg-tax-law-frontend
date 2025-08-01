@@ -12,14 +12,15 @@
 
 import React, { useMemo, useState } from 'react';
 import { Box, IconButton, Tooltip, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import { ViewCompact, ViewModule, ViewList, ViewStream } from '@mui/icons-material';
+import { ViewCompact, ViewModule, ViewList, ViewStream, Restore } from '@mui/icons-material';
 import { ReactGrid, Column, Row, CellChange, Id, DefaultCellTypes, DateCell, NumberCell, DropdownCell, TextCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
 import '@silevis/reactgrid/styles.css';
 import { BankStatement } from '../types/bankStatement';
 import { SortableHeaderCell, sortableHeaderTemplate, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from './reactgrid/SortableHeaderCell';
 import { calculateTransactionSuspiciousReasons } from '../utils/validation';
-import { useAppDispatch } from '../redux/hooks';
-import { updateTransaction, addTransaction, deleteTransaction, duplicateTransaction, invertTransactionAmount } from '../redux/features/statements/statementsSlice';
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { updateTransaction, addTransaction, deleteTransaction, duplicateTransaction, invertTransactionAmount, resetTransaction, batchUpdateTransaction, batchUpdateMultipleTransactions } from '../redux/features/statements/statementsSlice';
+import { selectTransactionChanges } from '../redux/features/statements/statementsSelectors';
 import { TransactionHistoryRecord } from '../types/bankStatement';
 import { CustomCell, customCellTemplate } from './reactgrid/CustomCell';
 import { GridDeleteIcon } from '@mui/x-data-grid';
@@ -40,11 +41,12 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   isSideBySide = false,
 }) => {
   const dispatch = useAppDispatch();
-  const headerStyle = { fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2' };
+  const { modified: modifiedTransactions, newItems: newTransactions } = useAppSelector(selectTransactionChanges);
+  const headerStyle = { fontWeight: 'bold', background: '#f5f5f5', color: '#1976d2' };
 
   // Column width state - self-contained
   const [columnWidths, setColumnWidths] = useState({
-    suspiciousReasons: 32,
+    suspiciousReasons: 20,
     date: 110,
     description: 200,
     amount: 110,
@@ -61,6 +63,31 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   // Table size state
   const [tableSize, setTableSize] = useState<'small' | 'medium' | 'large' | 'unbounded'>('medium');
 
+  // Add row state
+  const [addRowValues, setAddRowValues] = useState({
+    date: null as Date | null,
+    description: null as string | null,
+    amount: null as number | null,
+    filePageNumber: null as number | null,
+    checkNumber: null as number | null,
+    checkFilename: null as string | null,
+    checkFilePage: null as number | null,
+  });
+
+  // Helper function to get row style based on change status
+  const getRowStyle = (transactionId: string) => {
+    if (newTransactions.includes(transactionId)) {
+      return { background: 'rgba(76, 175, 79, 0.1)' }; // Light green for new
+    } else if (modifiedTransactions.includes(transactionId)) {
+      return { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
+    }
+    return {};
+  };
+
+  // Helper function to handle reset transaction
+  const handleResetTransaction = (transactionId: string) => {
+    dispatch(resetTransaction(transactionId));
+  };
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [
@@ -146,12 +173,19 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       if (!isCreditCard) { // Only show check columns for BANK type
         cells.push({ type: 'number' as const, value: txn.checkNumber || NaN, validator: (value: number) => value > 0 });
         cells.push({ type: 'text' as const, text: txn.checkDataModel?.description || '' });
-        cells.push({ type: 'date' as const, date: txn.checkDataModel?.date ? new Date(txn.checkDataModel.date) : undefined });
+        cells.push({ type: 'text' as const, text: txn.checkDataModel?.to || '' });
       }
       cells.push({
         type: 'text' as const,
         renderer: (id: string) => (
             <div style={{display: 'flex', gap: 1, justifyContent: 'center'}}>
+                {modifiedTransactions.includes(id) && (
+                  <Tooltip title='Reset Transaction'>
+                    <IconButton style={{cursor: 'pointer'}} onClick={() => handleResetTransaction(id)}>
+                        <Restore />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 <Tooltip title='Invert Transaction'>
                     <IconButton style={{cursor: 'pointer'}} onClick={() => handleInvertTransaction(id)}>
                         <Iso />
@@ -172,7 +206,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         text: txn.id,
         nonEditable: true,
       });
-      return { rowId: txn.id, cells };
+      return { rowId: txn.id, cells: cells.map(c => ({...c, style: getRowStyle(txn.id)})) };
     });
     
     // Apply sorting if needed (skip header row)
@@ -185,28 +219,35 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     const addRowCells: CellTypes[] = [];
     addRowCells.push({
       type: 'text' as const,
-      text: '➕',
+      text: '',
       nonEditable: true,
     });
-    addRowCells.push({ type: 'date' as const, date: undefined });
-    addRowCells.push({ type: 'text' as const, text: '' });
-    addRowCells.push({ type: 'number' as const, value: NaN });
-    addRowCells.push({ type: 'number' as const, value: NaN });
+    addRowCells.push({ type: 'date' as const, date: addRowValues.date || undefined });
+    addRowCells.push({ type: 'text' as const, text: addRowValues.description || '' });
+    addRowCells.push({ type: 'number' as const, hideZero: false, nanToZero: false, value: addRowValues.amount || NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) });
+    addRowCells.push({ type: 'number' as const, value: addRowValues.filePageNumber || NaN, validator: (value: number) => value > 0 });
     if (!isCreditCard) { // Only show check columns for BANK type
-      addRowCells.push({ type: 'number' as const, value: NaN });
-      addRowCells.push({ type: 'text' as const, text: '' });
-      addRowCells.push({ type: 'date' as const, date: undefined });
+      addRowCells.push({ type: 'number' as const, value: addRowValues.checkNumber || NaN, validator: (value: number) => value > 0 });
+      addRowCells.push({ type: 'text' as const, text: addRowValues.checkFilename || '' });
+      addRowCells.push({ type: 'date' as const, date: addRowValues.checkFilePage ? new Date(addRowValues.checkFilePage.toString()) : undefined });
     }
     addRowCells.push({
       type: 'text' as const,
       text: '',
+      renderer: () => (
+        <Tooltip title='Add Transaction'>
+          <IconButton size="small" onClick={handleAddTransaction}>
+            <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1 }}>+</Typography>
+          </IconButton>
+        </Tooltip>
+      ),
       nonEditable: true,
     });
     
     const addRow = { rowId: 'add-row', cells: addRowCells };
     
     return [headerRow, ...finalDataRows, addRow];
-  }, [statement, isCreditCard, sorting]);
+  }, [statement, isCreditCard, sorting, addRowValues]);
 
   // a change is a delete if all previous values are empty and all new values are empty
   const shouldDeleteTransactions = (changes: CellChange[]): boolean => {
@@ -264,71 +305,57 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       return;
     }
 
+    // Group changes by transaction ID
+    const groupedChanges: { [key: string]: CellChange[] } = {};
     changes.forEach(change => {
-        const { rowId, columnId, newCell } = change;
-        
-        // Handle add row changes
-        if (rowId === 'add-row') {
-          // Create a new transaction when user starts typing in the add row
-          if (change.type === 'text' || change.type === 'number' || change.type === 'date') {
-            const newTransaction: TransactionHistoryRecord = {
-              id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              date: null,
-              description: null,
-              amount: null,
-              filePageNumber: null,
-              checkNumber: null,
-              checkDataModel: null,
-              suspiciousReasons: [],
-            };
-            dispatch(addTransaction(newTransaction));
-            return; // Don't process this change further
-          }
-        }
-        
-        // Handle regular transaction changes
-        if (change.type === 'text') {
-            dispatch(updateTransaction({ transactionId: String(rowId), field: String(columnId), value: (newCell as TextCell).text}))
+      const rowId = change.rowId;
+      if (rowId === 'add-row') {
+        // Track add row values instead of automatically adding
+        const { columnId, newCell } = change;
+        console.log('Add row change detected:', columnId, newCell);
+        if (change.type === 'date') {
+          setAddRowValues(prev => ({ ...prev, [columnId]: (newCell as DateCell).date || null }));
+        } else if (change.type === 'text') {
+          setAddRowValues(prev => ({ ...prev, [columnId]: (newCell as TextCell).text }));
         } else if (change.type === 'number') {
-            dispatch(updateTransaction({ transactionId: String(rowId), field: String(columnId), value: (newCell as NumberCell).value}))
-        } else if (change.type === 'date') {
-            dispatch(updateTransaction({ transactionId: String(rowId), field: String(columnId), value: Number.isNaN((newCell as DateCell).date?.valueOf()) ? null : (newCell as DateCell).date?.toLocaleDateString()}))
-        } else if (change.type === 'dropdown') {
-            dispatch(updateTransaction({ transactionId: String(rowId), field: String(columnId), value: (newCell as DropdownCell).selectedValue}))
+          setAddRowValues(prev => ({ ...prev, [columnId]: Number.isNaN((newCell as NumberCell).value) ? null : (newCell as NumberCell).value }));
+        } 
+        return; // Skip add row changes
+      } else {
+        if (!groupedChanges[rowId]) {
+          groupedChanges[rowId] = [];
         }
-        //  else if (columnId === 'checkNumber') {
-        //     const value = newCell.text.trim() === '' ? null : parseInt(newCell.text) || null;
-        //     dispatch(updateTransaction({ transactionId: String(rowId), field: 'checkNumber', value }));
-        //   } else if (columnId === 'checkFilename') {
-        //     // Update checkDataModel description
-        //     const updatedTransaction = { ...transaction };
-        //     if (!updatedTransaction.checkDataModel) {
-        //       updatedTransaction.checkDataModel = {
-        //         accountNumber: '',
-        //         checkNumber: 0,
-        //         payee: '',
-        //         description: newCell.text,
-        //         date: '',
-        //         amount: 0,
-        //       };
-        //     } else {
-        //       updatedTransaction.checkDataModel.description = newCell.text;
-        //     }
-        //     dispatch(updateTransaction({ transactionId: String(rowId), field: 'checkDataModel', value: updatedTransaction.checkDataModel }));
-        //   } else if (columnId === 'checkFilePage') {
-        //     // Update checkDataModel date (using date field for file page)
-        //     const updatedTransaction = { ...transaction };
-        //     if (!updatedTransaction.checkDataModel) {
-        //       updatedTransaction.checkDataModel = {
-        //         accountNumber: '',
-        //         checkNumber: 0,
-        //         payee: '',
-        //         description: '',
-        //         date: newCell.text,
-        //         amount: 0,
-        //       };
-        //     }
+        groupedChanges[rowId].push(change); 
+      }
     });
+
+    // Process all changes as a single batch operation
+    const allUpdates: { transactionId: string; changes: Array<{field: string, value: any}> }[] = [];
+
+    Object.entries(groupedChanges).forEach(([transactionId, changesForTransaction]) => {
+      const changes: { field: string; value: any }[] = [];
+
+      changesForTransaction.forEach(change => {
+        if (change.type === 'text') {
+          changes.push({ field: String(change.columnId), value: (change.newCell as TextCell).text });
+        } else if (change.type === 'number') {
+          changes.push({ field: String(change.columnId), value: (change.newCell as NumberCell).value });
+        } else if (change.type === 'date') {
+          changes.push({ field: String(change.columnId), value: Number.isNaN((change.newCell as DateCell).date?.valueOf()) ? null : (change.newCell as DateCell).date?.toLocaleDateString() });
+        } else if (change.type === 'dropdown') {
+          changes.push({ field: String(change.columnId), value: (change.newCell as DropdownCell).selectedValue });
+        }
+      });
+
+      if (changes.length > 0) {
+        allUpdates.push({ transactionId: String(transactionId), changes });
+      }
+    });
+
+    // Dispatch all updates as a single batch operation
+    if (allUpdates.length > 0) {
+      dispatch(batchUpdateMultipleTransactions(allUpdates));
+    }
   };  
 
         
@@ -349,16 +376,34 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   const handleAddTransaction = () => {
     if (statement) {
       const newTransaction: TransactionHistoryRecord = {
-        id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: crypto.randomUUID(),
+        date: addRowValues.date ? addRowValues.date.toLocaleDateString() : null,
+        description: addRowValues.description || null,
+        amount: addRowValues.amount,
+        filePageNumber: addRowValues.filePageNumber,
+        checkNumber: addRowValues.checkNumber,
+        checkDataModel: addRowValues.checkFilename || addRowValues.checkFilePage ? {
+          accountNumber: '',
+          checkNumber: addRowValues.checkNumber || 0,
+          to: '',
+          description: addRowValues.checkFilename || '',
+          date: addRowValues.checkFilePage ? String(addRowValues.checkFilePage) : '',
+          amount: 0,
+        } : null,
+        suspiciousReasons: [],
+      };
+      dispatch(addTransaction(newTransaction));
+      
+      // Clear add row values
+      setAddRowValues({
         date: null,
         description: null,
         amount: null,
         filePageNumber: null,
         checkNumber: null,
-        checkDataModel: null,
-        suspiciousReasons: [],
-      };
-      dispatch(addTransaction(newTransaction));
+        checkFilename: null,
+        checkFilePage: null,
+      });
     }
   };
 
@@ -500,6 +545,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
           customCellTemplates={{ sortableHeader: sortableHeaderTemplate, custom: customCellTemplate }}
           enableRangeSelection
           enableRowSelection
+          enableFillHandle
         />
       </Box>
     </Box>

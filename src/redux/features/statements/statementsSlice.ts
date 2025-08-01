@@ -24,6 +24,21 @@ import apiService from '../../../services/api';
 // Add BankStatement type import
 import { BankStatement, TransactionHistoryRecord } from '../../../types/bankStatement';
 
+// Helper function to create hash for change detection
+const createHash = (obj: any): string => {
+  if (obj === null || obj === undefined) {
+    return 'null';
+  }
+  const str = JSON.stringify(obj);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString();
+};
+
 interface StatementsState {
   statements: BankStatementMetadata[];
   loading: boolean;
@@ -39,6 +54,13 @@ interface StatementsState {
   hasUnsavedChanges: boolean;
   saveLoading: boolean;
   saveError: string | null;
+  // Add original state tracking for reset functionality
+  originalStatement: BankStatement | null;
+  originalHashes: {
+    transactions: Record<string, string>;
+    pages: Record<number, string>;
+    statementFields: Record<string, string>;
+  };
 }
 
 const initialState: StatementsState = {
@@ -54,6 +76,12 @@ const initialState: StatementsState = {
   hasUnsavedChanges: false,
   saveLoading: false,
   saveError: null,
+  originalStatement: null,
+  originalHashes: {
+    transactions: {},
+    pages: {},
+    statementFields: {},
+  },
 };
 
 export const fetchStatements = createAsyncThunk<BankStatementMetadata[], { clientName: string }>(
@@ -209,6 +237,77 @@ const statementsSlice = createSlice({
         }
       }
     },
+    batchUpdateTransaction(state, action: PayloadAction<{ transactionId: string; changes: Array<{field: string, value: any}> }>) {
+      if (state.currentStatement) {
+        const { transactionId, changes } = action.payload;
+        const transaction = state.currentStatement.transactions.find(t => t.id === transactionId);
+        if (transaction) {
+          changes.forEach(({ field, value }) => {
+            (transaction as any)[field] = value;
+          });
+          state.hasUnsavedChanges = true;
+        }
+      }
+    },
+    batchUpdateMultipleTransactions(state, action: PayloadAction<Array<{ transactionId: string; changes: Array<{field: string, value: any}> }>>) {
+      if (state.currentStatement) {
+        action.payload.forEach(({ transactionId, changes }) => {
+          const transaction = state.currentStatement!.transactions.find(t => t.id === transactionId);
+          if (transaction) {
+            changes.forEach(({ field, value }) => {
+              (transaction as any)[field] = value;
+            });
+          }
+        });
+        state.hasUnsavedChanges = true;
+      }
+    },
+    batchUpdatePages(state, action: PayloadAction<Array<{ pageNumber: number; changes: Array<{field: string, value: any}> }>>) {
+      if (state.currentStatement) {
+        action.payload.forEach(({ pageNumber, changes }) => {
+          changes.forEach(({ field, value }) => {
+            if (field === 'pageNumber') {
+              // Handle page number changes
+              const updatedPages = [...state.currentStatement!.pageMetadata.pages];
+              const pageIndex = updatedPages.indexOf(pageNumber);
+              if (pageIndex !== -1) {
+                updatedPages[pageIndex] = value;
+                state.currentStatement!.pageMetadata.pages = updatedPages;
+                
+                // Update bates stamps mapping
+                const oldBatesStamp = state.currentStatement!.batesStamps[pageNumber];
+                if (oldBatesStamp !== undefined) {
+                  state.currentStatement!.batesStamps[value] = oldBatesStamp;
+                  delete state.currentStatement!.batesStamps[pageNumber];
+                }
+              }
+            } else if (field === 'batesStamp') {
+              // Handle bates stamp changes
+              state.currentStatement!.batesStamps[pageNumber] = value;
+            }
+          });
+        });
+        state.hasUnsavedChanges = true;
+      }
+    },
+    addPage(state, action: PayloadAction<number>) {
+      if (state.currentStatement) {
+        const newPageNumber = action.payload;
+        if (!state.currentStatement.pageMetadata.pages.includes(newPageNumber)) {
+          state.currentStatement.pageMetadata.pages.push(newPageNumber);
+          state.currentStatement.pageMetadata.pages.sort((a, b) => a - b);
+          state.hasUnsavedChanges = true;
+        }
+      }
+    },
+    deletePage(state, action: PayloadAction<number>) {
+      if (state.currentStatement) {
+        const pageNumber = action.payload;
+        state.currentStatement.pageMetadata.pages = state.currentStatement.pageMetadata.pages.filter(p => p !== pageNumber);
+        delete state.currentStatement.batesStamps[pageNumber];
+        state.hasUnsavedChanges = true;
+      }
+    },
     addTransaction(state, action: PayloadAction<TransactionHistoryRecord>) {
       if (state.currentStatement) {
         state.currentStatement.transactions.push(action.payload);
@@ -229,7 +328,7 @@ const statementsSlice = createSlice({
         if (transaction) {
           const newTransaction: TransactionHistoryRecord = {
             ...transaction,
-            id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: crypto.randomUUID(),
           };
           state.currentStatement.transactions.push(newTransaction);
           state.hasUnsavedChanges = true;
@@ -239,7 +338,7 @@ const statementsSlice = createSlice({
     invertTransactionAmount(state, action: PayloadAction<string>) {
       if (state.currentStatement) {
         const transaction = state.currentStatement.transactions.find(t => t.id === action.payload);
-        if (transaction && transaction.amount !== null) {
+        if (transaction && transaction.amount) {
           transaction.amount = -transaction.amount;
           state.hasUnsavedChanges = true;
         }
@@ -247,6 +346,46 @@ const statementsSlice = createSlice({
     },
     clearUnsavedChanges(state) {
       state.hasUnsavedChanges = false;
+    },
+    // Add reset actions
+    resetTransaction(state, action: PayloadAction<string>) {
+      if (state.currentStatement && state.originalStatement) {
+        const transactionId = action.payload;
+        const originalTransaction = state.originalStatement.transactions.find(t => t.id === transactionId);
+        if (originalTransaction) {
+          const currentTransaction = state.currentStatement.transactions.find(t => t.id === transactionId);
+          if (currentTransaction) {
+            Object.assign(currentTransaction, originalTransaction);
+            state.hasUnsavedChanges = true;
+          }
+        }
+      }
+    },
+    resetPage(state, action: PayloadAction<number>) {
+      if (state.currentStatement && state.originalStatement) {
+        const pageNumber = action.payload;
+        const originalBatesStamp = state.originalStatement.batesStamps[pageNumber];
+        if (originalBatesStamp !== undefined) {
+          state.currentStatement.batesStamps[pageNumber] = originalBatesStamp;
+          state.hasUnsavedChanges = true;
+        }
+      }
+    },
+    resetStatementField(state, action: PayloadAction<string>) {
+      if (state.currentStatement && state.originalStatement) {
+        const field = action.payload;
+        if (field === 'classification') {
+          state.currentStatement.pageMetadata.classification = state.originalStatement.pageMetadata.classification;
+        } else {
+          (state.currentStatement as any)[field] = (state.originalStatement as any)[field];
+        }
+        state.hasUnsavedChanges = true;
+      }
+    },
+    restoreState(state, action: PayloadAction<StatementsState>) {
+      // Restore the entire statements state
+      Object.assign(state, action.payload);
+      state.hasUnsavedChanges = true;
     },
   },
   extraReducers: (builder) => {
@@ -304,6 +443,39 @@ const statementsSlice = createSlice({
         state.currentStatementLoading = false;
         state.currentStatement = action.payload;
         state.hasUnsavedChanges = false;
+        
+        // Store original state and hashes
+        state.originalStatement = JSON.parse(JSON.stringify(action.payload));
+        state.originalHashes = {
+          transactions: {},
+          pages: {},
+          statementFields: {},
+        };
+        
+        // Create transaction hashes
+        action.payload.transactions.forEach(tx => {
+          state.originalHashes.transactions[tx.id] = createHash(tx);
+        });
+        
+        // Create page hashes
+        action.payload.pageMetadata.pages.forEach(pageNum => {
+          const pageData = { pageNumber: pageNum, batesStamp: action.payload.batesStamps[pageNum] };
+          state.originalHashes.pages[pageNum] = createHash(pageData);
+        });
+        
+        // Create statement field hashes
+        const statementFields = {
+          date: action.payload.date,
+          accountNumber: action.payload.accountNumber,
+          beginningBalance: action.payload.beginningBalance,
+          endingBalance: action.payload.endingBalance,
+          interestCharged: action.payload.interestCharged,
+          feesCharged: action.payload.feesCharged,
+          classification: action.payload.pageMetadata.classification,
+        };
+        Object.entries(statementFields).forEach(([key, value]) => {
+          state.originalHashes.statementFields[key] = createHash(value);
+        });
       })
       .addCase(loadBankStatement.rejected, (state, action) => {
         state.currentStatementLoading = false;
@@ -330,10 +502,20 @@ export const {
   clearCurrentStatement,
   updateStatementField,
   updateTransaction,
+  batchUpdateTransaction,
+  batchUpdateMultipleTransactions,
+  batchUpdatePages,
+  addPage,
+  deletePage,
   addTransaction,
   deleteTransaction,
   duplicateTransaction,
   invertTransactionAmount,
   clearUnsavedChanges,
+  // Add reset actions
+  resetTransaction,
+  resetPage,
+  resetStatementField,
+  restoreState,
 } = statementsSlice.actions;
 export default statementsSlice.reducer; 

@@ -12,7 +12,7 @@ export interface ClassifiedPdfMetadata {
 export interface CheckDataModel {
   accountNumber: string;
   checkNumber: number;
-  payee: string;
+  to: string;
   description: string;
   date: string;
   amount: number;
@@ -21,13 +21,13 @@ export interface CheckDataModel {
 
 export interface TransactionHistoryRecord {
   id: string;
-  date: string | null;
+  date?: string | null;
   checkNumber?: number | null;
-  description: string | null;
-  amount: number | null;
-  filePageNumber: number | null;
+  description?: string | null;
+  amount?: number | null;
+  filePageNumber?: number | null;
   checkDataModel?: CheckDataModel | null;
-  suspiciousReasons: string[]; // always empty for now, but required for UI
+  suspiciousReasons?: string[]; // always empty for now, but required for UI
   // ...other fields as needed
 }
 

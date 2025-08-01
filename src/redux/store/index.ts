@@ -16,8 +16,9 @@ import filesReducer from '../features/files/filesSlice';
 import analysisReducer from '../features/analysis/analysisSlice';
 import clientReducer from '../features/client/clientSlice';
 import statementsReducer from '../features/statements/statementsSlice';
+import { undoRedoMiddleware } from '../middleware/undoRedoMiddleware';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     auth: authReducer,
     files: filesReducer,
@@ -25,7 +26,11 @@ export const store = configureStore({
     client: clientReducer,
     statements: statementsReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(undoRedoMiddleware),
 });
+
+export { store };
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;

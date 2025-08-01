@@ -159,14 +159,30 @@ For ResetValue, we want to allow the user to reset the value of a statement deta
 
 The reset value button should only appear if it is different.  To know whether it's different, we will need to have stored a copy of the original state in the redux store.  We can easily compare by hashing the original transaction record or page record, and then on render hashing the current record and comparing to the original. To facilitate this, in the copy of the original statement, we should also store a map of transactionId -> hash(transaction).  
 
-We also want to highlight any statemen details field, transaction row, or page row that is not in its original state in a faded light yellow background color. 
-The reset value will not apply to any transactions or pages that are new, i.e. that weren't in the original state.  For new transactions, they should have a faded light green background color.
+We also want to highlight any statement details field, transaction row, or page row that is not in its original state in a faded light yellow background color. 
+The reset value will not apply to any transactions or pages that are new, i.e. that weren't in the original state.  For new transactions or pages, they should have a faded light green background color.
 
 ## Checkpoint 4: Advanced Filtering
 Goal: Apply table filtering based on different criteria
 
-### Filter Criteria 1: Basic Search
+### Filter Criteria 1: Basic Search Filter
 A text box will show right above the Transactions Table which will provide a quick filter capability on each row. Any spaces will indicate separate filters which will apply using AND logic.  For example, if "bank 2016" is entered it will filter for all rows that contain both "bank" and "2016".  The search will be case insensitive.
 
-### Filter Criteria 2: Advanced search
-The user will be able to select filters based on 
+The search will update every time the text is changed, no need for pressing enter or anything
+
+### Filter Criteria 2: Advanced filtering
+The user will be able to select filters by choosing a column, a comparison, and a value (if applicable).  The user can choose multiple columns which will be joined together by AND logic
+
+the comparisons are as follows: equals, not equals, greater than, less than, and null/undefined/invalid (doesn't require a value)
+
+#### Advanced Filter UI 
+Each column header will have a filter icon button.  When the user presses the button, a tooltip display will appear above which displays a dropdown for the choosing the comparison, the input box if relevant, and an OK button.  If the user presses the OK button, or presses enter inside the input box, the filtering will apply.  If the user presses escape, the filtering will exit without any changes. 
+
+When a filter is applied, an X button will appear which will clear the filter.  The user can also click the original filter icon button to update the filter.
+
+### Filter Criteria 3: Custom filter buttons
+There shoulld be buttons to toggle filtering by the following:
+* suspicious transactions
+* new transactions
+
+These and all other filters will be joined together by AND logic.

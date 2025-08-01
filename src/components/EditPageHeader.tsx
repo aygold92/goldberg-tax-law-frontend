@@ -4,6 +4,7 @@
  * This component displays:
  * - Page title with statement information
  * - Unsaved changes indicator
+ * - Undo/Redo buttons with keyboard shortcuts
  * - Save and Add Transaction buttons
  * - Save error display
  * - Source filename information
@@ -13,8 +14,9 @@
 
 import React from 'react';
 import { Box, Typography, Alert, Badge, Button } from '@mui/material';
-import { Edit, Save, Add } from '@mui/icons-material';
+import { Edit, Save, Add, Undo, Redo } from '@mui/icons-material';
 import { BankStatement } from '../types/bankStatement';
+import { useUndoRedo } from '../redux/hooks/useUndoRedo';
 
 interface EditPageHeaderProps {
   statement: BankStatement | null;
@@ -37,6 +39,8 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
   saveError,
   onSave,
 }) => {
+  const { canUndo, canRedo, undo, redo } = useUndoRedo();
+
   // Generate heading
   const heading = statement
     ? `Edit Statement ${clientName} ${statement.pageMetadata.classification}-${accountNumber}: ${date}`
@@ -65,6 +69,24 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
 
       {/* Action Buttons */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <Button
+          variant="outlined"
+          startIcon={<Undo />}
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+        >
+          Undo
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<Redo />}
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Y)"
+        >
+          Redo
+        </Button>
         <Button
           variant="contained"
           startIcon={<Save />}
