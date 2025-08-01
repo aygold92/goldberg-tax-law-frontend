@@ -6,6 +6,8 @@
  * - Deleting selected statements
  * - Creating a spreadsheet from selected statements
  * - Loading a single BankStatement object from the backend
+ * - Editing statement data and transactions
+ * - Saving changes to the backend
  *
  * Uses Redux Toolkit for state management and async thunks for API calls.
  *
@@ -16,11 +18,11 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { BankStatementMetadata, BankStatementKey, WriteCsvSummaryResponse } from '../../../types/api';
+import { BankStatementMetadata, BankStatementKey, WriteCsvSummaryResponse, UpdateStatementModelsRequest, UpdateStatementModelsResponse } from '../../../types/api';
 import apiService from '../../../services/api';
 
 // Add BankStatement type import
-import { BankStatement } from '../../../types/bankStatement';
+import { BankStatement, TransactionHistoryRecord } from '../../../types/bankStatement';
 
 interface StatementsState {
   statements: BankStatementMetadata[];
@@ -33,6 +35,10 @@ interface StatementsState {
   currentStatement: BankStatement | null;
   currentStatementLoading: boolean;
   currentStatementError: string | null;
+  // Add editing state
+  hasUnsavedChanges: boolean;
+  saveLoading: boolean;
+  saveError: string | null;
 }
 
 const initialState: StatementsState = {
@@ -45,6 +51,9 @@ const initialState: StatementsState = {
   currentStatement: null,
   currentStatementLoading: false,
   currentStatementError: null,
+  hasUnsavedChanges: false,
+  saveLoading: false,
+  saveError: null,
 };
 
 export const fetchStatements = createAsyncThunk<BankStatementMetadata[], { clientName: string }>(
@@ -105,6 +114,62 @@ export const loadBankStatement = createAsyncThunk<BankStatement, { clientName: s
   }
 );
 
+// Add thunk for saving statement changes
+export const saveStatementChanges = createAsyncThunk<UpdateStatementModelsResponse, { clientName: string; accountNumber: string; classification: string; date: string }>(
+  'statements/saveStatementChanges',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { statements: StatementsState };
+      const statement = state.statements.currentStatement;
+      
+      if (!statement) {
+        throw new Error('No statement to save');
+      }
+
+      // Create the filename in the required format
+      const stmtFilename = `${params.accountNumber}:${params.classification}:${params.date.replace("/", "_")}.json`;
+
+      const request: UpdateStatementModelsRequest = {
+        clientName: params.clientName,
+        stmtFilename,
+        modelDetails: {
+          transactions: statement.transactions.map(txn => ({
+            id: txn.id,
+            date: txn.date,
+            description: txn.description,
+            amount: txn.amount,
+            checkNumber: txn.checkNumber || null,
+            checkPdfMetadata: txn.checkDataModel ? {
+              filename: txn.checkDataModel.description || '',
+              pages: [1], // Default to page 1 for check
+              classification: 'CHECK'
+            } : null,
+            filePageNumber: txn.filePageNumber,
+          })),
+          pages: statement.pageMetadata.pages.map(page => ({
+            filePageNumber: page,
+            batesStamp: statement.batesStamps[page] || null,
+          })),
+          details: {
+            filename: statement.pageMetadata.filename,
+            classification: statement.pageMetadata.classification,
+            statementDate: statement.date || '',
+            accountNumber: statement.accountNumber || '',
+            beginningBalance: statement.beginningBalance || 0,
+            endingBalance: statement.endingBalance || 0,
+            interestCharged: statement.interestCharged || null,
+            feesCharged: statement.feesCharged || null,
+          },
+        },
+      };
+
+      return await apiService.updateStatementModels(request);
+    } catch (error: any) {
+      return rejectWithValue(error.userMessage || error.message || 'Failed to save statement changes');
+    }
+  }
+);
+
 const statementsSlice = createSlice({
   name: 'statements',
   initialState,
@@ -118,6 +183,70 @@ const statementsSlice = createSlice({
       state.currentStatement = null;
       state.currentStatementError = null;
       state.currentStatementLoading = false;
+    },
+    // Add reducers for editing
+    updateStatementField(state, action: PayloadAction<{ field: string; value: any }>) {
+      if (state.currentStatement) {
+        const { field, value } = action.payload;
+        
+        // Handle special case for classification which is nested in pageMetadata
+        if (field === 'classification') {
+          state.currentStatement.pageMetadata.classification = value;
+        } else {
+          (state.currentStatement as any)[field] = value;
+        }
+        
+        state.hasUnsavedChanges = true;
+      }
+    },
+    updateTransaction(state, action: PayloadAction<{ transactionId: string; field: string; value: any }>) {
+      if (state.currentStatement) {
+        const { transactionId, field, value } = action.payload;
+        const transaction = state.currentStatement.transactions.find(t => t.id === transactionId);
+        if (transaction) {
+          (transaction as any)[field] = value;
+          state.hasUnsavedChanges = true;
+        }
+      }
+    },
+    addTransaction(state, action: PayloadAction<TransactionHistoryRecord>) {
+      if (state.currentStatement) {
+        state.currentStatement.transactions.push(action.payload);
+        state.hasUnsavedChanges = true;
+      }
+    },
+    deleteTransaction(state, action: PayloadAction<string>) {
+      if (state.currentStatement) {
+        state.currentStatement.transactions = state.currentStatement.transactions.filter(
+          t => t.id !== action.payload
+        );
+        state.hasUnsavedChanges = true;
+      }
+    },
+    duplicateTransaction(state, action: PayloadAction<string>) {
+      if (state.currentStatement) {
+        const transaction = state.currentStatement.transactions.find(t => t.id === action.payload);
+        if (transaction) {
+          const newTransaction: TransactionHistoryRecord = {
+            ...transaction,
+            id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          };
+          state.currentStatement.transactions.push(newTransaction);
+          state.hasUnsavedChanges = true;
+        }
+      }
+    },
+    invertTransactionAmount(state, action: PayloadAction<string>) {
+      if (state.currentStatement) {
+        const transaction = state.currentStatement.transactions.find(t => t.id === action.payload);
+        if (transaction && transaction.amount !== null) {
+          transaction.amount = -transaction.amount;
+          state.hasUnsavedChanges = true;
+        }
+      }
+    },
+    clearUnsavedChanges(state) {
+      state.hasUnsavedChanges = false;
     },
   },
   extraReducers: (builder) => {
@@ -174,13 +303,37 @@ const statementsSlice = createSlice({
       .addCase(loadBankStatement.fulfilled, (state, action: PayloadAction<BankStatement>) => {
         state.currentStatementLoading = false;
         state.currentStatement = action.payload;
+        state.hasUnsavedChanges = false;
       })
       .addCase(loadBankStatement.rejected, (state, action) => {
         state.currentStatementLoading = false;
         state.currentStatementError = action.payload as string;
+      })
+      // Add cases for saveStatementChanges
+      .addCase(saveStatementChanges.pending, (state) => {
+        state.saveLoading = true;
+        state.saveError = null;
+      })
+      .addCase(saveStatementChanges.fulfilled, (state) => {
+        state.saveLoading = false;
+        state.hasUnsavedChanges = false;
+      })
+      .addCase(saveStatementChanges.rejected, (state, action) => {
+        state.saveLoading = false;
+        state.saveError = action.payload as string;
       });
   },
 });
 
-export const { clearSpreadsheetResult, clearCurrentStatement } = statementsSlice.actions;
+export const { 
+  clearSpreadsheetResult, 
+  clearCurrentStatement,
+  updateStatementField,
+  updateTransaction,
+  addTransaction,
+  deleteTransaction,
+  duplicateTransaction,
+  invertTransactionAmount,
+  clearUnsavedChanges,
+} = statementsSlice.actions;
 export default statementsSlice.reducer; 

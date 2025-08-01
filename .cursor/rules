@@ -5,3 +5,6 @@
 
 ### Dependencies
 * when adding new dependencies, always add it to the package.json and then run npm install
+
+### Tests
+**NEVER** update tests to match the implementation unless explicitly asked.

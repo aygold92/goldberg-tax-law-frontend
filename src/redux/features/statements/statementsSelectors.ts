@@ -14,4 +14,7 @@ export const selectSpreadsheetLoading = (state: RootState) => state.statements.s
 export const selectSpreadsheetError = (state: RootState) => state.statements.spreadsheetError;
 export const selectCurrentStatement = (state: RootState) => state.statements.currentStatement;
 export const selectCurrentStatementLoading = (state: RootState) => state.statements.currentStatementLoading;
-export const selectCurrentStatementError = (state: RootState) => state.statements.currentStatementError; 
+export const selectCurrentStatementError = (state: RootState) => state.statements.currentStatementError;
+export const selectHasUnsavedChanges = (state: RootState) => state.statements.hasUnsavedChanges;
+export const selectSaveLoading = (state: RootState) => state.statements.saveLoading;
+export const selectSaveError = (state: RootState) => state.statements.saveError; 

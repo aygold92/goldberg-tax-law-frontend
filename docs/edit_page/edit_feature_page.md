@@ -89,7 +89,8 @@ If it has type `BANK` rather than `CREDIT_CARD`, then add 3 additional columns i
 * `checkFilePage`
 
 ##### PDF display
-The pdf file should be loaded into an iframe from azure on page load and be automatically set to the first page of the statement.  The display should be draggable to anywhere on the page and be resizable, but will initially show up under the Transactions table and be the full width of the screen. 
+The pdf file should be loaded into an iframe from azure on page load and be automatically set to the first page of the statement.  
+There should be a toggle button which allows the user to choose whether the display shows up next to the Transactions Table (side by side mode), or under the table (stacked mode).  Default is side by side.
 You can load the PDF by calling the `RequestSasToken` API and then constructing the URL to the file as `https://${storageAccountName}.blob.core.windows.net/${clientName}-input/${sourceFilename}.json?${sasToken}`, where sourceFilename is `filename` from the `ClassifiedPdfMetadata` object
 
 ### Component Layout
@@ -98,12 +99,11 @@ Heading
 ----------------------------
 Suspicious Reasons
 ----------------------------
-|Statement Details | Pages |
-|Net Income Calculation|
+|Statement Details | Net Income Calculation | Pages |
 ----------------------------
-Transactions Table
+Transactions Table  | PDF Display (if side by side mode)
 ----------------------------
-PDF Display (Moveable and Resizable)
+PDF Display (if stacked mode)
 
 
 ### Other Notes
@@ -145,4 +145,28 @@ A transaction is valid IFF:
 
 The calculation above should be used to calculate the `suspciousReasons` table column value as well.
 
-### Checkpoint 3: Undo/Redo and ResetValue features
+## Checkpoint 3: Undo/Redo and ResetValue features
+Goal: an undo/redo feature will be implemented that applies to all changes to the statement, whether it's the statement details, pages, or transactions.
+
+### Undo/Redo
+Use a redux middleware rather than implementing specific actions.
+
+### ResetValue
+For ResetValue, we want to allow the user to reset the value of a statement details field, a full page record, or a full transaction record to the original state, or to the last state that was saved to the backend. For this, we need the following:
+* In the transactions table, add a button in the actions cell of each transaction
+* In the statement details table, add an actions cell with a reset value button
+* In the pages table, add an actions cell with a reset value button
+
+The reset value button should only appear if it is different.  To know whether it's different, we will need to have stored a copy of the original state in the redux store.  We can easily compare by hashing the original transaction record or page record, and then on render hashing the current record and comparing to the original. To facilitate this, in the copy of the original statement, we should also store a map of transactionId -> hash(transaction).  
+
+We also want to highlight any statemen details field, transaction row, or page row that is not in its original state in a faded light yellow background color. 
+The reset value will not apply to any transactions or pages that are new, i.e. that weren't in the original state.  For new transactions, they should have a faded light green background color.
+
+## Checkpoint 4: Advanced Filtering
+Goal: Apply table filtering based on different criteria
+
+### Filter Criteria 1: Basic Search
+A text box will show right above the Transactions Table which will provide a quick filter capability on each row. Any spaces will indicate separate filters which will apply using AND logic.  For example, if "bank 2016" is entered it will filter for all rows that contain both "bank" and "2016".  The search will be case insensitive.
+
+### Filter Criteria 2: Advanced search
+The user will be able to select filters based on 

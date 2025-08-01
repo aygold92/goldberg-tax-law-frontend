@@ -21,11 +21,11 @@ export interface CheckDataModel {
 
 export interface TransactionHistoryRecord {
   id: string;
-  date: string;
+  date: string | null;
   checkNumber?: number | null;
-  description: string;
-  amount: number;
-  filePageNumber: number;
+  description: string | null;
+  amount: number | null;
+  filePageNumber: number | null;
   checkDataModel?: CheckDataModel | null;
   suspiciousReasons: string[]; // always empty for now, but required for UI
   // ...other fields as needed
@@ -47,3 +47,19 @@ export interface BankStatement {
   totalIncomeCredits: number;
   suspiciousReasons: string[];
 } 
+
+// Classification types as per BankStatement_API_Response_Spec.md
+export enum ClassificationType {
+  AMEX_CC = "AMEX CC",
+  C1_CC = "C1 CC",
+  CITI_CC = "CITI CC",
+  WF_CC = "WF CC",
+  BOFA_CC = "BofA CC",
+  NFCU_CC = "NFCU CC",
+  EAGLE_BANK = "Eagle Bank",
+  WF_BANK = "WF Bank",
+  WF_BANK_JOINT = "WF Bank Joint",
+  BOFA = "BofA",
+  NFCU_BANK = "NFCU Bank",
+  CHECKS = "Checks"
+}

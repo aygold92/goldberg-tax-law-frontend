@@ -146,6 +146,10 @@ export interface SortCriterion {
 // Type for multiple sort criteria
 export type SortCriteria = SortCriterion[];
 
+/**
+ * click handler for the sortable header cell
+ * updates the sorting criteria object when a column is clicked
+ */
 export const handleSort = (
   columnId: string, 
   currentSorting: SortCriteria,
@@ -173,8 +177,13 @@ export const handleSort = (
   }
 };
 
+/**
+ * Sort rows based on sorting criteria.  
+ * Null, undefined, or other invalid values like NaN or invalid dates should appear to be "less" than valid values.  
+ * If two null/undefined or invalid values are compared, the sort won't change the order.
+ */
 export const sortRows = (
-  rows: Row[],
+  rows: Row<any>[],
   sorting: SortCriteria,
   columns: Column[]
 ): Row[] => {
@@ -192,33 +201,24 @@ export const sortRows = (
       const aCell = a.cells[columnIndex];
       const bCell = b.cells[columnIndex];
       
-      if (!aCell || !bCell) continue;
-      
-      // Extract text value from different cell types
-      const getCellText = (cell: any): string => {
-        if (cell.type === 'text' || cell.type === 'header') {
-          return cell.text || '';
-        }
-        // Handle other cell types as needed
-        return '';
-      };
-      
-      const aVal = getCellText(aCell);
-      const bVal = getCellText(bCell);
-      
-      if (aVal === bVal) continue; // Try next criterion
-      
-      // Handle numeric values
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        const comparison = aNum < bNum ? -1 : 1;
-        return criterion.direction === SortDirection.ASC ? comparison : -comparison;
+      if (!aCell || !bCell || aCell.type !== bCell.type) continue;
+
+      let comparisonResult;
+      if (aCell.type === 'text') {
+        comparisonResult = (aCell.text || '').localeCompare(bCell.text || '');
+      } else if (aCell.type === 'number') {
+        const aValue = !Number.isNaN(aCell.value || NaN) ? aCell.value : Number.MIN_VALUE;
+        const bValue = !Number.isNaN(bCell.value || NaN) ? bCell.value : Number.MIN_VALUE;
+        comparisonResult = aValue - bValue;
+      } else if (aCell.type === 'date') {
+        const aDate = !isNaN(aCell.date?.valueOf() || NaN) ? aCell.date : new Date(0);
+        const bDate = !isNaN(bCell.date?.valueOf() || NaN) ? bCell.date : new Date(0);
+        comparisonResult = aDate.getTime() - bDate.getTime();
       }
-      
-      // Handle string values
-      const comparison = aVal < bVal ? -1 : 1;
-      return criterion.direction === SortDirection.ASC ? comparison : -comparison;
+
+      if (comparisonResult !== 0) {
+        return criterion.direction === SortDirection.ASC ? comparisonResult : -comparisonResult;
+      }
     }
     
     return 0; // All criteria are equal

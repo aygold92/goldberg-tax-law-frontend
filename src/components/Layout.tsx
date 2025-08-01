@@ -124,9 +124,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Box>
         </Toolbar>
       </AppBar>
-      <Container component="main" sx={{ flexGrow: 1, py: 3 }}>
+      <Box component="main" sx={{ flexGrow: 1, py: 2, px: 2 }}>
         {children}
-      </Container>
+      </Box>
     </Box>
   );
 };
