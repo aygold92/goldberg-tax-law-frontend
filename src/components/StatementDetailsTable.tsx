@@ -14,7 +14,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Box, Typography, IconButton, Tooltip } from '@mui/material';
+import { Box, IconButton, Tooltip } from '@mui/material';
 import { Restore } from '@mui/icons-material';
 import { ReactGrid, Column, Row, CellChange, Id, DropdownCell, NumberCell, TextCell, DateCell } from '@silevis/reactgrid';
 import '@silevis/reactgrid/styles.css';
@@ -206,9 +206,13 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
   };
 
   return (
-    <Box sx={{ mb: 1 }}>
-      <Typography variant="h6" sx={{ mb: 0.5 }}>Statement Details</Typography>
-      <Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        border: '1px solid #e2e8f0',
+        borderRadius: 2,
+        backgroundColor: '#ffffff',
+        overflow: 'hidden'
+      }}>
         <ReactGrid
           columns={columns} 
           rows={rows} 

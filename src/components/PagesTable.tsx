@@ -265,9 +265,13 @@ const PagesTable: React.FC<PagesTableProps> = ({
   };
 
   return (
-    <Box sx={{ mb: 1 }}>
-      <Typography variant="h6" sx={{ mb: 0.5 }}>Pages Used</Typography>
-      <Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        border: '1px solid #e2e8f0',
+        borderRadius: 2,
+        backgroundColor: '#ffffff',
+        overflow: 'hidden'
+      }}>
         <ReactGrid
           columns={columns} 
           rows={rows} 

@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, CircularProgress, Alert } from '@mui/material';
 import { BankStatement } from '../types/bankStatement';
 import apiService from '../services/api';
 
@@ -83,20 +83,29 @@ const PdfDisplay: React.FC<PdfDisplayProps> = ({
   }, [clientName, accountNumber, classification, date, statement?.pageMetadata.filename]);
 
   return (
-    <Box sx={{ mb: 1, height: '100%' }}>
-      <Typography variant="h6" sx={{ mb: 0.5 }}>PDF Display</Typography>
-      {pdfLoading && <CircularProgress />}
-      {pdfError && <Alert severity="error">{pdfError}</Alert>}
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {pdfLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <CircularProgress />
+        </Box>
+      )}
+      {pdfError && (
+        <Box sx={{ p: 2 }}>
+          <Alert severity="error">{pdfError}</Alert>
+        </Box>
+      )}
       {pdfUrl && (
         <Box 
           sx={{ 
             height: '100%',
             width: '100%',
-            border: '1px solid #ccc', 
+            border: '1px solid #e2e8f0', 
             background: '#fff',
-            overflow: 'visible',
-            minHeight: '800px',
-            minWidth: '1000px'
+            overflow: 'hidden',
+            borderRadius: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1
           }}
         >
           <iframe 
@@ -105,7 +114,8 @@ const PdfDisplay: React.FC<PdfDisplayProps> = ({
             style={{ 
               width: '100%', 
               height: '100%', 
-              border: 'none'
+              border: 'none',
+              flex: 1
             }} 
           />
         </Box>

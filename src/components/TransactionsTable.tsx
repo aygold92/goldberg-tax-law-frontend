@@ -11,7 +11,7 @@
  */
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Box, IconButton, Tooltip, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography, ToggleButton, ToggleButtonGroup, Chip } from '@mui/material';
 import { ViewCompact, ViewModule, ViewList, ViewStream, Restore } from '@mui/icons-material';
 import { ReactGrid, Column, Row, CellChange, Id, DefaultCellTypes, DateCell, NumberCell, DropdownCell, TextCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
 import '@silevis/reactgrid/styles.css';
@@ -588,19 +588,41 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   };
 
   return (
-    <Box sx={{ mb: 1, height: isSideBySide ? '100%' : 'auto' }}>
-      <Typography variant="h6" sx={{ mb: 0.5 }}>Transactions</Typography>
-      
-      {/* Transaction Filter */}
-      <TransactionFilter
-        filters={filters}
-        onFiltersChange={setFilters}
-        totalCount={statement?.transactions.length || 0}
-        filteredCount={filteredTransactions.length}
-      />
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Header with Filter */}
+      <Box sx={{ mb: 2 }}>
+        <TransactionFilter
+          filters={filters}
+          onFiltersChange={setFilters}
+          totalCount={statement?.transactions.length || 0}
+          filteredCount={filteredTransactions.length}
+        />
+      </Box>
       
       {/* Table Controls */}
-      <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-start' }}>
+      <Box sx={{ 
+        mb: 2, 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip 
+            label={`${filteredTransactions.length} of ${statement?.transactions.length || 0} transactions`}
+            size="small"
+            color="primary"
+            variant="outlined"
+            sx={{
+              borderColor: '#d1d5db',
+              color: '#374151',
+              fontWeight: 500,
+              backgroundColor: '#f8fafc'
+            }}
+          />
+        </Box>
+        
         <ToggleButtonGroup
           value={tableSize}
           exclusive
@@ -623,23 +645,33 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         </ToggleButtonGroup>
       </Box>
       
+      {/* Table Container */}
       <Box sx={{ 
-        height: getTableHeight(),
-        overflow: tableSize === 'unbounded' ? 'visible' : 'auto',
-        minHeight: isSideBySide ? '400px' : 'auto'
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0, // Important for flex child
+        border: '1px solid #e2e8f0',
+        borderRadius: 2,
+        backgroundColor: '#ffffff',
+        height: tableSize === 'unbounded' ? 'auto' : getTableHeight()
       }}>
-        <ReactGrid 
-          columns={columns} 
-          rows={rows} 
-          onColumnResized={handleColumnResized}
-          onCellsChanged={handleCellsChanged}
-          onContextMenu={handleContextMenu}
-
-          customCellTemplates={{ sortableHeader: sortableHeaderTemplate, custom: customCellTemplate }}
-          enableRangeSelection
-          enableRowSelection
-          enableFillHandle
-        />
+        <Box sx={{ 
+          flex: 1,
+          overflow: 'auto',
+          minHeight: 0 // Important for flex child
+        }}>
+          <ReactGrid 
+            columns={columns} 
+            rows={rows} 
+            onColumnResized={handleColumnResized}
+            onCellsChanged={handleCellsChanged}
+            onContextMenu={handleContextMenu}
+            customCellTemplates={{ sortableHeader: sortableHeaderTemplate, custom: customCellTemplate }}
+            enableRangeSelection
+            enableRowSelection
+            enableFillHandle
+          />
+        </Box>
       </Box>
       
       {/* Filter Popover */}

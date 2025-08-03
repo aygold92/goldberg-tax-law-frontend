@@ -18,7 +18,27 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Box, Alert, CircularProgress, Snackbar, Typography, ToggleButton, ToggleButtonGroup, Grid } from '@mui/material';
+import { 
+  Box, 
+  Alert, 
+  CircularProgress, 
+  Snackbar, 
+  Typography, 
+  ToggleButton, 
+  ToggleButtonGroup, 
+  Grid,
+  Card,
+  CardContent,
+  CardHeader,
+  Fade,
+  Slide
+} from '@mui/material';
+import { 
+  ViewSidebar, 
+  ViewColumn, 
+  Warning as WarningIcon,
+  Error as ErrorIcon
+} from '@mui/icons-material';
 import { useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { 
@@ -100,150 +120,325 @@ const EditPage: React.FC = () => {
     }
   };
 
-
-
   // --- Handle Save ---
   const handleSave = async () => {
-    if (statement) {
-      const validation = validateBankStatement(statement);
-      if (!validation.isValid) {
-        setValidationErrors(validation.errors.map(e => e.message));
-        setShowValidationAlert(true);
-        return;
-      }
+    if (!statement) return;
 
-      try {
-        await dispatch(saveStatementChanges({ clientName, accountNumber, classification, date })).unwrap();
-        // Clear validation errors on successful save
-        setValidationErrors([]);
-        setShowValidationAlert(false);
-      } catch (error) {
-        console.error('Save failed:', error);
-      }
+    // Validate before saving
+    const validationResult = validateBankStatement(statement);
+    if (!validationResult.isValid) {
+      setValidationErrors(validationResult.errors.map(error => error.message));
+      setShowValidationAlert(true);
+      return;
+    }
+
+    try {
+      await dispatch(saveStatementChanges({ 
+        clientName, 
+        accountNumber, 
+        classification, 
+        date 
+      })).unwrap();
+      setValidationErrors([]);
+      setShowValidationAlert(false);
+    } catch (error) {
+      console.error('Save error:', error);
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        height: 'calc(100vh - 200px)',
+        flexDirection: 'column',
+        gap: 2
+      }}>
+        <CircularProgress size={48} />
+        <Typography variant="body1" color="text.secondary">
+          Loading statement data...
+        </Typography>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 2 }}>
-        <Alert severity="error">{error}</Alert>
+      <Box sx={{ p: 3 }}>
+        <Alert 
+          severity="error" 
+          icon={<ErrorIcon />}
+          sx={{ 
+            borderRadius: 2,
+            backgroundColor: '#fef2f2',
+            border: '1px solid #f87171',
+            color: '#991b1b'
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Error Loading Statement
+          </Typography>
+          <Typography variant="body2">
+            {error}
+          </Typography>
+        </Alert>
+      </Box>
+    );
+  }
+
+  if (!statement) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert 
+          severity="info"
+          sx={{ 
+            borderRadius: 2,
+            backgroundColor: '#eff6ff',
+            border: '1px solid #93c5fd',
+            color: '#1e40af'
+          }}
+        >
+          <Typography variant="body2">
+            No statement data available. Please select a statement to edit.
+          </Typography>
+        </Alert>
       </Box>
     );
   }
 
   return (
-    <Box>
-      {/* Page Header */}
-      <EditPageHeader
-        statement={statement}
-        clientName={clientName}
-        accountNumber={accountNumber}
-        date={date}
-        hasUnsavedChanges={hasUnsavedChanges}
-        saveLoading={saveLoading}
-        saveError={saveError}
-        onSave={handleSave}
-      />
+    <Fade in={true} timeout={300}>
+      <Box sx={{ height: '100%' }}>
+        {/* Header */}
+        <EditPageHeader
+          statement={statement}
+          hasUnsavedChanges={hasUnsavedChanges}
+          saveLoading={saveLoading}
+          saveError={saveError}
+          onSave={handleSave}
+        />
 
-      {/* Suspicious Reasons */}
-      <SuspiciousReasonsDisplay statement={statement} />
+        {/* Status Alerts */}
+        <Slide direction="down" in={hasUnsavedChanges} mountOnEnter unmountOnExit>
+          <Box sx={{ mb: 3 }}>
+            <Alert 
+              severity="warning" 
+              icon={<WarningIcon />}
+              sx={{ 
+                borderRadius: 2,
+                backgroundColor: '#fef3c7',
+                border: '1px solid #f59e0b',
+                color: '#92400e',
+                '& .MuiAlert-icon': {
+                  color: '#f59e0b'
+                }
+              }}
+            >
+              <Typography variant="body2" fontWeight={500}>
+                You have unsaved changes. Don't forget to save your work!
+              </Typography>
+            </Alert>
+          </Box>
+        </Slide>
 
-      {/* Details, Net Income Calculation, and Pages Tables */}
-      <Grid container spacing={2} sx={{ mb: 1 }}>
-        <Grid item xs={12} md={4}>
-          <StatementDetailsTable statement={statement} />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <NetIncomeCalculation
-            statement={statement}
-            isCreditCard={isCreditCard}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <PagesTable statement={statement} />
-        </Grid>
-      </Grid>
+        {/* Suspicious Reasons */}
+        <SuspiciousReasonsDisplay statement={statement} />
 
-      {/* Layout Toggle */}
-      <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center' }}>
-        <ToggleButtonGroup
-          value={layoutMode}
-          exclusive
-          onChange={handleLayoutChange}
-          aria-label="layout mode"
-        >
-          <ToggleButton value="side-by-side" aria-label="side by side">
-            Side by Side
-          </ToggleButton>
-          <ToggleButton value="stacked" aria-label="stacked">
-            Stacked
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-
-      {/* Transactions Table and PDF Display */}
-      {layoutMode === 'side-by-side' ? (
-        <Box sx={{ height: '800px', display: 'flex', flexDirection: 'row', gap: 1 }}>
-
-            <TransactionsTable
-              statement={statement}
-              isCreditCard={isCreditCard}
-              isSideBySide={true}
-            />
+        {/* Statement Overview Cards */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={4}>
+            <Card elevation={2} sx={{ height: '100%', transition: 'all 0.2s ease-in-out' }}>
+              <CardHeader 
+                title="Statement Details"
+                titleTypographyProps={{ variant: 'h6' }}
+                sx={{ pb: 1 }}
+              />
+              <CardContent sx={{ pt: 0 }}>
+                <StatementDetailsTable statement={statement} />
+              </CardContent>
+            </Card>
+          </Grid>
           
-            <PdfDisplay
-              statement={statement}
-              clientName={clientName}
-              accountNumber={accountNumber}
-              classification={classification}
-              date={date}
-            />
-
-        </Box>
-      ) : (
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <TransactionsTable
-              statement={statement}
-              isCreditCard={isCreditCard}
-            />
+          <Grid item xs={12} md={4}>
+            <Card elevation={2} sx={{ height: '100%', transition: 'all 0.2s ease-in-out' }}>
+              <CardHeader 
+                title="Net Income Calculation"
+                titleTypographyProps={{ variant: 'h6' }}
+                sx={{ pb: 1 }}
+              />
+              <CardContent sx={{ pt: 0 }}>
+                <NetIncomeCalculation
+                  statement={statement}
+                  isCreditCard={isCreditCard}
+                />
+              </CardContent>
+            </Card>
           </Grid>
-          <Grid item xs={12}>
-            <PdfDisplay
-              statement={statement}
-              clientName={clientName}
-              accountNumber={accountNumber}
-              classification={classification}
-              date={date}
-            />
+          
+          <Grid item xs={12} md={4}>
+            <Card elevation={2} sx={{ height: '100%', transition: 'all 0.2s ease-in-out' }}>
+              <CardHeader 
+                title="Pages Used"
+                titleTypographyProps={{ variant: 'h6' }}
+                sx={{ pb: 1 }}
+              />
+              <CardContent sx={{ pt: 0 }}>
+                <PagesTable statement={statement} />
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
-      )}
 
-      {/* Validation Alert */}
-      <Snackbar
-        open={showValidationAlert}
-        autoHideDuration={6000}
-        onClose={() => setShowValidationAlert(false)}
-      >
-        <Alert severity="error" onClose={() => setShowValidationAlert(false)}>
-          <Typography variant="h6">Validation Errors</Typography>
-          <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-            {validationErrors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        </Alert>
-      </Snackbar>
-    </Box>
+        {/* Layout Toggle */}
+        <Box sx={{ 
+          mb: 3, 
+          display: 'flex', 
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <Typography variant="body2" color="text.secondary" fontWeight={500}>
+            Layout:
+          </Typography>
+          <ToggleButtonGroup
+            value={layoutMode}
+            exclusive
+            onChange={handleLayoutChange}
+            aria-label="layout mode"
+            size="small"
+          >
+            <ToggleButton value="side-by-side" aria-label="side by side">
+              <ViewSidebar sx={{ mr: 1 }} />
+              Side by Side
+            </ToggleButton>
+            <ToggleButton value="stacked" aria-label="stacked">
+              <ViewColumn sx={{ mr: 1 }} />
+              Stacked
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+
+        {/* Main Content Area */}
+        {layoutMode === 'side-by-side' ? (
+          <Box sx={{ 
+            // height: 'calc(100vh - 400px)', 
+            display: 'flex', 
+            flexDirection: 'row', 
+            gap: 3,
+            minHeight: '1200px',
+            overflow: 'auto' // Allow horizontal scrolling for wide PDF
+          }}>
+            {/* Transactions Table */}
+            <Box sx={{ width: 'auto', minWidth: '800px', display: 'flex', flexDirection: 'column' }}>
+              <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <CardHeader 
+                  title="Transactions"
+                  titleTypographyProps={{ variant: 'h6' }}
+                  sx={{ pb: 1 }}
+                />
+                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <TransactionsTable
+                    statement={statement}
+                    isCreditCard={isCreditCard}
+                    isSideBySide={true}
+                  />
+                </CardContent>
+              </Card>
+            </Box>
+            
+            {/* PDF Display */}
+            <Box sx={{ minWidth: '1024px', minHeight: '1000px', display: 'flex', flexDirection: 'column' }}>
+              <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <CardHeader 
+                  title="Document Viewer"
+                  titleTypographyProps={{ variant: 'h6' }}
+                  sx={{ pb: 1 }}
+                />
+                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <PdfDisplay
+                    statement={statement}
+                    clientName={clientName}
+                    accountNumber={accountNumber}
+                    classification={classification}
+                    date={date}
+                  />
+                </CardContent>
+              </Card>
+            </Box>
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', minHeight: '1000px' }}>
+                <CardHeader 
+                  title="Transactions"
+                  titleTypographyProps={{ variant: 'h6' }}
+                  sx={{ pb: 1 }}
+                />
+                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <TransactionsTable
+                    statement={statement}
+                    isCreditCard={isCreditCard}
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12}>
+              <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', minHeight: '1000px' }}>
+                <CardHeader 
+                  title="Document Viewer"
+                  titleTypographyProps={{ variant: 'h6' }}
+                  sx={{ pb: 1 }}
+                />
+                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <PdfDisplay
+                    statement={statement}
+                    clientName={clientName}
+                    accountNumber={accountNumber}
+                    classification={classification}
+                    date={date}
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        )}
+
+        {/* Validation Alert */}
+        <Snackbar
+          open={showValidationAlert}
+          autoHideDuration={8000}
+          onClose={() => setShowValidationAlert(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            severity="error" 
+            onClose={() => setShowValidationAlert(false)}
+            icon={<ErrorIcon />}
+            sx={{ 
+              borderRadius: 2,
+              backgroundColor: '#fef2f2',
+              border: '1px solid #f87171',
+              color: '#991b1b',
+              minWidth: '400px'
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Validation Errors
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+              {validationErrors.map((error, index) => (
+                <Typography key={index} component="li" variant="body2" sx={{ mb: 0.5 }}>
+                  {error}
+                </Typography>
+              ))}
+            </Box>
+          </Alert>
+        </Snackbar>
+      </Box>
+    </Fade>
   );
 };
 
