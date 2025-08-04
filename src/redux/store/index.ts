@@ -15,7 +15,8 @@ import authReducer from '../features/auth/authSlice';
 import filesReducer from '../features/files/filesSlice';
 import analysisReducer from '../features/analysis/analysisSlice';
 import clientReducer from '../features/client/clientSlice';
-import statementsReducer from '../features/statements/statementsSlice';
+import statementsListReducer from '../features/statementsList/statementsListSlice';
+import statementEditorReducer from '../features/statementEditor/statementEditorSlice';
 import { undoRedoMiddleware } from '../middleware/undoRedoMiddleware';
 
 const store = configureStore({
@@ -24,7 +25,8 @@ const store = configureStore({
     files: filesReducer,
     analysis: analysisReducer,
     client: clientReducer,
-    statements: statementsReducer,
+    statementsList: statementsListReducer,
+    statementEditor: statementEditorReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(undoRedoMiddleware),

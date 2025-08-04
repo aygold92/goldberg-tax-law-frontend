@@ -26,23 +26,15 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
   // Calculate net income values
   let expectedValue: number | null = null;
   let actualValue: number | null = null;
-  let netMatch: boolean | null = null;
-  let netError: string | null = null;
   
   if (statement) {
-    if (statement.endingBalance !== null && statement.endingBalance !== undefined && 
-        statement.beginningBalance !== null && statement.beginningBalance !== undefined) {
+    if (statement.beginningBalance !== null && statement.endingBalance !== null) {
       if (isCreditCard) {
-        // For CREDIT_CARD: ExpectedValue = beginningBalance - endingBalance
         expectedValue = statement.beginningBalance - statement.endingBalance;
       } else {
-        // For BANK: ExpectedValue = endingBalance - beginningBalance
         expectedValue = statement.endingBalance - statement.beginningBalance;
       }
       actualValue = statement.transactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-      netMatch = Math.abs(expectedValue - actualValue) < 0.01; // Use small tolerance for floating point
-    } else {
-      netError = 'Must specify beginning and ending balance';
     }
   }
 

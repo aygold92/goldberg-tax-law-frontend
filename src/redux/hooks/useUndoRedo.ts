@@ -11,8 +11,6 @@ import { getUndoRedoState, performUndo, performRedo } from '../middleware/undoRe
 import { store } from '../store';
 
 export const useUndoRedo = () => {
-  const dispatch = useAppDispatch();
-
   const undoRedoState = getUndoRedoState();
 
   const handleUndo = () => {

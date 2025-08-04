@@ -52,31 +52,28 @@ export interface SortableHeaderCell extends Cell {
   hasFilter?: boolean;
 }
 
+function getOptionalCellProperty<T>(uncertainCell: Uncertain<SortableHeaderCell>, propertyName: keyof SortableHeaderCell, propertyType: "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"): T | undefined {
+  try {
+    return getCellProperty(uncertainCell, propertyName, propertyType) as T;
+  } catch {
+    return undefined;
+  }
+}
+
 // Custom cell template for sortable headers
 export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> {
   getCompatibleCell(uncertainCell: Uncertain<SortableHeaderCell>): Compatible<SortableHeaderCell> {
     const text = getCellProperty(uncertainCell, 'text', 'string');
     const columnId = getCellProperty(uncertainCell, 'columnId', 'string');
-    const sortDirection = getCellProperty(uncertainCell, 'sortDirection', 'string') as SortDirection;
-    const sortOrder = getCellProperty(uncertainCell, 'sortOrder', 'number');
-    const onSort = getCellProperty(uncertainCell, 'onSort', 'function') || (() => {});
+    const sortDirection = getOptionalCellProperty<SortDirection>(uncertainCell, 'sortDirection', 'string') || SortDirection.NONE;
+    const sortOrder = getOptionalCellProperty<number>(uncertainCell, 'sortOrder', 'number') || 0;
+    const onSort = getOptionalCellProperty<SortableHeaderCell['onSort']>(uncertainCell, 'onSort', 'function') || (() => {});
     
-    // Handle optional properties with try/catch
-    let onFilter: ((columnId: string, event: React.MouseEvent) => void) | undefined;
-    try {
-      onFilter = getCellProperty(uncertainCell, 'onFilter', 'function');
-    } catch {
-      onFilter = undefined;
-    }
+    const onFilter = getOptionalCellProperty<SortableHeaderCell['onFilter']>(uncertainCell, 'onFilter', 'function') || (() => {});
     
-    let hasFilter: boolean;
-    try {
-      hasFilter = getCellProperty(uncertainCell, 'hasFilter', 'boolean');
-    } catch {
-      hasFilter = false;
-    }
+    const hasFilter = getOptionalCellProperty<SortableHeaderCell['hasFilter']>(uncertainCell, 'hasFilter', 'boolean') || false;
     
-    const style = getCellProperty(uncertainCell, 'style', 'object');
+    const style = getOptionalCellProperty<SortableHeaderCell['style']>(uncertainCell, 'style', 'object') || {};
     
     const ret =  { 
       ...uncertainCell, 

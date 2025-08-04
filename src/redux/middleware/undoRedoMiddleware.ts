@@ -12,12 +12,12 @@
  * - Memory-efficient deep cloning
  */
 
-import { Middleware, PayloadAction } from '@reduxjs/toolkit';
+import { Middleware } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 
 interface UndoRedoState {
-  undoStack: RootState['statements'][];
-  redoStack: RootState['statements'][];
+  undoStack: RootState['statementEditor'][];
+  redoStack: RootState['statementEditor'][];
   maxStackSize: number;
 }
 
@@ -29,26 +29,26 @@ const undoRedoState: UndoRedoState = {
 
 // Actions that should trigger undo/redo tracking
 const TRACKED_ACTIONS = [
-  'statements/updateStatementField',
-  'statements/updateTransaction',
-  'statements/batchUpdateTransaction',
-  'statements/batchUpdateMultipleTransactions',
-  'statements/batchUpdatePages',
-  'statements/addPage',
-  'statements/deletePage',
-  'statements/addTransaction',
-  'statements/deleteTransaction',
-  'statements/duplicateTransaction',
-  'statements/invertTransactionAmount',
-  'statements/resetTransaction',
-  'statements/resetPage',
-  'statements/resetStatementField',
+  'statementEditor/updateStatementField',
+  'statementEditor/updateTransaction',
+  'statementEditor/batchUpdateTransaction',
+  'statementEditor/batchUpdateMultipleTransactions',
+  'statementEditor/batchUpdatePages',
+  'statementEditor/addPage',
+  'statementEditor/deletePage',
+  'statementEditor/addTransaction',
+  'statementEditor/deleteTransaction',
+  'statementEditor/duplicateTransaction',
+  'statementEditor/invertTransactionAmount',
+  'statementEditor/resetTransaction',
+  'statementEditor/resetPage',
+  'statementEditor/resetStatementField',
 ];
 
 // Actions that should clear the redo stack
 const CLEAR_REDO_ACTIONS = [
-  'statements/loadBankStatement',
-  'statements/saveStatementChanges',
+  'statementEditor/loadBankStatement',
+  'statementEditor/saveStatementChanges',
 ];
 
 export const undoRedoMiddleware: Middleware = store => next => action => {
@@ -56,14 +56,13 @@ export const undoRedoMiddleware: Middleware = store => next => action => {
   const result = next(action);
   const nextState = store.getState();
 
-  // Only track changes to the statements slice
-  const prevStatements = prevState.statements;
-  const nextStatements = nextState.statements;
+  // Only track changes to the statementEditor slice
+  const prevStatementEditor = prevState.statementEditor;
 
   // Check if this action should be tracked
   if (TRACKED_ACTIONS.includes((action as any).type)) {
     // Take snapshot of previous state
-    const snapshot = JSON.parse(JSON.stringify(prevStatements));
+    const snapshot = JSON.parse(JSON.stringify(prevStatementEditor));
     
     // Add to undo stack
     undoRedoState.undoStack.push(snapshot);
@@ -97,14 +96,14 @@ export const getUndoRedoState = () => ({
 export const performUndo = (store: any) => {
   if (undoRedoState.undoStack.length > 0) {
     const previousState = undoRedoState.undoStack.pop()!;
-    const currentState = store.getState().statements;
+    const currentState = store.getState().statementEditor;
     
     // Add current state to redo stack
     undoRedoState.redoStack.push(JSON.parse(JSON.stringify(currentState)));
     
     // Dispatch action to restore previous state
     store.dispatch({
-      type: 'statements/restoreState',
+      type: 'statementEditor/restoreState',
       payload: previousState,
     });
   }
@@ -113,14 +112,14 @@ export const performUndo = (store: any) => {
 export const performRedo = (store: any) => {
   if (undoRedoState.redoStack.length > 0) {
     const nextState = undoRedoState.redoStack.pop()!;
-    const currentState = store.getState().statements;
+    const currentState = store.getState().statementEditor;
     
     // Add current state to undo stack
     undoRedoState.undoStack.push(JSON.parse(JSON.stringify(currentState)));
     
     // Dispatch action to restore next state
     store.dispatch({
-      type: 'statements/restoreState',
+      type: 'statementEditor/restoreState',
       payload: nextState,
     });
   }

@@ -20,8 +20,8 @@ import { ReactGrid, Column, Row, CellChange, Id, DropdownCell, NumberCell, TextC
 import '@silevis/reactgrid/styles.css';
 import { BankStatement, ClassificationType } from '../types/bankStatement';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { updateStatementField, resetStatementField } from '../redux/features/statements/statementsSlice';
-import { selectStatementFieldChanges } from '../redux/features/statements/statementsSelectors';
+import { updateStatementField, resetStatementField } from '../redux/features/statementEditor/statementEditorSlice';
+import { selectStatementFieldChanges } from '../redux/features/statementEditor/statementEditorSelectors';
 
 interface StatementDetailsTableProps {
   statement: BankStatement | null;
@@ -181,7 +181,7 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
   // Handle cell changes for statement details
   const handleCellsChanged = (changes: CellChange[]) => {
     changes.forEach(change => {
-        const { rowId, columnId, newCell } = change;
+        const { rowId, newCell } = change;
         if (change.type === 'text') {
             dispatch(updateStatementField({ field: String(rowId), value: (newCell as TextCell).text}))
         } else if (change.type === 'number') {

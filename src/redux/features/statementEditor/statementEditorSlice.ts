@@ -1,13 +1,11 @@
 /**
- * Redux slice for managing bank statements in the Bank Statement Frontend application.
+ * Redux slice for managing bank statement editing in the Bank Statement Frontend application.
  *
  * This slice handles:
- * - Fetching all statements for a client
- * - Deleting selected statements
- * - Creating a spreadsheet from selected statements
  * - Loading a single BankStatement object from the backend
  * - Editing statement data and transactions
  * - Saving changes to the backend
+ * - Tracking changes and providing reset functionality
  *
  * Uses Redux Toolkit for state management and async thunks for API calls.
  *
@@ -18,7 +16,7 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { BankStatementMetadata, BankStatementKey, WriteCsvSummaryResponse, UpdateStatementModelsRequest, UpdateStatementModelsResponse } from '../../../types/api';
+import { UpdateStatementModelsRequest, UpdateStatementModelsResponse } from '../../../types/api';
 import apiService from '../../../services/api';
 
 // Add BankStatement type import
@@ -39,22 +37,13 @@ const createHash = (obj: any): string => {
   return hash.toString();
 };
 
-interface StatementsState {
-  statements: BankStatementMetadata[];
-  loading: boolean;
-  error: string | null;
-  spreadsheetResult: WriteCsvSummaryResponse | null;
-  spreadsheetLoading: boolean;
-  spreadsheetError: string | null;
-  // Add single statement state
+interface StatementEditorState {
   currentStatement: BankStatement | null;
   currentStatementLoading: boolean;
   currentStatementError: string | null;
-  // Add editing state
   hasUnsavedChanges: boolean;
   saveLoading: boolean;
   saveError: string | null;
-  // Add original state tracking for reset functionality
   originalStatement: BankStatement | null;
   originalHashes: {
     transactions: Record<string, string>;
@@ -63,13 +52,7 @@ interface StatementsState {
   };
 }
 
-const initialState: StatementsState = {
-  statements: [],
-  loading: false,
-  error: null,
-  spreadsheetResult: null,
-  spreadsheetLoading: false,
-  spreadsheetError: null,
+const initialState: StatementEditorState = {
   currentStatement: null,
   currentStatementLoading: false,
   currentStatementError: null,
@@ -84,55 +67,9 @@ const initialState: StatementsState = {
   },
 };
 
-export const fetchStatements = createAsyncThunk<BankStatementMetadata[], { clientName: string }>(
-  'statements/fetchStatements',
-  async ({ clientName }, { rejectWithValue }) => {
-    try {
-      return await apiService.listStatements({ clientName });
-    } catch (error: any) {
-      return rejectWithValue(error.userMessage || error.message || 'Failed to fetch statements');
-    }
-  }
-);
-
-export const deleteStatements = createAsyncThunk<BankStatementKey[], { clientName: string; keys: BankStatementKey[] }>(
-  'statements/deleteStatements',
-  async ({ clientName, keys }, { rejectWithValue }) => {
-    try {
-      for (const key of keys) {
-        await apiService.deleteStatement({
-          clientName,
-          accountNumber: key.accountNumber,
-          classification: key.classification,
-          date: key.date,
-        });
-      }
-      return keys;
-    } catch (error: any) {
-      return rejectWithValue(error.userMessage || error.message || 'Failed to delete statements');
-    }
-  }
-);
-
-export const createSpreadsheet = createAsyncThunk<WriteCsvSummaryResponse, { clientName: string; keys: BankStatementKey[]; outputDirectory: string }>(
-  'statements/createSpreadsheet',
-  async ({ clientName, keys, outputDirectory }, { rejectWithValue }) => {
-    try {
-      const response = await apiService.writeCsvSummary({
-        clientName,
-        statementKeys: keys,
-        outputDirectory,
-      });
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.userMessage || error.message || 'Failed to create spreadsheet');
-    }
-  }
-);
-
 // Add thunk for loading a single BankStatement
 export const loadBankStatement = createAsyncThunk<BankStatement, { clientName: string; accountNumber: string; classification: string; date: string }>(
-  'statements/loadBankStatement',
+  'statementEditor/loadBankStatement',
   async (params, { rejectWithValue }) => {
     try {
       return await apiService.loadBankStatement(params);
@@ -144,11 +81,11 @@ export const loadBankStatement = createAsyncThunk<BankStatement, { clientName: s
 
 // Add thunk for saving statement changes
 export const saveStatementChanges = createAsyncThunk<UpdateStatementModelsResponse, { clientName: string; accountNumber: string; classification: string; date: string }>(
-  'statements/saveStatementChanges',
+  'statementEditor/saveStatementChanges',
   async (params, { getState, rejectWithValue }) => {
     try {
-      const state = getState() as { statements: StatementsState };
-      const statement = state.statements.currentStatement;
+      const state = getState() as { statementEditor: StatementEditorState };
+      const statement = state.statementEditor.currentStatement;
       
       if (!statement) {
         throw new Error('No statement to save');
@@ -198,21 +135,15 @@ export const saveStatementChanges = createAsyncThunk<UpdateStatementModelsRespon
   }
 );
 
-const statementsSlice = createSlice({
-  name: 'statements',
+const statementEditorSlice = createSlice({
+  name: 'statementEditor',
   initialState,
   reducers: {
-    clearSpreadsheetResult(state) {
-      state.spreadsheetResult = null;
-      state.spreadsheetError = null;
-    },
-    // Add reducer to clear current statement
     clearCurrentStatement(state) {
       state.currentStatement = null;
       state.currentStatementError = null;
       state.currentStatementLoading = false;
     },
-    // Add reducers for editing
     updateStatementField(state, action: PayloadAction<{ field: string; value: any }>) {
       if (state.currentStatement) {
         const { field, value } = action.payload;
@@ -347,7 +278,6 @@ const statementsSlice = createSlice({
     clearUnsavedChanges(state) {
       state.hasUnsavedChanges = false;
     },
-    // Add reset actions
     resetTransaction(state, action: PayloadAction<string>) {
       if (state.currentStatement && state.originalStatement) {
         const transactionId = action.payload;
@@ -382,59 +312,14 @@ const statementsSlice = createSlice({
         state.hasUnsavedChanges = true;
       }
     },
-    restoreState(state, action: PayloadAction<StatementsState>) {
-      // Restore the entire statements state
+    restoreState(state, action: PayloadAction<StatementEditorState>) {
+      // Restore the entire statement editor state
       Object.assign(state, action.payload);
       state.hasUnsavedChanges = true;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchStatements.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchStatements.fulfilled, (state, action: PayloadAction<BankStatementMetadata[]>) => {
-        state.loading = false;
-        state.statements = action.payload;
-      })
-      .addCase(fetchStatements.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(deleteStatements.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteStatements.fulfilled, (state, action: PayloadAction<BankStatementKey[]>) => {
-        state.loading = false;
-        state.statements = state.statements.filter(
-          (stmt) => !action.payload.some(
-            (key) =>
-              stmt.key.accountNumber === key.accountNumber &&
-              stmt.key.classification === key.classification &&
-              stmt.key.date === key.date
-          )
-        );
-      })
-      .addCase(deleteStatements.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(createSpreadsheet.pending, (state) => {
-        state.spreadsheetLoading = true;
-        state.spreadsheetError = null;
-        state.spreadsheetResult = null;
-      })
-      .addCase(createSpreadsheet.fulfilled, (state, action: PayloadAction<WriteCsvSummaryResponse>) => {
-        state.spreadsheetLoading = false;
-        state.spreadsheetResult = action.payload;
-      })
-      .addCase(createSpreadsheet.rejected, (state, action) => {
-        state.spreadsheetLoading = false;
-        state.spreadsheetError = action.payload as string;
-      })
-      // Add cases for loadBankStatement
       .addCase(loadBankStatement.pending, (state) => {
         state.currentStatementLoading = true;
         state.currentStatementError = null;
@@ -481,7 +366,6 @@ const statementsSlice = createSlice({
         state.currentStatementLoading = false;
         state.currentStatementError = action.payload as string;
       })
-      // Add cases for saveStatementChanges
       .addCase(saveStatementChanges.pending, (state) => {
         state.saveLoading = true;
         state.saveError = null;
@@ -498,7 +382,6 @@ const statementsSlice = createSlice({
 });
 
 export const { 
-  clearSpreadsheetResult, 
   clearCurrentStatement,
   updateStatementField,
   updateTransaction,
@@ -512,10 +395,9 @@ export const {
   duplicateTransaction,
   invertTransactionAmount,
   clearUnsavedChanges,
-  // Add reset actions
   resetTransaction,
   resetPage,
   resetStatementField,
   restoreState,
-} = statementsSlice.actions;
-export default statementsSlice.reducer; 
+} = statementEditorSlice.actions;
+export default statementEditorSlice.reducer; 

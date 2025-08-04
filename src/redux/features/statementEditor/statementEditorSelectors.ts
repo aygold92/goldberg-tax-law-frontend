@@ -1,7 +1,7 @@
 /**
- * Selectors for the statements slice in the Bank Statement Frontend application.
+ * Selectors for the statementEditor slice in the Bank Statement Frontend application.
  *
- * These selectors provide convenient access to statements, loading, error, and spreadsheet state.
+ * These selectors provide convenient access to statement editing state, loading, error, and change tracking.
  */
 
 import { RootState } from '../../store';
@@ -22,22 +22,16 @@ const createHash = (obj: any): string => {
   return hash.toString();
 };
 
-export const selectStatements = (state: RootState) => state.statements.statements || [];
-export const selectStatementsLoading = (state: RootState) => state.statements.loading;
-export const selectStatementsError = (state: RootState) => state.statements.error;
-export const selectSpreadsheetResult = (state: RootState) => state.statements.spreadsheetResult;
-export const selectSpreadsheetLoading = (state: RootState) => state.statements.spreadsheetLoading;
-export const selectSpreadsheetError = (state: RootState) => state.statements.spreadsheetError;
-export const selectCurrentStatement = (state: RootState) => state.statements.currentStatement;
-export const selectCurrentStatementLoading = (state: RootState) => state.statements.currentStatementLoading;
-export const selectCurrentStatementError = (state: RootState) => state.statements.currentStatementError;
-export const selectHasUnsavedChanges = (state: RootState) => state.statements.hasUnsavedChanges;
-export const selectSaveLoading = (state: RootState) => state.statements.saveLoading;
-export const selectSaveError = (state: RootState) => state.statements.saveError;
+export const selectCurrentStatement = (state: RootState) => state.statementEditor.currentStatement;
+export const selectCurrentStatementLoading = (state: RootState) => state.statementEditor.currentStatementLoading;
+export const selectCurrentStatementError = (state: RootState) => state.statementEditor.currentStatementError;
+export const selectHasUnsavedChanges = (state: RootState) => state.statementEditor.hasUnsavedChanges;
+export const selectSaveLoading = (state: RootState) => state.statementEditor.saveLoading;
+export const selectSaveError = (state: RootState) => state.statementEditor.saveError;
 
 // Add selectors for change detection
 export const selectTransactionChanges = (state: RootState) => {
-  const { currentStatement, originalHashes } = state.statements;
+  const { currentStatement, originalHashes } = state.statementEditor;
   if (!currentStatement || !originalHashes) return { modified: [], newItems: [] };
   
   const modified: string[] = [];
@@ -58,7 +52,7 @@ export const selectTransactionChanges = (state: RootState) => {
 };
 
 export const selectPageChanges = (state: RootState) => {
-  const { currentStatement, originalHashes } = state.statements;
+  const { currentStatement, originalHashes } = state.statementEditor;
   if (!currentStatement || !originalHashes) return { modified: [], newItems: [] };
   
   const modified: number[] = [];
@@ -82,7 +76,7 @@ export const selectPageChanges = (state: RootState) => {
 };
 
 export const selectStatementFieldChanges = (state: RootState) => {
-  const { currentStatement, originalHashes } = state.statements;
+  const { currentStatement, originalHashes } = state.statementEditor;
   if (!currentStatement || !originalHashes) return [];
 
   const modified: string[] = [];

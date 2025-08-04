@@ -19,10 +19,10 @@ import { BankStatement } from '../types/bankStatement';
 import { SortableHeaderCell, sortableHeaderTemplate, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from './reactgrid/SortableHeaderCell';
 import { calculateTransactionSuspiciousReasons } from '../utils/validation';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { updateTransaction, addTransaction, deleteTransaction, duplicateTransaction, invertTransactionAmount, resetTransaction, batchUpdateTransaction, batchUpdateMultipleTransactions } from '../redux/features/statements/statementsSlice';
-import { selectTransactionChanges } from '../redux/features/statements/statementsSelectors';
+import { addTransaction, deleteTransaction, duplicateTransaction, invertTransactionAmount, resetTransaction, batchUpdateMultipleTransactions } from '../redux/features/statementEditor/statementEditorSlice';
+import { selectTransactionChanges } from '../redux/features/statementEditor/statementEditorSelectors';
 import { TransactionHistoryRecord } from '../types/bankStatement';
-import { CustomCell, customCellTemplate } from './reactgrid/CustomCell';
+import { customCellTemplate } from './reactgrid/CustomCell';
 import { GridDeleteIcon } from '@mui/x-data-grid';
 import { FileCopySharp, Iso } from '@mui/icons-material';
 import TransactionFilter from './TransactionFilter';
@@ -234,63 +234,59 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     
     const dataRows = filteredTransactions.map((txn, idx) => {
       const suspiciousReasons = calculateTransactionSuspiciousReasons(txn, statement);
-      const cells: CellTypes[] = [];
-      cells.push({
-        type: 'text' as const,
-        text: suspiciousReasons.length > 0 ? '⚠️' : '',
-        renderer: (text: string) => (
-            <Tooltip title={
-              <div>
-                {suspiciousReasons.map((reason, index) => (
-                  <div key={index}>* {reason}</div>
-                ))}
-              </div>
-            }>
-                <span>{text}</span>
-            </Tooltip>
-        ),
-        nonEditable: true,
-      });
-      cells.push({ type: 'date' as const, date: txn.date ? new Date(txn.date) : undefined });
-      cells.push({ type: 'text' as const, text: txn.description || '' });
-      cells.push({ type: 'number' as const, hideZero: false, nanToZero: false, value: txn.amount?.toString() ? txn.amount : NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) });
-      cells.push({ type: 'number' as const, value: txn.filePageNumber || NaN, validator: (value: number) => value > 0 });
-      if (!isCreditCard) { // Only show check columns for BANK type
-        cells.push({ type: 'number' as const, value: txn.checkNumber || NaN, validator: (value: number) => value > 0 });
-        cells.push({ type: 'text' as const, text: txn.checkDataModel?.description || '' });
-        cells.push({ type: 'text' as const, text: txn.checkDataModel?.to || '' });
-      }
-      cells.push({
-        type: 'text' as const,
-        renderer: (id: string) => (
-            <div style={{display: 'flex', gap: 1, justifyContent: 'center'}}>
-                {modifiedTransactions.includes(id) && (
-                  <Tooltip title='Reset Transaction'>
-                    <IconButton style={{cursor: 'pointer'}} onClick={() => handleResetTransaction(id)}>
-                        <Restore />
-                    </IconButton>
-                  </Tooltip>
-                )}
-                <Tooltip title='Invert Transaction'>
-                    <IconButton style={{cursor: 'pointer'}} onClick={() => handleInvertTransaction(id)}>
-                        <Iso />
-                    </IconButton>
+      const cells: CellTypes[] = [
+        {
+          type: 'text' as const, text: suspiciousReasons.length > 0 ? '⚠️' : '', nonEditable: true,
+          renderer: (text: string) => (
+              <Tooltip title={
+                <div>
+                  {suspiciousReasons.map((reason, index) => (<div key={index}>* {reason}</div>))}
+                </div>
+              }>
+                  <span>{text}</span>
+              </Tooltip>
+          ),
+        },
+        { type: 'date' as const, date: txn.date ? new Date(txn.date) : undefined },
+        { type: 'text' as const, text: txn.description || '' },
+        { type: 'number' as const, value: txn.amount?.toString() ? txn.amount : NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) },
+        { type: 'number' as const, value: txn.filePageNumber || NaN, validator: (value: number) => value > 0 },
+        ...(isCreditCard ? [] : [
+              { type: 'number' as const, value: txn.checkNumber || NaN, validator: (value: number) => value > 0 },
+              { type: 'text' as const, text: txn.checkDataModel?.description || '' },
+              { type: 'text' as const, text: txn.checkDataModel?.to || '' },
+            ]
+          ),
+        {
+          type: 'text' as const, text: txn.id, nonEditable: true,
+          renderer: (id: string) => (
+            <div style={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+              {modifiedTransactions.includes(id) && (
+                <Tooltip title='Reset Transaction'>
+                  <IconButton style={{ cursor: 'pointer' }} onClick={() => handleResetTransaction(id)}>
+                    <Restore />
+                  </IconButton>
                 </Tooltip>
-                <Tooltip title='Duplicate Transaction'>
-                    <IconButton style={{cursor: 'pointer'}} onClick={() => handleDuplicateTransaction(id)}>
-                        <FileCopySharp />
-                    </IconButton>
-                </Tooltip>
-                <Tooltip title='Delete Transaction'>
-                    <IconButton style={{cursor: 'pointer'}} onClick={() => handleDeleteTransaction(id)} color='error'>
-                        <GridDeleteIcon />
-                    </IconButton>
-                </Tooltip>
+              )}
+              <Tooltip title='Invert Transaction'>
+                <IconButton style={{ cursor: 'pointer' }} onClick={() => handleInvertTransaction(id)}>
+                  <Iso />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title='Duplicate Transaction'>
+                <IconButton style={{ cursor: 'pointer' }} onClick={() => handleDuplicateTransaction(id)}>
+                  <FileCopySharp />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title='Delete Transaction'>
+                <IconButton style={{ cursor: 'pointer' }} onClick={() => handleDeleteTransaction(id)} color='error'>
+                  <GridDeleteIcon />
+                </IconButton>
+              </Tooltip>
             </div>
-        ),
-        text: txn.id,
-        nonEditable: true,
-      });
+          ),
+        },
+      ];
       return { rowId: txn.id, cells: cells.map(c => ({...c, style: getRowStyle(txn.id)})) };
     });
     
@@ -301,33 +297,33 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     }
     
     // Create sticky add row at the bottom
-    const addRowCells: CellTypes[] = [];
-    addRowCells.push({
-      type: 'text' as const,
-      text: '',
-      nonEditable: true,
-    });
-    addRowCells.push({ type: 'date' as const, date: addRowValues.date || undefined });
-    addRowCells.push({ type: 'text' as const, text: addRowValues.description || '' });
-    addRowCells.push({ type: 'number' as const, hideZero: false, nanToZero: false, value: addRowValues.amount || NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) });
-    addRowCells.push({ type: 'number' as const, value: addRowValues.filePageNumber || NaN, validator: (value: number) => value > 0 });
-    if (!isCreditCard) { // Only show check columns for BANK type
-      addRowCells.push({ type: 'number' as const, value: addRowValues.checkNumber || NaN, validator: (value: number) => value > 0 });
-      addRowCells.push({ type: 'text' as const, text: addRowValues.checkFilename || '' });
-      addRowCells.push({ type: 'date' as const, date: addRowValues.checkFilePage ? new Date(addRowValues.checkFilePage.toString()) : undefined });
-    }
-    addRowCells.push({
-      type: 'text' as const,
-      text: '',
-      renderer: () => (
-        <Tooltip title='Add Transaction'>
-          <IconButton size="small" onClick={handleAddTransaction}>
-            <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1 }}>+</Typography>
-          </IconButton>
-        </Tooltip>
+    const addRowCells: CellTypes[] = [
+      { type: 'text' as const, text: '', nonEditable: true },
+      { type: 'date' as const, date: addRowValues.date || undefined },
+      { type: 'text' as const, text: addRowValues.description || '' },
+      { type: 'number' as const, value: addRowValues.amount || NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) },
+      { type: 'number' as const, value: addRowValues.filePageNumber || NaN, validator: (value: number) => value > 0 },
+      ...(!isCreditCard
+        ? [
+            { type: 'number' as const, value: addRowValues.checkNumber || NaN, validator: (value: number) => value > 0 },
+            { type: 'text' as const, text: addRowValues.checkFilename || '' },
+            { type: 'date' as const, date: addRowValues.checkFilePage ? new Date(addRowValues.checkFilePage.toString()) : undefined },
+          ]
+        : []
       ),
-      nonEditable: true,
-    });
+      {
+        type: 'text' as const,
+        text: '',
+        renderer: () => (
+          <Tooltip title='Add Transaction'>
+            <IconButton size="small" onClick={handleAddTransaction}>
+              <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1 }}>+</Typography>
+            </IconButton>
+          </Tooltip>
+        ),
+        nonEditable: true,
+      }
+    ];
     
     const addRow = { rowId: 'add-row', cells: addRowCells };
     
@@ -538,18 +534,6 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     }
     
     return menuOptions;
-  };
-
-  // Check if a transaction is empty (all fields except ID are null/empty)
-  const isTransactionEmpty = (transaction: TransactionHistoryRecord): boolean => {
-    return (
-      transaction.date === null &&
-      transaction.description === null &&
-      transaction.amount === null &&
-      transaction.filePageNumber === null &&
-      transaction.checkNumber === null &&
-      transaction.checkDataModel === null
-    );
   };
 
   // Handle column resize - self-contained

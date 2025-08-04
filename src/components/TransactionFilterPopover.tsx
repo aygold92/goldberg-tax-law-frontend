@@ -29,7 +29,7 @@ import {
   Typography,
   Stack
 } from '@mui/material';
-import { Close, FilterList } from '@mui/icons-material';
+import { Close } from '@mui/icons-material';
 import { FilterCriteria, getComparisonDisplayText, getComparisonOperators, getColumnInputType } from '../utils/filterUtils';
 
 interface TransactionFilterPopoverProps {

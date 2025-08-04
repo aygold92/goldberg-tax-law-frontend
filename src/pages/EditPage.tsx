@@ -44,7 +44,7 @@ import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { 
   loadBankStatement, 
   saveStatementChanges,
-} from '../redux/features/statements/statementsSlice';
+} from '../redux/features/statementEditor/statementEditorSlice';
 import {
   selectCurrentStatement,
   selectCurrentStatementLoading,
@@ -52,7 +52,7 @@ import {
   selectHasUnsavedChanges,
   selectSaveLoading,
   selectSaveError,
-} from '../redux/features/statements/statementsSelectors';
+} from '../redux/features/statementEditor/statementEditorSelectors';
 import { validateBankStatement } from '../utils/validation';
 
 // Import the components

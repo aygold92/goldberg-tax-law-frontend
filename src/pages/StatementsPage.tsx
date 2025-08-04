@@ -11,8 +11,8 @@
  * Uses Redux for state management and MUI DataGrid for the table UI.
  *
  * Depends on:
- * - src/redux/features/statements/statementsSlice
- * - src/redux/features/statements/statementsSelectors
+ * - src/redux/features/statementsList/statementsListSlice
+ * - src/redux/features/statementsList/statementsListSelectors
  * - src/redux/features/client/clientSelectors
  * - @mui/x-data-grid for the table
  */
@@ -22,8 +22,8 @@ import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackba
 import { TableChart, Delete, Download, Edit, Search, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { selectStatements, selectStatementsLoading, selectStatementsError, selectSpreadsheetResult, selectSpreadsheetLoading, selectSpreadsheetError } from '../redux/features/statements/statementsSelectors';
-import { fetchStatements, deleteStatements, createSpreadsheet, clearSpreadsheetResult } from '../redux/features/statements/statementsSlice';
+import { selectStatements, selectStatementsLoading, selectStatementsError, selectSpreadsheetResult, selectSpreadsheetLoading, selectSpreadsheetError } from '../redux/features/statementsList/statementsListSelectors';
+import { fetchStatements, deleteStatements, createSpreadsheet, clearSpreadsheetResult } from '../redux/features/statementsList/statementsListSlice';
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
 import { BankStatementKey, BankStatementMetadata } from '../types/api';
 import ClientSelector from '../components/ClientSelector';

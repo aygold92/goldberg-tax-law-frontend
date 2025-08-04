@@ -16,8 +16,8 @@ import '@silevis/reactgrid/styles.css';
 import { BankStatement } from '../types/bankStatement';
 import { SortableHeaderCell, sortableHeaderTemplate, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from './reactgrid/SortableHeaderCell';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { updateStatementField, resetPage, batchUpdatePages, addPage, deletePage } from '../redux/features/statements/statementsSlice';
-import { selectPageChanges } from '../redux/features/statements/statementsSelectors';
+import { updateStatementField, resetPage, batchUpdatePages, addPage, deletePage } from '../redux/features/statementEditor/statementEditorSlice';
+import { selectPageChanges } from '../redux/features/statementEditor/statementEditorSelectors';
 
 // Extend the default cell types to include our custom type
 type CustomCellTypes = DefaultCellTypes | SortableHeaderCell;
