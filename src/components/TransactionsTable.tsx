@@ -12,8 +12,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Box, IconButton, Tooltip, Typography, ToggleButton, ToggleButtonGroup, Chip } from '@mui/material';
-import { ViewCompact, ViewModule, ViewList, ViewStream, Restore } from '@mui/icons-material';
-import { ReactGrid, Column, Row, CellChange, Id, DefaultCellTypes, DateCell, NumberCell, DropdownCell, TextCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
+import { ViewCompact, ViewModule, ViewList, ViewStream, Restore, Warning, Add, TrendingUp, TrendingDown } from '@mui/icons-material';
+import { ReactGrid, Row, CellChange, Id, DefaultCellTypes, DateCell, NumberCell, DropdownCell, TextCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
 import '@silevis/reactgrid/styles.css';
 import { BankStatement } from '../types/bankStatement';
 import { SortableHeaderCell, sortableHeaderTemplate, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from './reactgrid/SortableHeaderCell';
@@ -25,9 +25,7 @@ import { TransactionHistoryRecord } from '../types/bankStatement';
 import { customCellTemplate } from './reactgrid/CustomCell';
 import { GridDeleteIcon } from '@mui/x-data-grid';
 import { FileCopySharp, Iso } from '@mui/icons-material';
-import TransactionFilter from './TransactionFilter';
-import TransactionFilterPopover from './TransactionFilterPopover';
-import { FilterState, FilterCriteria, applyFilters } from '../utils/filterUtils';
+import { GenericFilter, GenericFilterPopover, FilterableColumn, GenericFilterState, GenericFilterCriteria, applyGenericFilters, QuickFilterConfig } from './reactgrid';
 
 // Extend the default cell types to include our custom type
 type CellTypes = DefaultCellTypes | SortableHeaderCell;
@@ -67,20 +65,16 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   const [tableSize, setTableSize] = useState<'small' | 'medium' | 'large' | 'unbounded'>('medium');
 
   // Filter state
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<GenericFilterState>({
     searchText: '',
     advancedFilters: [],
-    showSuspicious: false,
-    showNew: false,
-    showIncome: false,
-    showExpenses: false
+    quickFilters: {}
   });
 
   // Filter popover state
   const [filterPopover, setFilterPopover] = useState<{
     anchorEl: HTMLElement | null;
     columnId: string;
-    columnName: string;
   } | null>(null);
 
   // Add row state
@@ -109,32 +103,61 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     dispatch(resetTransaction(transactionId));
   };
 
-  // Filter the transactions
-  const filteredTransactions = useMemo(() => {
-    if (!statement) return [];
-    return applyFilters(statement.transactions, filters, modifiedTransactions, newTransactions, statement);
-  }, [statement, filters, modifiedTransactions, newTransactions]);
+  // Quick filter configuration
+  const quickFilterConfig: QuickFilterConfig[] = [
+    {
+      key: 'suspicious',
+      icon: <Warning />,
+      color: 'warning',
+      tooltip: 'Show suspicious transactions',
+      filterFunction: (rowId) => {
+        const transaction = statement?.transactions.find(t => t.id === rowId);
+        if (!transaction) return false;
+        const reasons = calculateTransactionSuspiciousReasons(transaction, statement!);
+        return reasons.length > 0;
+      }
+    },
+    {
+      key: 'new',
+      icon: <Add />,
+      color: 'primary',
+      tooltip: 'Show new transactions',
+      filterFunction: (rowId) => {
+        const transaction = statement?.transactions.find(t => t.id === rowId);
+        return newTransactions.includes(transaction?.id || '');
+      }
+    },
+    {
+      key: 'income',
+      icon: <TrendingUp />,
+      color: 'success',
+      tooltip: 'Show income transactions',
+      filterFunction: (rowId) => {
+        const transaction = statement?.transactions.find(t => t.id === rowId);
+        return (transaction?.amount || 0) > 0;
+      }
+    },
+    {
+      key: 'expenses',
+      icon: <TrendingDown />,
+      color: 'error',
+      tooltip: 'Show expense transactions',
+      filterFunction: (rowId) => {
+        const transaction = statement?.transactions.find(t => t.id === rowId);
+        return (transaction?.amount || 0) < 0;
+      }
+    }
+  ];
 
   // Filter handlers
   const handleFilterClick = (columnId: string, event: React.MouseEvent) => {
-    const columnNames: { [key: string]: string } = {
-      'date': 'Date',
-      'description': 'Description',
-      'amount': 'Amount',
-      'filePageNumber': 'Page #',
-      'checkNumber': 'Check #',
-      'checkFilename': 'Check File',
-      'checkFilePage': 'Check Pg'
-    };
-    
     setFilterPopover({
       anchorEl: event.currentTarget as HTMLElement,
-      columnId,
-      columnName: columnNames[columnId] || columnId
+      columnId
     });
   };
 
-  const handleApplyFilter = (filter: FilterCriteria | null) => {
+  const handleApplyFilter = (filter: GenericFilterCriteria | null) => {
     if (filter) {
       // Remove existing filter for this column
       const existingFilters = filters.advancedFilters.filter(f => f.columnId !== filter.columnId);
@@ -174,24 +197,82 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const columns: Column[] = useMemo(() => {
-    const baseCols: Column[] = [
+  const columns: FilterableColumn[] = useMemo(() => {
+    const baseCols: FilterableColumn[] = [
       {
         columnId: 'suspiciousReasons',
         width: columnWidths.suspiciousReasons,
         resizable: false,
         reorderable: false,
+        filterable: false, // No filtering for this column
+        nonSearchable: true, // Not included in search
       },
-      { columnId: 'date', width: columnWidths.date, resizable: true },
-      { columnId: 'description', width: columnWidths.description, resizable: true },
-      { columnId: 'amount', width: columnWidths.amount, resizable: true },
-      { columnId: 'filePageNumber', width: columnWidths.filePageNumber, resizable: true },
+      { 
+        columnId: 'date', 
+        width: columnWidths.date, 
+        resizable: true,
+        filterable: true,
+        filterType: 'date',
+        filterLabel: 'Date',
+        nonSearchable: false, // Include in search
+      },
+      { 
+        columnId: 'description', 
+        width: columnWidths.description, 
+        resizable: true,
+        filterable: true,
+        filterType: 'text',
+        filterLabel: 'Description',
+        nonSearchable: false, // Include in search
+      },
+      { 
+        columnId: 'amount', 
+        width: columnWidths.amount, 
+        resizable: true,
+        filterable: true,
+        filterType: 'number',
+        filterLabel: 'Amount',
+        nonSearchable: false, // Include in search
+      },
+      { 
+        columnId: 'filePageNumber', 
+        width: columnWidths.filePageNumber, 
+        resizable: true,
+        filterable: true,
+        filterType: 'number',
+        filterLabel: 'Page #',
+        nonSearchable: false, // Include in search
+      },
     ];
     if (!isCreditCard) { // Only show check columns for BANK type
       baseCols.push(
-        { columnId: 'checkNumber', width: columnWidths.checkNumber, resizable: true },
-        { columnId: 'checkFilename', width: columnWidths.checkFilename, resizable: true },
-        { columnId: 'checkFilePage', width: columnWidths.checkFilePage, resizable: true },
+        { 
+          columnId: 'checkNumber', 
+          width: columnWidths.checkNumber, 
+          resizable: true,
+          filterable: true,
+          filterType: 'number',
+          filterLabel: 'Check #',
+          nonSearchable: false, // Include in search
+        },
+        { 
+          columnId: 'checkFilename', 
+          width: columnWidths.checkFilename, 
+          resizable: true,
+          filterable: true,
+          filterType: 'text',
+          filterLabel: 'Check File',
+          nonSearchable: false, // Include in search
+        },
+        { 
+          columnId: 'checkFilePage', 
+          width: columnWidths.checkFilePage, 
+          resizable: true,
+          filterable: true,
+          filterType: 'number',
+          filterLabel: 'Check Pg',
+          nonSearchable: false, // Include in search
+        },
       );
     }
     baseCols.push({
@@ -199,13 +280,14 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       width: columnWidths.actions,
       resizable: false,
       reorderable: false,
+      filterable: false, // No filtering for this column
+      nonSearchable: true, // Not included in search
     });
     return baseCols;
   }, [columnWidths, isCreditCard]);
 
-  const rows: Row<CellTypes>[] = useMemo(() => {
-    if (!statement) return [];
-    
+  // Create header row
+  const headerRow = useMemo(() => {
     const setSortingWrapper = (newSorting: SortCriteria | ((prev: SortCriteria) => SortCriteria)) => {
       if (typeof newSorting === 'function') {
         setSorting(newSorting(sorting));
@@ -216,23 +298,28 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
     const headerCells: any[] = [
       { columnId: 'suspiciousReasons', type: 'header' as const, text: '', nonEditable: true }, // suspiciousReasons - no header
-      { columnId: 'date', type: 'sortableHeader' as const, text: `Date`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('date', sorting), sortOrder: getSortOrderForColumn('date', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'date') },
-      { columnId: 'description', type: 'sortableHeader' as const, text: `Description`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('description', sorting), sortOrder: getSortOrderForColumn('description', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'description') },
-      { columnId: 'amount', type: 'sortableHeader' as const, text: `Amount`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('amount', sorting), sortOrder: getSortOrderForColumn('amount', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'amount') },
-      { columnId: 'filePageNumber', type: 'sortableHeader' as const, text: `Page #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('filePageNumber', sorting), sortOrder: getSortOrderForColumn('filePageNumber', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'filePageNumber') },
+      { columnId: 'date', type: 'sortableHeader' as const, text: `Date`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('date', sorting), sortOrder: getSortOrderForColumn('date', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'date'), filterable: true },
+      { columnId: 'description', type: 'sortableHeader' as const, text: `Description`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('description', sorting), sortOrder: getSortOrderForColumn('description', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'description'), filterable: true },
+      { columnId: 'amount', type: 'sortableHeader' as const, text: `Amount`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('amount', sorting), sortOrder: getSortOrderForColumn('amount', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'amount'), filterable: true },
+      { columnId: 'filePageNumber', type: 'sortableHeader' as const, text: `Page #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('filePageNumber', sorting), sortOrder: getSortOrderForColumn('filePageNumber', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'filePageNumber'), filterable: true },
     ];
     if (!isCreditCard) { // Only show check columns for BANK type
       headerCells.push(
-        { columnId: 'checkNumber', type: 'sortableHeader' as const, text: `Check #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkNumber', sorting), sortOrder: getSortOrderForColumn('checkNumber', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkNumber') },
-        { columnId: 'checkFilename', type: 'sortableHeader' as const, text: `Check File`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkFilename', sorting), sortOrder: getSortOrderForColumn('checkFilename', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkFilename') },
-        { columnId: 'checkFilePage', type: 'sortableHeader' as const, text: `Check Pg`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkFilePage', sorting), sortOrder: getSortOrderForColumn('checkFilePage', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkFilePage') },
+        { columnId: 'checkNumber', type: 'sortableHeader' as const, text: `Check #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkNumber', sorting), sortOrder: getSortOrderForColumn('checkNumber', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkNumber'), filterable: true },
+        { columnId: 'checkFilename', type: 'sortableHeader' as const, text: `Check File`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkFilename', sorting), sortOrder: getSortOrderForColumn('checkFilename', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkFilename'), filterable: true },
+        { columnId: 'checkFilePage', type: 'sortableHeader' as const, text: `Check Pg`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkFilePage', sorting), sortOrder: getSortOrderForColumn('checkFilePage', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkFilePage'), filterable: true },
       );
     }
     headerCells.push({ type: 'header' as const, text: '' }); // actions - no header
     
-    const headerRow = { rowId: 'header', cells: headerCells };
+    return { rowId: 'header', cells: headerCells };
+  }, [sorting, filters, isCreditCard]);
+
+  // Create data rows from transactions
+  const dataRows = useMemo(() => {
+    if (!statement) return [];
     
-    const dataRows = filteredTransactions.map((txn, idx) => {
+    return statement.transactions.map((txn) => {
       const suspiciousReasons = calculateTransactionSuspiciousReasons(txn, statement);
       const cells: CellTypes[] = [
         {
@@ -289,14 +376,10 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       ];
       return { rowId: txn.id, cells: cells.map(c => ({...c, style: getRowStyle(txn.id)})) };
     });
-    
-    // Apply sorting if needed (skip header row)
-    let finalDataRows: Row<CellTypes>[] = dataRows;
-    if (sorting && sorting.length > 0) {
-      finalDataRows = sortRows(dataRows, sorting, columns);
-    }
-    
-    // Create sticky add row at the bottom
+  }, [statement, isCreditCard, modifiedTransactions]);
+
+  // Create add row
+  const addRow = useMemo(() => {
     const addRowCells: CellTypes[] = [
       { type: 'text' as const, text: '', nonEditable: true },
       { type: 'date' as const, date: addRowValues.date || undefined },
@@ -325,10 +408,29 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       }
     ];
     
-    const addRow = { rowId: 'add-row', cells: addRowCells };
-    
-    return [headerRow, ...finalDataRows, addRow];
-  }, [statement, isCreditCard, sorting, addRowValues, filters]);
+    return { rowId: 'add-row', cells: addRowCells };
+  }, [addRowValues, isCreditCard]);
+
+  // Apply row-based filtering to data rows only
+  const filteredDataRows = useMemo(() => {
+    if (!statement) return [];
+    return applyGenericFilters(
+      dataRows,
+      filters,
+      columns,
+      quickFilterConfig
+    );
+  }, [dataRows, filters, columns, quickFilterConfig]);
+
+  // Apply sorting to filtered data rows only
+  const sortedDataRows = useMemo(() => {
+    return sortRows(filteredDataRows, sorting, columns);
+  }, [filteredDataRows, sorting, columns]);
+
+  // Combine header, sorted data rows, and add row (add row always at bottom)
+  const finalRows = useMemo(() => {
+    return [headerRow, ...sortedDataRows, addRow];
+  }, [headerRow, sortedDataRows, addRow]);
 
   // a change is a delete if all previous values are empty and all new values are empty
   const shouldDeleteTransactions = (changes: CellChange[]): boolean => {
@@ -575,11 +677,14 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header with Filter */}
       <Box sx={{ mb: 2 }}>
-        <TransactionFilter
+        <GenericFilter
           filters={filters}
           onFiltersChange={setFilters}
           totalCount={statement?.transactions.length || 0}
-          filteredCount={filteredTransactions.length}
+          filteredCount={finalRows.length - 2} // Subtract header and add row
+          columns={columns}
+          quickFilters={quickFilterConfig}
+          searchPlaceholder="Search transactions..."
         />
       </Box>
       
@@ -594,7 +699,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Chip 
-            label={`${filteredTransactions.length} of ${statement?.transactions.length || 0} transactions`}
+            label={`${finalRows.length - 2} of ${statement?.transactions.length || 0} transactions`}
             size="small"
             color="primary"
             variant="outlined"
@@ -646,7 +751,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         }}>
           <ReactGrid 
             columns={columns} 
-            rows={rows} 
+            rows={finalRows} 
             onColumnResized={handleColumnResized}
             onCellsChanged={handleCellsChanged}
             onContextMenu={handleContextMenu}
@@ -659,16 +764,20 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       </Box>
       
       {/* Filter Popover */}
-      {filterPopover && (
-        <TransactionFilterPopover
-          anchorEl={filterPopover.anchorEl}
-          onClose={handleCloseFilterPopover}
-          columnId={filterPopover.columnId}
-          columnName={filterPopover.columnName}
-          currentFilter={filters.advancedFilters.find(f => f.columnId === filterPopover.columnId) || null}
-          onApplyFilter={handleApplyFilter}
-        />
-      )}
+      {filterPopover && (() => {
+        const column = columns.find(col => col.columnId === filterPopover.columnId);
+        if (!column) return null;
+        
+                 return (
+           <GenericFilterPopover
+             anchorEl={filterPopover.anchorEl}
+             onClose={handleCloseFilterPopover}
+             column={column}
+             currentFilter={filters.advancedFilters.find(f => f.columnId === filterPopover.columnId) || null}
+             onApplyFilter={handleApplyFilter}
+           />
+         );
+      })()}
     </Box>
   );
 };

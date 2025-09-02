@@ -50,6 +50,7 @@ export interface SortableHeaderCell extends Cell {
   onSort: (columnId: string) => void;
   onFilter?: (columnId: string, event: React.MouseEvent) => void;
   hasFilter?: boolean;
+  filterable?: boolean; // Add this to indicate if column is filterable
 }
 
 function getOptionalCellProperty<T>(uncertainCell: Uncertain<SortableHeaderCell>, propertyName: keyof SortableHeaderCell, propertyType: "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"): T | undefined {
@@ -73,6 +74,8 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
     
     const hasFilter = getOptionalCellProperty<SortableHeaderCell['hasFilter']>(uncertainCell, 'hasFilter', 'boolean') || false;
     
+    const filterable = getOptionalCellProperty<SortableHeaderCell['filterable']>(uncertainCell, 'filterable', 'boolean') || false;
+    
     const style = getOptionalCellProperty<SortableHeaderCell['style']>(uncertainCell, 'style', 'object') || {};
     
     const ret =  { 
@@ -84,6 +87,7 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
       onSort, 
       onFilter,
       hasFilter,
+      filterable,
       nonEditable: true, 
       style,
       value: text 
@@ -148,7 +152,7 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
         </Box>
         
         {/* Filter Icon */}
-        {cell.onFilter && (
+        {cell.onFilter && cell.filterable && (
           <Tooltip title="Filter column">
             <IconButton
               size="small"
