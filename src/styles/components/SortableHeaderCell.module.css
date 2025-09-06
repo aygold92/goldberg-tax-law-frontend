@@ -1,0 +1,40 @@
+/**
+ * CSS Module for SortableHeaderCell component.
+ */
+
+.headerContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sortButton {
+  padding: 4px;
+}
+
+.sortOrder {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: bold;
+}
+
+.filterButton {
+  padding: 4px;
+}
+
+.filterButtonActive {
+  color: #2563eb;
+}
+
+.filterButtonInactive {
+  color: #64748b;
+}

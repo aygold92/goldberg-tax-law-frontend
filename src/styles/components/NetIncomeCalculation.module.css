@@ -1,0 +1,124 @@
+/**
+ * CSS Module for NetIncomeCalculation component.
+ */
+
+.wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.calculationContainer {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  font-family: monospace;
+  font-size: 14px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.calculationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calculationRow {
+  display: flex;
+  align-items: center;
+}
+
+.label {
+  min-width: 120px;
+  text-align: right;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.value {
+  min-width: 80px;
+  text-align: right;
+  margin-left: 8px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.valueWide {
+  min-width: 100px;
+}
+
+.minusSign {
+  min-width: 120px;
+  text-align: right;
+}
+
+.minusValue {
+  min-width: 80px;
+  text-align: right;
+  margin-left: 8px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.dividerRow {
+  display: flex;
+  align-items: center;
+}
+
+.dividerSpacer {
+  min-width: 140px;
+  text-align: right;
+}
+
+.dividerLine {
+  min-width: 120px;
+  text-align: right;
+  margin-left: 8px;
+  padding-top: 4px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.expectedRow {
+  display: flex;
+  align-items: center;
+}
+
+.expectedLabel {
+  min-width: 120px;
+  text-align: right;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.expectedValue {
+  min-width: 100px;
+  text-align: right;
+  margin-left: 8px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.actualContainer {
+  display: flex;
+  align-items: center;
+  margin-left: 24px;
+  gap: 4px;
+}
+
+.actualBadge {
+  /* Badge styling handled by MUI */
+}
+
+.actualSpacer {
+  width: 35px;
+  height: 0px;
+}
+
+.actualClose {
+  color: #64748b;
+}

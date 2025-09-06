@@ -1,0 +1,103 @@
+/**
+ * CSS Module for ReactGridTable component.
+ */
+
+.tableContainer {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.controlsContainer {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: #f8fafc;
+}
+
+.controlsContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.controlsLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statusInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.controlsRight {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.addRowButton {
+  padding: 6px 10px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  background-color: #3b82f6;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+}
+
+.addRowButton:hover {
+  background-color: #2563eb;
+}
+
+.tableSizeSelect {
+  min-width: 100px;
+}
+
+.tableSizeSelect .MuiSelect-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.tableSizeSelect .MuiOutlinedInput-notchedOutline {
+  border-color: #d1d5db;
+}
+
+.tableSizeSelect:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #9ca3af;
+}
+
+.tableSizeSelect.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #3b82f6;
+  border-width: 2px;
+}
+
+.menuItemContent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sortInfo {
+  color: #374151;
+  font-weight: bold;
+}

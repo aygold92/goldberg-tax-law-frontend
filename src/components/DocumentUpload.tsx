@@ -40,6 +40,8 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridValueGetter } from '@mui/x-data-grid';
 import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/DocumentUpload.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { 
   selectFiles, 
@@ -254,17 +256,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
           placement="top"
           arrow
         >
-          <span
-            style={{
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              cursor: 'text',
-              userSelect: 'text',
-              width: '100%',
-              display: 'inline-block',
-            }}
-          >
+          <span className={styles.filenameCell}>
             {params.value}
           </span>
         </Tooltip>
@@ -318,31 +310,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
   };
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: 'auto', py: 4 }}>
-      <Paper elevation={4} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, background: 'linear-gradient(135deg, #f8fafc 0%, #e3e8ee 100%)', boxShadow: 6 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom sx={{ letterSpacing: 1, mb: 3, color: 'primary.main' }}>
+    <Box className={styles.uploadContainer}>
+      <Paper elevation={4} className={styles.uploadPaper}>
+        <Typography variant="h4" fontWeight={700} gutterBottom className={styles.uploadTitle}>
           Upload Documents
         </Typography>
         <Paper
           {...getRootProps()}
           elevation={0}
-          sx={{
-            p: 3,
-            mb: 3,
-            textAlign: 'center',
-            border: '2px dashed',
-            borderRadius: 3,
-            borderColor: isDragActive ? 'primary.main' : 'grey.300',
-            background: isDragActive
-              ? 'linear-gradient(135deg, #e3f2fd 0%, #fce4ec 100%)'
-              : 'linear-gradient(135deg, #f8fafc 0%, #e3e8ee 100%)',
-            cursor: 'pointer',
-            transition: 'border-color 0.2s, background 0.2s',
-            boxShadow: isDragActive ? 4 : 1,
-          }}
+          className={`${styles.dropzone} ${isDragActive ? styles.dropzoneActive : styles.dropzoneInactive}`}
         >
           <input {...getInputProps()} />
-          <CloudUpload sx={{ fontSize: 64, color: isDragActive ? 'primary.main' : 'grey.500', mb: 2 }} />
+          <CloudUpload className={`${styles.uploadIcon} ${isDragActive ? styles.uploadIconActive : styles.uploadIconInactive}`} />
           <Typography variant="h5" fontWeight={600} gutterBottom>
             {isDragActive ? 'Drop files here' : 'Drag & drop PDF files or click to select'}
           </Typography>
@@ -366,7 +345,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
           </DialogActions>
         </Dialog>
         
-        <Box sx={{ mb: 3 }}>
+        <Box className={styles.dataGridContainer}>
           <DataGrid
             autoHeight
             rows={rows}
@@ -376,31 +355,15 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
             rowSelectionModel={selectionModel}
             onRowSelectionModelChange={handleSelectionModelChange}
             density="comfortable"
-            sx={{
-              background: 'white',
-              borderRadius: 3,
-              boxShadow: 2,
-              '& .MuiDataGrid-columnHeaders': {
-                background: 'linear-gradient(90deg, #f1f5f9 0%, #e3e8ee 100%)',
-                fontWeight: 700,
-                fontSize: 16,
-              },
-              '& .MuiDataGrid-row:hover': {
-                background: '#f3f6fa',
-              },
-              '& .MuiDataGrid-cell': {
-                fontSize: 15,
-              },
-              mb: 2,
-            }}
+            className={styles.dataGrid}
           />
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 1 }}>
+        <Box className={styles.actionsContainer}>
           <Button
             variant="contained"
             size="large"
-            sx={{ borderRadius: 3, px: 4, fontWeight: 600, boxShadow: 2 }}
+            className={styles.actionButton}
             onClick={handleUpload}
             disabled={!hasPendingFiles || isUploading || isAnalyzing}
             startIcon={<CloudUpload />}
@@ -411,7 +374,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
             variant="contained"
             color="secondary"
             size="large"
-            sx={{ borderRadius: 3, px: 4, fontWeight: 600, boxShadow: 2 }}
+            className={styles.actionButton}
             onClick={handleStartAnalysis}
             disabled={!canAnalyze || isAnalyzing}
           >

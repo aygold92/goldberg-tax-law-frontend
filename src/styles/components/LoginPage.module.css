@@ -1,0 +1,48 @@
+/**
+ * CSS Module for LoginPage component.
+ */
+
+.loginContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px;
+}
+
+.loginPaper {
+  padding: 32px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.loginTitle {
+  margin-bottom: 24px;
+  color: #2563eb;
+}
+
+.loginDescription {
+  margin-bottom: 32px;
+}
+
+.loginButton {
+  padding: 12px 0;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  background: linear-gradient(45deg, #1976d2 30%, #42a5f5 90%);
+  box-shadow: 0 3px 5px 2px rgba(25, 118, 210, 0.3);
+}
+
+.loginButton:hover {
+  background: linear-gradient(45deg, #1565c0 30%, #1976d2 90%);
+}
+
+.loginCaption {
+  margin-top: 24px;
+  display: block;
+}

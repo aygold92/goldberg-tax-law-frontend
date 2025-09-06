@@ -1,0 +1,61 @@
+/**
+ * CSS Module for ColumnFilterPopover component.
+ */
+
+.popover {
+  min-width: 300px;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.title {
+  /* Title styling handled by MUI */
+}
+
+.closeButton {
+  /* Close button styling handled by MUI */
+}
+
+.content {
+  /* Content styling handled by MUI */
+}
+
+.formControl {
+  /* Form control styling handled by MUI */
+}
+
+.inputLabel {
+  /* Input label styling handled by MUI */
+}
+
+.select {
+  /* Select styling handled by MUI */
+}
+
+.menuItem {
+  /* Menu item styling handled by MUI */
+}
+
+.textField {
+  /* Text field styling handled by MUI */
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.clearButton {
+  /* Clear button styling handled by MUI */
+}
+
+.applyButton {
+  /* Apply button styling handled by MUI */
+}

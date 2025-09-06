@@ -1,0 +1,11 @@
+/**
+ * CSS Module for UploadPage component.
+ */
+
+.infoAlert {
+  /* Info alert styling handled by MUI */
+}
+
+.successAlert {
+  margin-top: 16px;
+}

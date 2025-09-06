@@ -1,0 +1,14 @@
+/**
+ * CSS Module for PagesTable component.
+ */
+
+.wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 4px;
+}

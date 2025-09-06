@@ -38,6 +38,8 @@ import {
   FilterList,
   Close
 } from '@mui/icons-material';
+import { COLORS } from '../../../styles/constants';
+import styles from '../../../styles/components/FilterDisplay.module.css';
 
 import { getComparisonDisplayText } from './filterOperations';
 import { CustomFilterConfig, FilterCriteria } from './FilterTypes';
@@ -84,14 +86,8 @@ const FilterDisplay = <T extends CompatibleData>({
   const hasActiveFilters = activeFilterCount > 0;
 
   return (
-    <Box sx={{ 
-      backgroundColor: '#ffffff',
-      borderRadius: 2,
-      p: 1.5,
-      border: '1px solid #e2e8f0',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+    <Box className={styles.filterContainer}>
+      <Box className={styles.controlsRow}>
         {/* Search Input - Compact */}
         {enableSearch && (
           <TextField
@@ -99,25 +95,11 @@ const FilterDisplay = <T extends CompatibleData>({
             placeholder={searchPlaceholder}
             value={filters.searchText}
             onChange={(e) => filterManager.setSearchText(e.target.value)}
-            sx={{
-              minWidth: 200,
-              maxWidth: 300,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#f8fafc',
-                '&:hover': {
-                  backgroundColor: '#f1f5f9',
-                },
-                '&.Mui-focused': {
-                  backgroundColor: '#ffffff',
-                  boxShadow: '0 0 0 2px rgba(37, 99, 235, 0.2)',
-                }
-              }
-            }}
+            className={styles.searchField}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search sx={{ color: '#64748b' }} />
+                  <Search className={styles.searchIcon} />
                 </InputAdornment>
               ),
               endAdornment: hasActiveFilters ? (
@@ -126,15 +108,7 @@ const FilterDisplay = <T extends CompatibleData>({
                     <Button
                       size="small"
                       onClick={filterManager.clearAllFilters}
-                      sx={{ 
-                        minWidth: 'auto', 
-                        p: 0.5,
-                        color: '#64748b',
-                        '&:hover': {
-                          backgroundColor: '#f1f5f9',
-                          color: '#374151'
-                        }
-                      }}
+                      className={styles.clearButton}
                     >
                       <Clear fontSize="small" />
                     </Button>
@@ -147,57 +121,20 @@ const FilterDisplay = <T extends CompatibleData>({
 
         {/* Custom Filter Buttons - Compact */}
         {customFilters.length > 0 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Box className={styles.customFiltersContainer}>
             {customFilters.map((customFilter) => {
               const label = customFilter.label || customFilter.key.charAt(0).toUpperCase() + customFilter.key.slice(1);
+              const isActive = filters.customFilters[customFilter.key];
+              const colorClass = customFilter.color || 'primary';
               return (
                 <Tooltip key={customFilter.key} title={customFilter.tooltip || `Show ${label.toLowerCase()}`}>
                   <Button
                     onClick={() => filterManager.toggleCustomFilter(customFilter.key)}
-                    variant={filters.customFilters[customFilter.key] ? 'contained' : 'outlined'}
+                    variant={isActive ? 'contained' : 'outlined'}
                     startIcon={customFilter.icon}
                     size="small"
                     color={customFilter.color || 'primary'}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 500,
-                      minWidth: 'auto',
-                      px: 1.5,
-                      // Custom styling for specific colors (matching current TransactionFilter)
-                      '&.MuiButton-contained.MuiButton-colorWarning': {
-                        backgroundColor: '#fef3c7',
-                        color: '#92400e',
-                        borderColor: '#f59e0b',
-                        '&:hover': {
-                          backgroundColor: '#fde68a',
-                        }
-                      },
-                      '&.MuiButton-contained.MuiButton-colorSuccess': {
-                        backgroundColor: '#dcfce7',
-                        color: '#166534',
-                        borderColor: '#22c55e',
-                        '&:hover': {
-                          backgroundColor: '#bbf7d0',
-                        }
-                      },
-                      '&.MuiButton-contained.MuiButton-colorError': {
-                        backgroundColor: '#fef2f2',
-                        color: '#991b1b',
-                        borderColor: '#ef4444',
-                        '&:hover': {
-                          backgroundColor: '#fecaca',
-                        }
-                      },
-                      '&.MuiButton-outlined': {
-                        borderColor: '#d1d5db',
-                        color: '#64748b',
-                        '&:hover': {
-                          backgroundColor: '#f8fafc',
-                          borderColor: '#9ca3af',
-                        }
-                      }
-                    }}
+                    className={`${styles.customFilterButton} ${isActive ? styles[`customFilterButton${colorClass.charAt(0).toUpperCase() + colorClass.slice(1)}`] : styles.customFilterButtonOutlined}`}
                   >
                     {label}
                   </Button>
@@ -216,16 +153,7 @@ const FilterDisplay = <T extends CompatibleData>({
             color="primary"
             variant="outlined"
             onClick={(e) => setFilterPopoverAnchor(e.currentTarget)}
-            sx={{ 
-              cursor: 'pointer',
-              borderColor: '#3b82f6',
-              color: '#1e40af',
-              backgroundColor: '#eff6ff',
-              fontWeight: 500,
-              '&:hover': {
-                backgroundColor: '#dbeafe',
-              }
-            }}
+            className={styles.filterChip}
           />
         )}
       </Box>
@@ -244,37 +172,30 @@ const FilterDisplay = <T extends CompatibleData>({
           horizontal: 'left',
         }}
         PaperProps={{
-          sx: { 
-            minWidth: 300, 
-            maxWidth: 400, 
-            maxHeight: 400,
-            borderRadius: 2,
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #e2e8f0'
-          }
+          className: styles.popover
         }}
       >
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: '#1e293b', fontWeight: 600 }}>
+        <Box className={styles.popoverContent}>
+          <Typography variant="h6" className={styles.popoverTitle}>
             Active Filters
           </Typography>
           
-          <List dense>
+          <List dense className={styles.filterList}>
             {/* Search Text Filter */}
             {filters.searchText && (
-              <ListItem sx={{ borderRadius: 1, mb: 0.5 }}>
+              <ListItem className={styles.filterListItem}>
                 <ListItemText 
                   primary="Search text" 
                   secondary={`"${filters.searchText}"`}
-                  primaryTypographyProps={{ fontWeight: 500 }}
-                  secondaryTypographyProps={{ color: '#64748b' }}
+                  primaryTypographyProps={{ className: styles.filterListItemPrimary }}
+                  secondaryTypographyProps={{ className: styles.filterListItemSecondary }}
                 />
-                <ListItemSecondaryAction>
+                <ListItemSecondaryAction className={styles.filterListItemAction}>
                   <IconButton
                     edge="end"
                     size="small"
                     onClick={filterManager.clearSearch}
-                    sx={{ color: '#64748b' }}
+                    className={styles.filterCloseButton}
                   >
                     <Close fontSize="small" />
                   </IconButton>
@@ -287,17 +208,17 @@ const FilterDisplay = <T extends CompatibleData>({
               const label = customFilter.label || customFilter.key.charAt(0).toUpperCase() + customFilter.key.slice(1);
               return (
                 filters.customFilters[customFilter.key] && (
-                  <ListItem key={customFilter.key} sx={{ borderRadius: 1, mb: 0.5 }}>
+                  <ListItem key={customFilter.key} className={styles.filterListItem}>
                     <ListItemText 
                       primary={label}
-                      primaryTypographyProps={{ fontWeight: 500 }}
+                      primaryTypographyProps={{ className: styles.filterListItemPrimary }}
                     />
-                    <ListItemSecondaryAction>
+                    <ListItemSecondaryAction className={styles.filterListItemAction}>
                       <IconButton
                         edge="end"
                         size="small"
                         onClick={() => filterManager.removeCustomFilter(customFilter.key)}
-                        sx={{ color: '#64748b' }}
+                        className={styles.filterCloseButton}
                       >
                         <Close fontSize="small" />
                       </IconButton>
@@ -311,20 +232,20 @@ const FilterDisplay = <T extends CompatibleData>({
             {filters.columnFilters.length > 0 && (
               <>
                 {(filters.searchText || Object.values(filters.customFilters).some(Boolean)) && (
-                  <Divider sx={{ my: 1 }} />
+                  <Divider className={styles.filterDivider} />
                 )}
                 {filters.columnFilters.map((filter, index) => (
-                  <ListItem key={`${filter.columnId}-${filter.comparison}-${filter.value}-${index}`} sx={{ borderRadius: 1, mb: 0.5 }}>
+                  <ListItem key={`${filter.columnId}-${filter.comparison}-${filter.value}-${index}`} className={styles.filterListItem}>
                     <ListItemText 
                       primary={getFilterDisplayName(filter)}
-                      primaryTypographyProps={{ fontWeight: 500 }}
+                      primaryTypographyProps={{ className: styles.filterListItemPrimary }}
                     />
-                    <ListItemSecondaryAction>
+                    <ListItemSecondaryAction className={styles.filterListItemAction}>
                       <IconButton
                         edge="end"
                         size="small"
                         onClick={() => filterManager.removeColumnFilter(filter)}
-                        sx={{ color: '#64748b' }}
+                        className={styles.filterCloseButton}
                       >
                         <Close fontSize="small" />
                       </IconButton>
@@ -336,23 +257,13 @@ const FilterDisplay = <T extends CompatibleData>({
           </List>
 
           {hasActiveFilters && (
-            <Box sx={{ mt: 2, pt: 1, borderTop: 1, borderColor: '#e2e8f0' }}>
+            <Box className={styles.filterActions}>
               <Button
                 size="small"
                 onClick={filterManager.clearAllFilters}
                 startIcon={<Clear />}
                 fullWidth
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  color: '#64748b',
-                  borderColor: '#d1d5db',
-                  '&:hover': {
-                    backgroundColor: '#f8fafc',
-                    borderColor: '#9ca3af',
-                  }
-                }}
+                className={styles.clearAllFiltersButton}
                 variant="outlined"
               >
                 Clear All Filters

@@ -24,6 +24,8 @@ import { GridDeleteIcon } from '@mui/x-data-grid';
 import { FileCopySharp, Iso } from '@mui/icons-material';
 import { ReactGridTable, TableColumn } from './ReactGridTable';
 import { CustomFilterConfig } from './ReactGridTable/filter/FilterTypes';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/TransactionsTable.module.css';
 
 // Interface for the transformed transaction data
 interface TransactionTableRow {
@@ -75,19 +77,19 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
   // Row styles for new and modified transactions
   const rowStyle = useMemo(() => {
-    const styles: Record<string, any> = {};
+    const rowStyles: Record<string, any> = {};
     
     // Apply styles to modified transactions
     modifiedTransactions.forEach(transactionId => {
-      styles[transactionId] = { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
+      rowStyles[transactionId] = { background: COLORS.status.modified }; // Light yellow for modified
     });
     
     // Apply styles to new transactions (override modified if both)
     newTransactions.forEach(transactionId => {
-      styles[transactionId] = { background: 'rgba(76, 175, 80, 0.1)' }; // Light green for new
+      rowStyles[transactionId] = { background: COLORS.status.new }; // Light green for new
     });
     
-    return styles;
+    return rowStyles;
   }, [modifiedTransactions, newTransactions]);
 
   // Helper function to handle reset transaction
@@ -194,7 +196,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       nonSortable: true,
       nonSearchable: true,
       render: (rowId, item) => (
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+        <Box className={styles.actionsContainer}>
           {item.isModified && (
             <Tooltip title='Reset Transaction'>
               <IconButton size="small" onClick={() => handleResetTransaction(item.id)}>
@@ -456,7 +458,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box className={styles.wrapper}>
       <ReactGridTable
         columns={columns}
         data={data}
@@ -466,7 +468,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         enableRangeSelection
         enableRowSelection
         enableFillHandle
-        initialTableSize="large"
+        initialTableSize="unbounded"
         customFilters={customFilters}
         rowStyle={rowStyle}
       />

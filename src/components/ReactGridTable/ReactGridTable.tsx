@@ -25,6 +25,8 @@ import { ReactGrid, Row, Id, DefaultCellTypes, Column, CellChange, DateCell, Num
 import '@silevis/reactgrid/styles.css';
 import { ViewCompact, ViewModule, ViewList, ViewStream, ArrowDropDown } from '@mui/icons-material';
 import { Select, MenuItem, FormControl } from '@mui/material';
+import { COLORS } from '../../styles/constants';
+import styles from '../../styles/components/ReactGridTable.module.css';
 
 // Import our custom types
 import { 
@@ -142,7 +144,11 @@ function ReactGridTable<T extends CompatibleData>({
   }, []);
 
 
-  const headerStyle = { fontWeight: 'bold', background: '#f5f5f5', color: '#1976d2' }
+  const headerStyle = { 
+    fontWeight: 'bold', 
+    background: COLORS.background.tertiary, 
+    color: COLORS.text.accent 
+  }
   // Generate header row
   const headerRow = useMemo((): Row<CellTypes> => {
     const headerCells = columns.map(column => {
@@ -272,23 +278,17 @@ function ReactGridTable<T extends CompatibleData>({
     <div className="react-grid-table">
       {/* Table Controls - Compact Layout */}
       {(enableSorting || enableFiltering || enableTableSizeControls || enableAddRow) && (
-        <div style={{ 
-          marginBottom: '12px', 
-          padding: '8px 12px', 
-          border: '1px solid #e2e8f0', 
-          borderRadius: '6px',
-          backgroundColor: '#f8fafc'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div className={styles.controlsContainer}>
+          <div className={styles.controlsContent}>
+            <div className={styles.controlsLeft}>
               {/* Status Info - Compact */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280' }}>
+              <div className={styles.statusInfo}>
                 {enableSorting && sortingState.length > 0 && (
                   <span>
                     Sorted by: {sortingState.map((sort, index) => (
                       <span key={sort.columnId}>
                         {index > 0 && ', '}
-                        <strong style={{ color: '#374151' }}>
+                        <strong className={styles.sortInfo}>
                           {columns.find(col => String(col.columnId) === sort.columnId)?.label}
                         </strong>
                         {sort.direction === 'asc' ? ' ↑' : ' ↓'}
@@ -316,25 +316,12 @@ function ReactGridTable<T extends CompatibleData>({
               )}
             </div>
             
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div className={styles.controlsRight}>
               {/* Add Row Button - Compact */}
               {enableAddRow && (
                 <button
                   onClick={() => handleRowAdd({})}
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '4px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    height: '32px'
-                  }}
+                  className={styles.addRowButton}
                   title="Add new row"
                 >
                   <span>+</span>
@@ -344,53 +331,33 @@ function ReactGridTable<T extends CompatibleData>({
               
               {/* Table Size Controls - Compact */}
               {enableTableSizeControls && (
-                <FormControl size="small" sx={{ minWidth: 100 }}>
+                <FormControl size="small" className={styles.tableSizeSelect}>
                   <Select
                     value={state.tableSize}
                     onChange={(e) => setState(prev => ({ ...prev, tableSize: e.target.value as any }))}
                     displayEmpty
-                    sx={{
-                      height: '32px',
-                      fontSize: '13px',
-                      '& .MuiSelect-select': {
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 10px',
-                      },
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#d1d5db',
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#9ca3af',
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#3b82f6',
-                        borderWidth: '2px',
-                      }
-                    }}
                     IconComponent={ArrowDropDown}
                   >
                     <MenuItem value="small">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className={styles.menuItemContent}>
                         <ViewCompact fontSize="small" />
                         <span>Small</span>
                       </div>
                     </MenuItem>
                     <MenuItem value="medium">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className={styles.menuItemContent}>
                         <ViewModule fontSize="small" />
                         <span>Medium</span>
                       </div>
                     </MenuItem>
                     <MenuItem value="large">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className={styles.menuItemContent}>
                         <ViewList fontSize="small" />
                         <span>Large</span>
                       </div>
                     </MenuItem>
                     <MenuItem value="unbounded">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className={styles.menuItemContent}>
                         <ViewStream fontSize="small" />
                         <span>Unbounded</span>
                       </div>
@@ -416,14 +383,11 @@ function ReactGridTable<T extends CompatibleData>({
       
       {/* Table Container */}
       <div 
+        className={styles.tableContainer}
         style={{
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          backgroundColor: '#ffffff',
           height: state.tableSize === 'unbounded' ? 'auto' : 
                  state.tableSize === 'small' ? '300px' :
                  state.tableSize === 'medium' ? '500px' : '700px',
-          overflow: 'hidden'
         }}
       >
         <ReactGrid

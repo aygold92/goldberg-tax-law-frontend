@@ -13,6 +13,8 @@
 import React from 'react';
 import { Box, Typography, Tooltip, Badge } from '@mui/material';
 import { BankStatement } from '../types/bankStatement';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/NetIncomeCalculation.module.css';
 
 interface NetIncomeCalculationProps {
   statement: BankStatement | null;
@@ -39,142 +41,85 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ 
-        p: 2,
-        border: '1px solid #e2e8f0',
-        borderRadius: 2,
-        backgroundColor: '#ffffff',
-        fontFamily: 'monospace',
-        fontSize: '14px',
-        minHeight: '120px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center'
-      }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box className={styles.wrapper}>
+      <Box className={styles.calculationContainer}>
+        <Box className={styles.calculationContent}>
           {/* First Balance */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box className={styles.calculationRow}>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '120px', 
-                textAlign: 'right',
-                color: '#64748b',
-                fontWeight: 500
-              }}
+              className={styles.label}
             >
               {isCreditCard ? 'Beginning Balance:' : 'Ending Balance:'}
             </Typography>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '80px', 
-                textAlign: 'right', 
-                ml: 1,
-                fontWeight: 600,
-                color: '#1e293b'
-              }}
+              className={styles.value}
             >
               ${isCreditCard ? statement?.beginningBalance?.toFixed(2) || '0.00' : statement?.endingBalance?.toFixed(2) || '0.00'}
             </Typography>
           </Box>
           
           {/* Minus sign */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ minWidth: '120px', textAlign: 'right' }}></Typography>
+          <Box className={styles.calculationRow}>
+            <Typography variant="body2" className={styles.minusSign}></Typography>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '80px', 
-                textAlign: 'right', 
-                ml: 1,
-                color: '#64748b',
-                fontWeight: 500
-              }}
+              className={styles.minusValue}
             >
               -
             </Typography>
           </Box>
           
           {/* Second Balance */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box className={styles.calculationRow}>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '120px', 
-                textAlign: 'right',
-                color: '#64748b',
-                fontWeight: 500
-              }}
+              className={styles.label}
             >
               {isCreditCard ? 'Ending Balance:' : 'Beginning Balance:'}
             </Typography>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '100px', 
-                textAlign: 'right', 
-                ml: 1,
-                fontWeight: 600,
-                color: '#1e293b'
-              }}
+              className={`${styles.value} ${styles.valueWide}`}
             >
               ${isCreditCard ? statement?.endingBalance?.toFixed(2) || '0.00' : statement?.beginningBalance?.toFixed(2) || '0.00'}
             </Typography>
           </Box>
           
           {/* Divider line */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ minWidth: '140px', textAlign: 'right' }}></Typography>
+          <Box className={styles.calculationRow}>
+            <Typography variant="body2" className={styles.dividerSpacer}></Typography>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '120px', 
-                textAlign: 'right', 
-                ml: 1,
-                pt: 0.5,
-                color: '#cbd5e1',
-                fontWeight: 500
-              }}
+              className={styles.dividerLine}
             >
               ───────
             </Typography>
           </Box>
           
           {/* Expected Value and Actual */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box className={styles.calculationRow}>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '120px', 
-                textAlign: 'right',
-                color: '#64748b',
-                fontWeight: 500
-              }}
+              className={styles.expectedLabel}
             >
               Expected Value:
             </Typography>
             <Typography 
               variant="body2" 
-              sx={{ 
-                minWidth: '100px', 
-                textAlign: 'right', 
-                ml: 1,
-                fontWeight: 600,
-                color: '#1e293b'
-              }}
+              className={styles.expectedValue}
             >
               {statement?.endingBalance?.toString() && statement?.beginningBalance?.toString() ? (
                 `$${expectedValue?.toFixed(2)}`
               ) : (
                 <Tooltip title="Must specify beginning and ending balance">
-                  <span style={{ color: '#f59e0b' }}>⚠️</span>
+                  <span style={{ color: COLORS.status.warning }}>⚠️</span>
                 </Tooltip>
               )}
             </Typography>
             {actualValue !== null && (
-              <Box sx={{ display: 'flex', alignItems: 'center', ml: 3, gap: 0.5 }}>
+              <Box className={styles.actualContainer}>
                 <Badge 
                   badgeContent={`Actual: $${actualValue.toFixed(2)}`}
                   color={expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? 'success' : 'error'}
@@ -183,15 +128,15 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
                       fontSize: '10px',
                       height: '16px',
                       minWidth: '100px',
-                      backgroundColor: expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? '#10b981' : '#ef4444',
+                      backgroundColor: expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? COLORS.status.success : COLORS.status.error,
                       color: '#ffffff',
                       fontWeight: 500
                     }
                   }}
                 >
-                  <Box sx={{ width: '35px', height: '0px' }} />
+                  <Box className={styles.actualSpacer} />
                 </Badge>
-                <Typography variant="body2" sx={{ color: '#64748b' }}>)</Typography>
+                <Typography variant="body2" className={styles.actualClose}>)</Typography>
               </Box>
             )}
           </Box>

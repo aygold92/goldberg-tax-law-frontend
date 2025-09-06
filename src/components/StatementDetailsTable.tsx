@@ -22,6 +22,8 @@ import { BankStatement, ClassificationType } from '../types/bankStatement';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { updateStatementField, resetStatementField } from '../redux/features/statementEditor/statementEditorSlice';
 import { selectStatementFieldChanges } from '../redux/features/statementEditor/statementEditorSelectors';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/StatementDetailsTable.module.css';
 
 interface StatementDetailsTableProps {
   statement: BankStatement | null;
@@ -32,7 +34,11 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const modifiedFields = useAppSelector(selectStatementFieldChanges);
-  const headerStyle = { fontWeight: 'bold', background: '#f5f5f5', color: '#1976d2' };
+  const headerStyle = { 
+    fontWeight: 'bold', 
+    background: COLORS.background.tertiary, 
+    color: COLORS.text.accent 
+  };
 
   // Column width state - self-contained
   const [columnWidths, setColumnWidths] = useState({ key: 180, value: 220, actions: 50 });
@@ -48,7 +54,7 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
   // Helper function to get row style based on change status
   const getRowStyle = (fieldName: string) => {
     if (modifiedFields.includes(fieldName)) {
-      return { background: 'rgba(255, 235, 59, 0.3)' }; // Light yellow for modified
+      return { background: COLORS.status.modified }; // Light yellow for modified
     }
     return {};
   };
@@ -206,13 +212,8 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ 
-        border: '1px solid #e2e8f0',
-        borderRadius: 2,
-        backgroundColor: '#ffffff',
-        overflow: 'hidden'
-      }}>
+    <Box className={styles.wrapper}>
+      <Box className={styles.tableContainer}>
         <ReactGrid
           columns={columns} 
           rows={rows} 

@@ -24,6 +24,8 @@ import DocumentUpload from '../components/DocumentUpload';
 import AnalysisStatus from '../components/AnalysisStatus';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/UploadPage.module.css';
 
 const UploadPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -63,7 +65,7 @@ const UploadPage: React.FC = () => {
         />
       )}
       {analysisComplete && (
-        <Alert severity="success" sx={{ mt: 2 }}>
+        <Alert severity="success" className={styles.successAlert}>
           Analysis completed successfully! You can now view the extracted statements.
         </Alert>
       )}

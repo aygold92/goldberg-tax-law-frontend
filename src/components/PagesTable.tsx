@@ -18,6 +18,8 @@ import { ReactGridTable, TableColumn } from './ReactGridTable';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { updateStatementField, resetPage, batchUpdatePages, addPage, deletePage } from '../redux/features/statementEditor/statementEditorSlice';
 import { selectPageChanges } from '../redux/features/statementEditor/statementEditorSelectors';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/PagesTable.module.css';
 
 // Interface for the transformed page data
 interface PageTableRow {
@@ -68,7 +70,7 @@ const PagesTable: React.FC<PagesTableProps> = ({
       nonFilterable: true,
       nonSortable: true,
       render: (rowId, item, rowIndex) => (
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
+        <Box className={styles.actionsContainer}>
           {item.isModified && (
             <Tooltip title='Reset Page'>
               <IconButton size="small" onClick={() => handleResetPage(item.pageNumber)}>
@@ -101,19 +103,19 @@ const PagesTable: React.FC<PagesTableProps> = ({
 
   // Row styles for new and modified pages
   const rowStyle = useMemo(() => {
-    const styles: Record<string, any> = {};
+    const rowStyles: Record<string, any> = {};
     
     // Apply styles to modified pages
     modifiedPages.forEach(page => {
-      styles[String(page)] = { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
+      rowStyles[String(page)] = { background: COLORS.status.modified }; // Light yellow for modified
     });
     
     // Apply styles to new pages (override modified if both)
     newPages.forEach(page => {
-      styles[String(page)] = { background: 'rgba(76, 175, 80, 0.1)' }; // Light green for new
+      rowStyles[String(page)] = { background: COLORS.status.new }; // Light green for new
     });
     
-    return styles;
+    return rowStyles;
   }, [modifiedPages, newPages]);
 
   // Helper function to handle reset page
@@ -231,7 +233,7 @@ const PagesTable: React.FC<PagesTableProps> = ({
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box className={styles.wrapper}>
       <ReactGridTable
         columns={columns}
         data={data}

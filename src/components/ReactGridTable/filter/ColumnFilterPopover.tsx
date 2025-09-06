@@ -40,6 +40,7 @@ import {
   convertFilterValue
 } from './filterOperations';
 import { CompatibleData, TableColumn } from '../types';
+import styles from '../../../styles/components/ColumnFilterPopover.module.css';
 
 interface ColumnFilterPopoverProps<T extends CompatibleData> {
   anchorEl: HTMLElement | null;
@@ -116,19 +117,19 @@ const ColumnFilterPopover = <T extends CompatibleData>({
         horizontal: 'left',
       }}
       PaperProps={{
-        sx: { minWidth: 300, p: 2 }
+        className: styles.popover
       }}
     >
-      <Box onKeyDown={handleKeyDown}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography variant="h6">Filter {column.label || column.columnId}</Typography>
-          <IconButton size="small" onClick={onClose}>
+      <Box onKeyDown={handleKeyDown} className={styles.container}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" className={styles.header}>
+          <Typography variant="h6" className={styles.title}>Filter {column.label || column.columnId}</Typography>
+          <IconButton size="small" onClick={onClose} className={styles.closeButton}>
             <Close />
           </IconButton>
         </Stack>
 
-        <Stack spacing={2}>
-          <FormControl fullWidth size="small">
+        <Stack spacing={2} className={styles.content}>
+          <FormControl fullWidth size="small" className={styles.formControl}>
             <InputLabel>Comparison</InputLabel>
             <Select
               value={comparison}
@@ -152,15 +153,17 @@ const ColumnFilterPopover = <T extends CompatibleData>({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={`Enter ${(column.label || String(column.columnId)).toLowerCase()}...`}
+              className={styles.valueField}
             />
           )}
 
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Stack direction="row" spacing={1} justifyContent="flex-end" className={styles.actions}>
             <Button
               variant="outlined"
               size="small"
               onClick={handleClear}
               disabled={!currentFilter}
+              className={styles.clearButton}
             >
               Clear
             </Button>
@@ -168,6 +171,7 @@ const ColumnFilterPopover = <T extends CompatibleData>({
               variant="contained"
               size="small"
               onClick={handleApply}
+              className={styles.applyButton}
             >
               Apply
             </Button>

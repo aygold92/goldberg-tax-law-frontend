@@ -1,0 +1,97 @@
+/**
+ * CSS Module for AnalysisStatus component.
+ */
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.statusPaper {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.statusChip {
+  /* Status chip styling handled by MUI */
+}
+
+.progressContainer {
+  margin-bottom: 16px;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.progressBar {
+  flex-grow: 1;
+}
+
+.progressText {
+  /* Progress text styling handled by MUI */
+}
+
+.timestampText {
+  /* Timestamp text styling handled by MUI */
+}
+
+.detailsPaper {
+  padding: 24px;
+}
+
+.detailsGrid {
+  /* Grid container styling handled by MUI */
+}
+
+.documentCard {
+  /* Card variant="outlined" styling handled by MUI */
+}
+
+.documentHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.documentTitle {
+  /* Document title styling handled by MUI */
+}
+
+.documentFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.documentStats {
+  /* Document stats styling handled by MUI */
+}
+
+.documentChip {
+  /* Document chip styling handled by MUI */
+}
+
+.errorAlert {
+  margin-top: 16px;
+}
+
+.successAlert {
+  margin-top: 16px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}

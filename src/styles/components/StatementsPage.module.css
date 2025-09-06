@@ -1,0 +1,106 @@
+/**
+ * CSS Module for StatementsPage component.
+ */
+
+.pageContainer {
+  width: 100vw;
+  max-width: none;
+}
+
+.headerContainer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.headerIcon {
+  font-size: 32px;
+  color: #2563eb;
+}
+
+.paperContainer {
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.actionButton {
+  border-radius: 8px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.dataGrid {
+  width: 100%;
+}
+
+.dataGrid .MuiDataGrid-root {
+  border: none;
+}
+
+.dataGrid .MuiDataGrid-cell {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dataGrid .MuiDataGrid-columnHeaders {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.dataGrid .MuiDataGrid-row:hover {
+  background-color: #f8f9fa;
+}
+
+.dataGrid .MuiDataGrid-row.Mui-selected {
+  background-color: #e3f2fd;
+}
+
+.dataGrid .MuiDataGrid-row.Mui-selected:hover {
+  background-color: #bbdefb;
+}
+
+.statusCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  width: 100%;
+}
+
+.actionsCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.classificationCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filenameCell {
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popoverContent {
+  padding: 16px;
+  max-width: 400px;
+}

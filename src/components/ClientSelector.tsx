@@ -36,6 +36,8 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/ClientSelector.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectClients, selectSelectedClient, selectClientLoading, selectClientError } from '../redux/features/client/clientSelectors';
 import { loadClients, createClient, setSelectedClient } from '../redux/features/client/clientSlice';
@@ -66,11 +68,11 @@ const ClientSelector: React.FC = () => {
   };
 
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box className={styles.container}>
       {error && (
         <Alert 
           severity="error" 
-          sx={{ mb: 2 }}
+          className={styles.errorAlert}
           action={
             <Button color="inherit" size="small" onClick={() => dispatch(loadClients())}>
               Retry
@@ -80,9 +82,9 @@ const ClientSelector: React.FC = () => {
           {error}
         </Alert>
       )}
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      <Box className={styles.controlsContainer}>
         <Typography variant="h6">Client:</Typography>
-        <FormControl sx={{ minWidth: 200 }}>
+        <FormControl className={styles.formControl}>
           <InputLabel>Select Client</InputLabel>
           <Select
             value={selectedClient}

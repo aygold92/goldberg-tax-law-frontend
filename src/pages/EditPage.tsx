@@ -39,6 +39,8 @@ import {
   Warning as WarningIcon,
   Error as ErrorIcon
 } from '@mui/icons-material';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/EditPage.module.css';
 import { useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { 
@@ -148,14 +150,7 @@ const EditPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        height: 'calc(100vh - 200px)',
-        flexDirection: 'column',
-        gap: 2
-      }}>
+      <Box className={styles.loadingContainer}>
         <CircularProgress size={48} />
         <Typography variant="body1" color="text.secondary">
           Loading statement data...
@@ -166,16 +161,11 @@ const EditPage: React.FC = () => {
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className={styles.errorContainer}>
         <Alert 
           severity="error" 
           icon={<ErrorIcon />}
-          sx={{ 
-            borderRadius: 2,
-            backgroundColor: '#fef2f2',
-            border: '1px solid #f87171',
-            color: '#991b1b'
-          }}
+          className={styles.errorAlert}
         >
           <Typography variant="h6" sx={{ mb: 1 }}>
             Error Loading Statement
@@ -190,15 +180,10 @@ const EditPage: React.FC = () => {
 
   if (!statement) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className={styles.errorContainer}>
         <Alert 
           severity="info"
-          sx={{ 
-            borderRadius: 2,
-            backgroundColor: '#eff6ff',
-            border: '1px solid #93c5fd',
-            color: '#1e40af'
-          }}
+          className={styles.infoAlert}
         >
           <Typography variant="body2">
             No statement data available. Please select a statement to edit.
@@ -210,7 +195,7 @@ const EditPage: React.FC = () => {
 
   return (
     <Fade in={true} timeout={300}>
-      <Box sx={{ height: '100%' }}>
+      <Box className={styles.pageContainer}>
         {/* Header */}
         <EditPageHeader
           statement={statement}
@@ -226,15 +211,7 @@ const EditPage: React.FC = () => {
             <Alert 
               severity="warning" 
               icon={<WarningIcon />}
-              sx={{ 
-                borderRadius: 2,
-                backgroundColor: '#fef3c7',
-                border: '1px solid #f59e0b',
-                color: '#92400e',
-                '& .MuiAlert-icon': {
-                  color: '#f59e0b'
-                }
-              }}
+              className={styles.warningAlert}
             >
               <Typography variant="body2" fontWeight={500}>
                 You have unsaved changes. Don't forget to save your work!
@@ -247,28 +224,28 @@ const EditPage: React.FC = () => {
         <SuspiciousReasonsDisplay statement={statement} />
 
         {/* Statement Overview Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3} className={styles.overviewGrid}>
           <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%', transition: 'all 0.2s ease-in-out' }}>
+            <Card elevation={2} className={styles.overviewCard}>
               <CardHeader 
                 title="Statement Details"
                 titleTypographyProps={{ variant: 'h6' }}
-                sx={{ pb: 1 }}
+                className={styles.cardHeader}
               />
-              <CardContent sx={{ pt: 0 }}>
+              <CardContent className={styles.cardContent}>
                 <StatementDetailsTable statement={statement} />
               </CardContent>
             </Card>
           </Grid>
           
           <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%', transition: 'all 0.2s ease-in-out' }}>
+            <Card elevation={2} className={styles.overviewCard}>
               <CardHeader 
                 title="Net Income Calculation"
                 titleTypographyProps={{ variant: 'h6' }}
-                sx={{ pb: 1 }}
+                className={styles.cardHeader}
               />
-              <CardContent sx={{ pt: 0 }}>
+              <CardContent className={styles.cardContent}>
                 <NetIncomeCalculation
                   statement={statement}
                   isCreditCard={isCreditCard}
@@ -278,13 +255,13 @@ const EditPage: React.FC = () => {
           </Grid>
           
           <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%', transition: 'all 0.2s ease-in-out' }}>
+            <Card elevation={2} className={styles.overviewCard}>
               <CardHeader 
                 title="Pages Used"
                 titleTypographyProps={{ variant: 'h6' }}
-                sx={{ pb: 1 }}
+                className={styles.cardHeader}
               />
-              <CardContent sx={{ pt: 0 }}>
+              <CardContent className={styles.cardContent}>
                 <PagesTable statement={statement} />
               </CardContent>
             </Card>
@@ -292,13 +269,7 @@ const EditPage: React.FC = () => {
         </Grid>
 
         {/* Layout Toggle */}
-        <Box sx={{ 
-          mb: 3, 
-          display: 'flex', 
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 2
-        }}>
+        <Box className={styles.layoutToggle}>
           <Typography variant="body2" color="text.secondary" fontWeight={500}>
             Layout:
           </Typography>
@@ -322,23 +293,16 @@ const EditPage: React.FC = () => {
 
         {/* Main Content Area */}
         {layoutMode === 'side-by-side' ? (
-          <Box sx={{ 
-            // height: 'calc(100vh - 400px)', 
-            display: 'flex', 
-            flexDirection: 'row', 
-            gap: 3,
-            minHeight: '1200px',
-            overflow: 'auto' // Allow horizontal scrolling for wide PDF
-          }}>
+          <Box className={styles.sideBySideContainer}>
             {/* Transactions Table */}
-            <Box sx={{ width: 'auto', minWidth: '800px', display: 'flex', flexDirection: 'column' }}>
-              <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box className={styles.transactionsContainer}>
+              <Card elevation={2} className={styles.transactionsCard}>
                 <CardHeader 
                   title="Transactions"
                   titleTypographyProps={{ variant: 'h6' }}
-                  sx={{ pb: 1 }}
+                  className={styles.cardHeader}
                 />
-                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <CardContent className={styles.transactionsCardContent}>
                   <TransactionsTable
                     statement={statement}
                     isCreditCard={isCreditCard}
@@ -349,14 +313,14 @@ const EditPage: React.FC = () => {
             </Box>
             
             {/* PDF Display */}
-            <Box sx={{ minWidth: '1024px', minHeight: '1000px', display: 'flex', flexDirection: 'column' }}>
-              <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box className={styles.pdfContainer}>
+              <Card elevation={2} className={styles.pdfCard}>
                 <CardHeader 
                   title="Document Viewer"
                   titleTypographyProps={{ variant: 'h6' }}
-                  sx={{ pb: 1 }}
+                  className={styles.cardHeader}
                 />
-                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <CardContent className={styles.pdfCardContent}>
                   <PdfDisplay
                     statement={statement}
                     clientName={clientName}
@@ -369,15 +333,15 @@ const EditPage: React.FC = () => {
             </Box>
           </Box>
         ) : (
-          <Grid container spacing={3}>
+          <Grid container spacing={3} className={styles.stackedGrid}>
             <Grid item xs={12}>
-              <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', minHeight: '1000px' }}>
+              <Card elevation={2} className={styles.stackedCard}>
                 <CardHeader 
                   title="Transactions"
                   titleTypographyProps={{ variant: 'h6' }}
-                  sx={{ pb: 1 }}
+                  className={styles.cardHeader}
                 />
-                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <CardContent className={styles.stackedCardContent}>
                   <TransactionsTable
                     statement={statement}
                     isCreditCard={isCreditCard}
@@ -386,13 +350,13 @@ const EditPage: React.FC = () => {
               </Card>
             </Grid>
             <Grid item xs={12}>
-              <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', minHeight: '1000px' }}>
+              <Card elevation={2} className={styles.stackedCard}>
                 <CardHeader 
                   title="Document Viewer"
                   titleTypographyProps={{ variant: 'h6' }}
-                  sx={{ pb: 1 }}
+                  className={styles.cardHeader}
                 />
-                <CardContent sx={{ pt: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <CardContent className={styles.stackedCardContent}>
                   <PdfDisplay
                     statement={statement}
                     clientName={clientName}
@@ -417,13 +381,7 @@ const EditPage: React.FC = () => {
             severity="error" 
             onClose={() => setShowValidationAlert(false)}
             icon={<ErrorIcon />}
-            sx={{ 
-              borderRadius: 2,
-              backgroundColor: '#fef2f2',
-              border: '1px solid #f87171',
-              color: '#991b1b',
-              minWidth: '400px'
-            }}
+            className={styles.validationAlert}
           >
             <Typography variant="h6" sx={{ mb: 1 }}>
               Validation Errors

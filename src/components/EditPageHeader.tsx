@@ -32,6 +32,8 @@ import {
 } from '@mui/icons-material';
 import { BankStatement } from '../types/bankStatement';
 import { useUndoRedo } from '../redux/hooks/useUndoRedo';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/EditPageHeader.module.css';
 
 interface EditPageHeaderProps {
   statement: BankStatement | null;
@@ -57,37 +59,17 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
   const filename = statement?.pageMetadata.filename;
 
   return (
-    <Box sx={{ mb: 4 }}>
+    <Box className={styles.headerContainer}>
       {/* Main Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 3, 
-        mb: 2,
-        flexWrap: 'wrap'
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            width: 48,
-            height: 48,
-            borderRadius: 2,
-            backgroundColor: '#dbeafe',
-            color: '#1d4ed8'
-          }}>
+      <Box className={styles.mainHeader}>
+        <Box className={styles.headerLeft}>
+          <Box className={styles.iconContainer}>
             <Edit sx={{ fontSize: 24 }} />
           </Box>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Box className={styles.headerContent}>
             <Typography 
               variant="h4" 
-              sx={{ 
-                fontWeight: 700,
-                color: '#1e293b',
-                lineHeight: 1.2,
-                mb: 0.5
-              }}
+              className={styles.headerTitle}
             >
               {heading}
             </Typography>
@@ -95,14 +77,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
               <Typography 
                 variant="body2" 
                 color="text.secondary"
-                sx={{ 
-                  fontFamily: 'monospace',
-                  backgroundColor: '#f1f5f9',
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  display: 'inline-block'
-                }}
+                className={styles.filenameChip}
               >
                 {filename}
               </Typography>
@@ -111,7 +86,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
         </Box>
 
         {/* Status Indicators */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box className={styles.statusIndicators}>
           {hasUnsavedChanges && (
             <Slide direction="left" in={hasUnsavedChanges} mountOnEnter unmountOnExit>
               <Chip
@@ -119,15 +94,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
                 label="Unsaved Changes"
                 color="warning"
                 variant="outlined"
-                sx={{
-                  borderColor: '#f59e0b',
-                  color: '#92400e',
-                  backgroundColor: '#fef3c7',
-                  fontWeight: 500,
-                  '& .MuiChip-icon': {
-                    color: '#f59e0b'
-                  }
-                }}
+                className={styles.unsavedChip}
               />
             </Slide>
           )}
@@ -138,29 +105,15 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
               label="Saving..."
               color="info"
               variant="outlined"
-              sx={{
-                borderColor: '#3b82f6',
-                color: '#1e40af',
-                backgroundColor: '#eff6ff',
-                fontWeight: 500,
-                '& .MuiChip-icon': {
-                  color: '#3b82f6'
-                }
-              }}
+              className={styles.savingChip}
             />
           )}
         </Box>
       </Box>
 
       {/* Action Buttons */}
-      <Box sx={{ 
-        display: 'flex', 
-        gap: 2, 
-        mb: 3,
-        flexWrap: 'wrap',
-        alignItems: 'center'
-      }}>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+      <Box className={styles.actionsContainer}>
+        <Box className={styles.undoRedoContainer}>
           <Button
             variant="outlined"
             startIcon={<Undo />}
@@ -168,18 +121,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
             disabled={!canUndo}
             title="Undo (Ctrl+Z)"
             size="large"
-            sx={{
-              borderColor: '#d1d5db',
-              color: '#374151',
-              '&:hover': {
-                borderColor: '#9ca3af',
-                backgroundColor: '#f9fafb',
-              },
-              '&:disabled': {
-                borderColor: '#e5e7eb',
-                color: '#9ca3af',
-              }
-            }}
+            className={styles.undoRedoButton}
           >
             Undo
           </Button>
@@ -190,18 +132,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
             disabled={!canRedo}
             title="Redo (Ctrl+Y)"
             size="large"
-            sx={{
-              borderColor: '#d1d5db',
-              color: '#374151',
-              '&:hover': {
-                borderColor: '#9ca3af',
-                backgroundColor: '#f9fafb',
-              },
-              '&:disabled': {
-                borderColor: '#e5e7eb',
-                color: '#9ca3af',
-              }
-            }}
+            className={styles.undoRedoButton}
           >
             Redo
           </Button>
@@ -215,16 +146,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
           onClick={onSave}
           disabled={saveLoading || !hasUnsavedChanges}
           size="large"
-          sx={{
-            backgroundColor: '#10b981',
-            '&:hover': {
-              backgroundColor: '#059669',
-            },
-            '&:disabled': {
-              backgroundColor: '#d1d5db',
-              color: '#9ca3af',
-            }
-          }}
+          className={styles.saveButton}
         >
           {saveLoading ? 'Saving...' : 'Save Changes'}
         </Button>
@@ -236,15 +158,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
           <Alert 
             severity="error" 
             icon={<ErrorIcon />}
-            sx={{ 
-              borderRadius: 2,
-              backgroundColor: '#fef2f2',
-              border: '1px solid #f87171',
-              color: '#991b1b',
-              '& .MuiAlert-icon': {
-                color: '#ef4444'
-              }
-            }}
+            className={styles.errorAlert}
           >
             <Typography variant="h6" sx={{ mb: 1 }}>
               Save Error

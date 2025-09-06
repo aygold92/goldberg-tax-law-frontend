@@ -15,6 +15,8 @@ import { Box, Typography } from '@mui/material';
 import { Warning } from '@mui/icons-material';
 import { BankStatement } from '../types/bankStatement';
 import { calculateStatementSuspiciousReasons } from '../utils/validation';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/SuspiciousReasonsDisplay.module.css';
 
 interface SuspiciousReasonsDisplayProps {
   statement: BankStatement | null;
@@ -33,45 +35,23 @@ const SuspiciousReasonsDisplay: React.FC<SuspiciousReasonsDisplayProps> = ({
   }
 
   return (
-    <Box sx={{ 
-      mb: 3,
-      p: 2,
-      backgroundColor: '#fef3c7',
-      border: '1px solid #f59e0b',
-      borderRadius: 2,
-      borderLeft: '4px solid #f59e0b'
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 1 }}>
-        <Warning sx={{ color: '#92400e', mt: 0.5, flexShrink: 0 }} />
-        <Typography variant="h6" sx={{ color: '#92400e', fontWeight: 600 }}>
+    <Box className={styles.warningContainer}>
+      <Box className={styles.warningHeader}>
+        <Warning className={styles.warningIcon} />
+        <Typography variant="h6" className={styles.warningTitle}>
           Validation Warnings
         </Typography>
       </Box>
       
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 3 }}>
+      <Box className={styles.contentContainer}>
         {/* Calculated Suspicious Reasons */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flex: 1 }}>
+        <Box className={styles.sectionContainer}>
           {calcSuspicious.length > 0 && (
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ color: '#92400e', fontWeight: 500, mb: 1 }}>
+              <Typography variant="body2" className={styles.sectionTitle}>
                 Calculated Issues:
               </Typography>
-              <Box 
-                sx={{ 
-                  maxHeight: '150px', 
-                  overflowY: 'auto', 
-                  '& ul': {
-                    color: '#92400e',
-                    margin: 0,
-                    paddingLeft: '20px',
-                    '& li': {
-                      marginBottom: '4px',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.4
-                    }
-                  }
-                }}
-              >
+              <Box className={styles.reasonsList}>
                 <ul>
                   {calcSuspicious.map((reason, i) => <li key={i}>{reason}</li>)}
                 </ul>
@@ -81,28 +61,13 @@ const SuspiciousReasonsDisplay: React.FC<SuspiciousReasonsDisplayProps> = ({
         </Box>
 
         {/* API Suspicious Reasons */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flex: 1 }}>
+        <Box className={styles.sectionContainer}>
           {apiSuspicious.length > 0 && (
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ color: '#92400e', fontWeight: 500, mb: 1 }}>
+              <Typography variant="body2" className={styles.sectionTitle}>
                 API Issues:
               </Typography>
-              <Box 
-                sx={{ 
-                  maxHeight: '150px', 
-                  overflowY: 'auto', 
-                  '& ul': {
-                    color: '#92400e',
-                    margin: 0,
-                    paddingLeft: '20px',
-                    '& li': {
-                      marginBottom: '4px',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.4
-                    }
-                  }
-                }}
-              >
+              <Box className={styles.reasonsList}>
                 <ul>
                   {apiSuspicious.map((reason, i) => <li key={i}>{reason}</li>)}
                 </ul>

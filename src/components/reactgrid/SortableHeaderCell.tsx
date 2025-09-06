@@ -34,6 +34,7 @@ import { Box, Button, IconButton, Tooltip } from '@mui/material';
 import { KeyboardArrowUp, KeyboardArrowDown, UnfoldMore, FilterList } from '@mui/icons-material';
 import { Cell, CellTemplate, Column, Compatible, Row, Uncertain, UncertainCompatible, getCellProperty } from '@silevis/reactgrid';
 import { SortDirection } from '../ReactGridTable/hooks/useTableSorting';
+import styles from '../../styles/components/SortableHeaderCell.module.css';
 
 // Custom cell type for sortable headers
 export interface SortableHeaderCell extends Cell {
@@ -116,31 +117,21 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
     };
 
     const content = (
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        width: '100%',
-        height: '100%',
-        padding: '0 8px',
-        ...(cell.style || {})
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box 
+        className={styles.headerContainer}
+        style={cell.style as React.CSSProperties || {}}
+      >
+        <Box className={styles.headerLeft}>
           <span>{cell.text}</span>
           <IconButton 
             size="small" 
             onClick={() => cell.onSort(cell.columnId)}
-            sx={{ p: 0.5 }}
+            className={styles.sortButton}
           >
             {getSortIcon()}
           </IconButton>
           {cell.sortOrder > 0 && cell.sortDirection !== SortDirection.NONE && (
-            <Box sx={{ 
-            //   ml: 0.5, 
-              fontSize: '0.75rem', 
-              color: 'text.secondary',
-              fontWeight: 'bold'
-            }}>
+            <Box className={styles.sortOrder}>
               {cell.sortOrder}
             </Box>
           )}
@@ -152,10 +143,7 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
             <IconButton
               size="small"
               onClick={(e) => cell.onFilter!(cell.columnId, e)}
-              sx={{ 
-                p: 0.5,
-                color: cell.hasFilter ? 'primary.main' : 'text.secondary'
-              }}
+              className={`${styles.filterButton} ${cell.hasFilter ? styles.filterButtonActive : styles.filterButtonInactive}`}
             >
               <FilterList fontSize="small" />
             </IconButton>

@@ -1,0 +1,45 @@
+/**
+ * CSS Module for ClientSelector component.
+ */
+
+.container {
+  margin-bottom: 24px;
+}
+
+.errorAlert {
+  margin-bottom: 16px;
+}
+
+.controlsContainer {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.clientLabel {
+  /* Client label styling handled by MUI */
+}
+
+.formControl {
+  min-width: 200px;
+}
+
+.loadingSpinner {
+  /* Loading spinner styling handled by MUI */
+}
+
+.dialogTitle {
+  /* Dialog title styling handled by MUI */
+}
+
+.dialogContent {
+  /* Dialog content styling handled by MUI */
+}
+
+.dialogActions {
+  /* Dialog actions styling handled by MUI */
+}
+
+.textField {
+  /* Text field styling handled by MUI */
+}

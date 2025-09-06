@@ -28,6 +28,8 @@ import { selectSelectedClient } from '../redux/features/client/clientSelectors';
 import { BankStatementKey, BankStatementMetadata } from '../types/api';
 import ClientSelector from '../components/ClientSelector';
 import { ReactGridTableExample } from '../components/ReactGridTable';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/StatementsPage.module.css';
 
 const StatementsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -139,14 +141,7 @@ const StatementsPage: React.FC = () => {
         const hasMissingChecks = missingChecks;
         
         return (
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            gap: 0.5,
-            height: '100%',
-            width: '100%'
-          }}>
+          <Box className={styles.statusCell}>
             {needsAttention ? (
               <Tooltip title="Needs verification">
                 <Error color="error" fontSize="small" />
@@ -185,7 +180,7 @@ const StatementsPage: React.FC = () => {
           <Button
             size="small"
             onClick={() => handleEditStatement(params.row.key)}
-            sx={{ minWidth: 'auto', p: 0.5 }}
+            className={styles.actionButton}
           >
             <Edit fontSize="small" />
           </Button>
@@ -204,7 +199,7 @@ const StatementsPage: React.FC = () => {
       width: 140,
       cellClassName: 'classification-cell',
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box className={styles.classificationCell}>
           {params.row.bankType === 'BANK' ? (
             <AccountBalance fontSize="small" color="primary" />
           ) : params.row.bankType === 'CREDIT_CARD' ? (
@@ -238,13 +233,7 @@ const StatementsPage: React.FC = () => {
         
         return (
           <Box
-            sx={{
-              cursor: 'pointer',
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}
+            className={styles.filenameCell}
             onDoubleClick={(e) => handleFilenameClick(e, params.value)}
           >
             {fullText}
@@ -296,21 +285,21 @@ const StatementsPage: React.FC = () => {
   }));
 
   return (
-    <Box sx={{ width: '100vw', maxWidth: 'none' }}>
+    <Box className={styles.pageContainer}>
       <ClientSelector />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <TableChart sx={{ fontSize: 32, color: 'primary.main' }} />
+      <Box className={styles.headerContainer}>
+        <TableChart className={styles.headerIcon} />
         <Typography variant="h4">View Statements</Typography>
       </Box>
-      <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3, width: '100%' }}>
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+      <Paper className={styles.paperContainer}>
+        <Stack direction="row" spacing={2} className={styles.actionsContainer}>
           <Button
             variant="contained"
             color="error"
             startIcon={<Delete />}
             disabled={selectedKeys.length === 0 || loading}
             onClick={handleDelete}
-            sx={{ borderRadius: 2 }}
+            className={styles.actionButton}
           >
             Delete Selected
           </Button>
@@ -320,14 +309,14 @@ const StatementsPage: React.FC = () => {
             startIcon={<Download />}
             disabled={selectedKeys.length === 0 || spreadsheetLoading}
             onClick={handleCreateSpreadsheet}
-            sx={{ borderRadius: 2 }}
+            className={styles.actionButton}
           >
             Create Spreadsheet
           </Button>
         </Stack>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Box className={styles.loadingContainer}>
             <CircularProgress />
           </Box>
         ) : error ? (
@@ -362,31 +351,9 @@ const StatementsPage: React.FC = () => {
                 showQuickFilter: true,
               },
             }}
-            sx={{
-              width: '100%',
-              '& .MuiDataGrid-root': {
-                border: 'none',
-              },
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #e0e0e0',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#f5f5f5',
-                borderBottom: '2px solid #e0e0e0',
-              },
-              '& .MuiDataGrid-row:hover': {
-                backgroundColor: '#f8f9fa',
-              },
-              '& .MuiDataGrid-row.Mui-selected': {
-                backgroundColor: '#e3f2fd',
-              },
-              '& .MuiDataGrid-row.Mui-selected:hover': {
-                backgroundColor: '#bbdefb',
-              },
-            }}
+            className={styles.dataGrid}
           />
         )}
-        <ReactGridTableExample />
       </Paper>
       
       <Popover
@@ -402,7 +369,7 @@ const StatementsPage: React.FC = () => {
           horizontal: 'left',
         }}
       >
-        <Box sx={{ p: 2, maxWidth: 400 }}>
+        <Box className={styles.popoverContent}>
           <Typography variant="body2" sx={{ mb: 1 }}>
             {filenamePopover.filename}
           </Typography>

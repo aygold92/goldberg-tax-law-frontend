@@ -1,0 +1,134 @@
+/**
+ * CSS Module for EditPageHeader component.
+ */
+
+.headerContainer {
+  margin-bottom: 32px;
+}
+
+.mainHeader {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.headerContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.headerTitle {
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.filenameChip {
+  font-family: monospace;
+  background-color: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.statusIndicators {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.unsavedChip {
+  border-color: #f59e0b;
+  color: #92400e;
+  background-color: #fef3c7;
+  font-weight: 500;
+}
+
+.unsavedChip .MuiChip-icon {
+  color: #f59e0b;
+}
+
+.savingChip {
+  border-color: #3b82f6;
+  color: #1e40af;
+  background-color: #eff6ff;
+  font-weight: 500;
+}
+
+.savingChip .MuiChip-icon {
+  color: #3b82f6;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.undoRedoContainer {
+  display: flex;
+  gap: 8px;
+}
+
+.undoRedoButton {
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.undoRedoButton:hover {
+  border-color: #9ca3af;
+  background-color: #f9fafb;
+}
+
+.undoRedoButton:disabled {
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+.saveButton {
+  background-color: #10b981;
+}
+
+.saveButton:hover {
+  background-color: #059669;
+}
+
+.saveButton:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+}
+
+.errorAlert {
+  border-radius: 8px;
+  background-color: #fef2f2;
+  border: 1px solid #f87171;
+  color: #991b1b;
+}
+
+.errorAlert .MuiAlert-icon {
+  color: #ef4444;
+}

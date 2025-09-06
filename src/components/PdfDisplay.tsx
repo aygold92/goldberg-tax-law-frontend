@@ -14,6 +14,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { BankStatement } from '../types/bankStatement';
 import apiService from '../services/api';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/PdfDisplay.module.css';
 
 interface PdfDisplayProps {
   statement: BankStatement | null;
@@ -83,40 +85,23 @@ const PdfDisplay: React.FC<PdfDisplayProps> = ({
   }, [clientName, accountNumber, classification, date, statement?.pageMetadata.filename]);
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box className={styles.wrapper}>
       {pdfLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+        <Box className={styles.loadingContainer}>
           <CircularProgress />
         </Box>
       )}
       {pdfError && (
-        <Box sx={{ p: 2 }}>
+        <Box className={styles.errorContainer}>
           <Alert severity="error">{pdfError}</Alert>
         </Box>
       )}
       {pdfUrl && (
-        <Box 
-          sx={{ 
-            height: '100%',
-            width: '100%',
-            border: '1px solid #e2e8f0', 
-            background: '#fff',
-            overflow: 'hidden',
-            borderRadius: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1
-          }}
-        >
+        <Box className={styles.pdfContainer}>
           <iframe 
             src={pdfUrl} 
             title="Statement PDF" 
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              border: 'none',
-              flex: 1
-            }} 
+            className={styles.pdfIframe}
           />
         </Box>
       )}

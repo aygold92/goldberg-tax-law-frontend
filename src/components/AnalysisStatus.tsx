@@ -34,6 +34,8 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { CheckCircle, Error, Pending, CloudUpload } from '@mui/icons-material';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/AnalysisStatus.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { 
   selectCurrentStatus, 
@@ -139,7 +141,7 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
 
   if (isPolling && !currentStatus) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <Box className={styles.loadingContainer}>
         <CircularProgress />
       </Box>
     );
@@ -158,14 +160,14 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
   }
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
+    <Box className={styles.container}>
       <Typography variant="h4" gutterBottom>
         Analysis Status
       </Typography>
 
       {/* Overall Status */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+      <Paper className={styles.statusPaper}>
+        <Box className={styles.statusHeader}>
           {getStatusIcon(runtimeStatus || 'Pending')}
           <Typography variant="h6">
             {runtimeStatus || 'Pending'}
@@ -178,18 +180,18 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
         </Box>
 
         {customStatus && (
-          <Box sx={{ mb: 2 }}>
+          <Box className={styles.progressContainer}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
               Stage: {customStatus.stage}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box className={styles.progressRow}>
               <Typography variant="body2">
                 Progress: {customStatus.statementsCompleted} / {customStatus.totalStatements} statements
               </Typography>
               <LinearProgress
                 variant="determinate"
                 value={progress}
-                sx={{ flexGrow: 1 }}
+                className={styles.progressBar}
               />
               <Typography variant="body2">
                 {Math.round(progress)}%
@@ -210,7 +212,7 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
 
       {/* Document Details */}
       {customStatus && Object.keys(customStatus.documents).length > 0 && (
-        <Paper sx={{ p: 3 }}>
+        <Paper className={styles.detailsPaper}>
           <Typography variant="h6" gutterBottom>
             Document Details
           </Typography>
@@ -219,13 +221,13 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
               <Grid item xs={12} md={6} key={filename}>
                 <Card variant="outlined">
                   <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box className={styles.documentHeader}>
                       <CloudUpload />
                       <Typography variant="subtitle2" noWrap>
                         {filename}
                       </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box className={styles.documentFooter}>
                       <Typography variant="body2" color="text.secondary">
                         Statements: {docStatus.statementsCompleted} / {docStatus.numStatements}
                       </Typography>
@@ -245,7 +247,7 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
 
       {/* Error Output */}
       {output?.errorMessage && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert severity="error" className={styles.errorAlert}>
           <Typography variant="subtitle2" gutterBottom>
             Analysis Error:
           </Typography>
@@ -257,7 +259,7 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
 
       {/* Success Output */}
       {output?.result && runtimeStatus === 'Completed' && (
-        <Alert severity="success" sx={{ mt: 2 }}>
+        <Alert severity="success" className={styles.successAlert}>
           <Typography variant="subtitle2" gutterBottom>
             Analysis Complete:
           </Typography>

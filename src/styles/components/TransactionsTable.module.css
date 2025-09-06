@@ -1,0 +1,15 @@
+/**
+ * CSS Module for TransactionsTable component.
+ */
+
+.wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}

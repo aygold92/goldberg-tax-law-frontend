@@ -40,6 +40,8 @@ import {
   Logout,
   Menu as MenuIcon
 } from '@mui/icons-material';
+import { COLORS } from '../styles/constants';
+import styles from '../styles/components/Layout.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectUser, selectAuthLoading } from '../redux/features/auth/authSelectors';
 import { logoutUser } from '../redux/features/auth/authSlice';
@@ -85,33 +87,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box className={styles.mainContainer}>
       <AppBar 
         position="static" 
         elevation={0}
-        sx={{ 
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
-          color: '#1e293b'
-        }}
+        className={styles.appBar}
       >
-        <Toolbar sx={{ px: { xs: 2, md: 3 }, py: 1 }}>
+        <Toolbar className={styles.toolbar}>
           {/* Logo and Title */}
           <Typography 
             variant="h5" 
             component="div" 
-            sx={{ 
-              flexGrow: 1,
-              fontWeight: 700,
-              color: '#1e293b',
-              fontSize: { xs: '1.25rem', md: '1.5rem' }
-            }}
+            className={`${styles.logo} ${styles.logoMobile}`}
           >
             Bank Statement Analyzer
           </Typography>
 
           {/* Desktop Navigation */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, alignItems: 'center' }}>
+          <Box className={styles.desktopNav}>
             {navItems.map((item) => (
               <Button
                 key={item.path}
@@ -119,45 +112,20 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 to={item.path}
                 variant={location.pathname === item.path ? "contained" : "text"}
                 startIcon={item.icon}
-                sx={{
-                  borderRadius: 2,
-                  px: 3,
-                  py: 1,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.875rem',
-                  '&.MuiButton-contained': {
-                    backgroundColor: '#2563eb',
-                    '&:hover': {
-                      backgroundColor: '#1d4ed8',
-                    }
-                  },
-                  '&.MuiButton-text': {
-                    color: '#64748b',
-                    '&:hover': {
-                      backgroundColor: '#f1f5f9',
-                      color: '#1e293b',
-                    }
-                  }
-                }}
+                className={`${styles.navButton} ${location.pathname === item.path ? styles.navButtonContained : styles.navButtonText}`}
               >
                 {item.label}
               </Button>
             ))}
             
             {/* User Menu */}
-            <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box className={styles.userSection}>
               {user?.name && (
                 <Chip
                   label={user.name}
                   size="small"
                   variant="outlined"
-                  sx={{
-                    borderColor: '#d1d5db',
-                    color: '#374151',
-                    fontWeight: 500,
-                    display: { xs: 'none', lg: 'flex' }
-                  }}
+                  className={`${styles.userChip} ${styles.userChipMobile}`}
                 />
               )}
               
@@ -168,24 +136,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 aria-haspopup="true"
                 onClick={handleMenu}
                 disabled={loading}
-                sx={{
-                  color: '#64748b',
-                  '&:hover': {
-                    backgroundColor: '#f1f5f9',
-                    color: '#1e293b',
-                  }
-                }}
+                className={styles.userButton}
               >
                 {user?.name ? (
-                  <Avatar 
-                    sx={{ 
-                      width: 32, 
-                      height: 32, 
-                      fontSize: '0.875rem',
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff'
-                    }}
-                  >
+                  <Avatar className={styles.userAvatar}>
                     {user.name.charAt(0).toUpperCase()}
                   </Avatar>
                 ) : (
@@ -197,14 +151,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {/* Mobile Menu Button */}
           <IconButton
-            sx={{ 
-              display: { xs: 'flex', md: 'none' },
-              color: '#64748b',
-              '&:hover': {
-                backgroundColor: '#f1f5f9',
-                color: '#1e293b',
-              }
-            }}
+            className={styles.mobileMenuButton}
             onClick={handleMobileMenu}
           >
             <MenuIcon />
@@ -218,12 +165,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         open={Boolean(mobileMenuAnchor)}
         onClose={handleMobileMenuClose}
         PaperProps={{
-          sx: {
-            mt: 1,
-            minWidth: 200,
-            borderRadius: 2,
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          }
+          className: styles.mobileMenu
         }}
       >
         {navItems.map((item) => (
@@ -232,27 +174,19 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             component={Link}
             to={item.path}
             onClick={handleMobileMenuClose}
-            sx={{
-              py: 1.5,
-              px: 2,
-              color: location.pathname === item.path ? '#2563eb' : '#374151',
-              backgroundColor: location.pathname === item.path ? '#dbeafe' : 'transparent',
-              '&:hover': {
-                backgroundColor: location.pathname === item.path ? '#bfdbfe' : '#f8fafc',
-              }
-            }}
+            className={`${styles.mobileMenuItem} ${location.pathname === item.path ? styles.mobileMenuItemActive : ''}`}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box className={styles.mobileMenuItemContent}>
               {item.icon}
-              <Typography variant="body2" fontWeight={500}>
+              <Typography variant="body2" className={styles.mobileMenuItemText}>
                 {item.label}
               </Typography>
             </Box>
           </MenuItem>
         ))}
-        <Box sx={{ borderTop: '1px solid #e2e8f0', mt: 1, pt: 1 }}>
+        <Box className={styles.mobileMenuDivider}>
           {user?.name && (
-            <MenuItem disabled sx={{ py: 1, px: 2 }}>
+            <MenuItem disabled className={styles.mobileUserInfo}>
               <Typography variant="body2" color="text.secondary">
                 {user.name}
               </Typography>
@@ -261,18 +195,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <MenuItem 
             onClick={handleLogout} 
             disabled={loading}
-            sx={{ 
-              py: 1.5, 
-              px: 2,
-              color: '#ef4444',
-              '&:hover': {
-                backgroundColor: '#fef2f2',
-              }
-            }}
+            className={styles.mobileLogoutItem}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Logout sx={{ fontSize: '1.25rem' }} />
-              <Typography variant="body2" fontWeight={500}>
+            <Box className={styles.mobileLogoutContent}>
+              <Logout className={styles.mobileLogoutIcon} />
+              <Typography variant="body2" className={styles.mobileLogoutText}>
                 Sign Out
               </Typography>
             </Box>
@@ -296,16 +223,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         open={Boolean(anchorEl)}
         onClose={handleClose}
         PaperProps={{
-          sx: {
-            mt: 1,
-            minWidth: 200,
-            borderRadius: 2,
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          }
+          className: styles.desktopMenu
         }}
       >
         {user?.name && (
-          <MenuItem disabled sx={{ py: 1, px: 2 }}>
+          <MenuItem disabled className={styles.desktopUserInfo}>
             <Typography variant="body2" color="text.secondary">
               {user.name}
             </Typography>
@@ -314,18 +236,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <MenuItem 
           onClick={handleLogout} 
           disabled={loading}
-          sx={{ 
-            py: 1.5, 
-            px: 2,
-            color: '#ef4444',
-            '&:hover': {
-              backgroundColor: '#fef2f2',
-            }
-          }}
+          className={styles.desktopLogoutItem}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Logout sx={{ fontSize: '1.25rem' }} />
-            <Typography variant="body2" fontWeight={500}>
+          <Box className={styles.desktopLogoutContent}>
+            <Logout className={styles.desktopLogoutIcon} />
+            <Typography variant="body2" className={styles.desktopLogoutText}>
               Sign Out
             </Typography>
           </Box>
@@ -335,15 +250,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Main Content */}
       <Box 
         component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          py: 3, 
-          px: { xs: 2, md: 3 },
-          backgroundColor: '#f8fafc',
-          minHeight: 'calc(100vh - 64px)'
-        }}
+        className={styles.mainContent}
       >
-        <Container maxWidth="xl" sx={{ height: '100%' }}>
+        <Container maxWidth="xl" className={styles.contentContainer}>
           {children}
         </Container>
       </Box>
