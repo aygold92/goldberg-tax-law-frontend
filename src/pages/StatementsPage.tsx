@@ -27,6 +27,7 @@ import { fetchStatements, deleteStatements, createSpreadsheet, clearSpreadsheetR
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
 import { BankStatementKey, BankStatementMetadata } from '../types/api';
 import ClientSelector from '../components/ClientSelector';
+import { ReactGridTableExample } from '../components/ReactGridTable';
 
 const StatementsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -385,6 +386,7 @@ const StatementsPage: React.FC = () => {
             }}
           />
         )}
+        <ReactGridTableExample />
       </Paper>
       
       <Popover

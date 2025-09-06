@@ -7,28 +7,38 @@
  * - Suspicious reasons indicators
  * - Action buttons for each transaction
  * 
- * Supports cell editing, sorting, and validation.
+ * Refactored to use ReactGridTable component.
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { Box, IconButton, Tooltip, Typography, ToggleButton, ToggleButtonGroup, Chip } from '@mui/material';
-import { ViewCompact, ViewModule, ViewList, ViewStream, Restore, Warning, Add, TrendingUp, TrendingDown } from '@mui/icons-material';
-import { ReactGrid, Row, CellChange, Id, DefaultCellTypes, DateCell, NumberCell, DropdownCell, TextCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
-import '@silevis/reactgrid/styles.css';
+import React, { useMemo, useState } from 'react';
+import { Box, IconButton, Tooltip } from '@mui/material';
+import { Restore, Warning, Add, TrendingUp, TrendingDown } from '@mui/icons-material';
+import { CellChange, NumberCell, TextCell, DateCell, DropdownCell, MenuOption, SelectionMode, CellLocation, Id } from '@silevis/reactgrid';
 import { BankStatement } from '../types/bankStatement';
-import { SortableHeaderCell, sortableHeaderTemplate, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from './reactgrid/SortableHeaderCell';
 import { calculateTransactionSuspiciousReasons } from '../utils/validation';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { addTransaction, deleteTransaction, duplicateTransaction, invertTransactionAmount, resetTransaction, batchUpdateMultipleTransactions } from '../redux/features/statementEditor/statementEditorSlice';
 import { selectTransactionChanges } from '../redux/features/statementEditor/statementEditorSelectors';
 import { TransactionHistoryRecord } from '../types/bankStatement';
-import { customCellTemplate } from './reactgrid/CustomCell';
 import { GridDeleteIcon } from '@mui/x-data-grid';
 import { FileCopySharp, Iso } from '@mui/icons-material';
-import { GenericFilter, GenericFilterPopover, FilterableColumn, GenericFilterState, GenericFilterCriteria, applyGenericFilters, QuickFilterConfig } from './reactgrid';
+import { ReactGridTable, TableColumn } from './ReactGridTable';
+import { CustomFilterConfig } from './ReactGridTable/filter/FilterTypes';
 
-// Extend the default cell types to include our custom type
-type CellTypes = DefaultCellTypes | SortableHeaderCell;
+// Interface for the transformed transaction data
+interface TransactionTableRow {
+  id: string;                    // transaction ID
+  date: Date | null;             // transaction date
+  description: string;           // transaction description
+  amount: number;                // transaction amount
+  filePageNumber: number | null; // page number
+  checkNumber: number | null;    // check number (for bank statements)
+  checkFilename: string;         // check filename (for bank statements)
+  checkFilePage: number | null;  // check file page (for bank statements)
+  suspiciousReasons: string[];   // suspicious reasons for display
+  isModified: boolean;           // for row styling
+  isNew: boolean;                // for row styling
+}
 
 interface TransactionsTableProps {
   statement: BankStatement | null;
@@ -43,394 +53,266 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const { modified: modifiedTransactions, newItems: newTransactions } = useAppSelector(selectTransactionChanges);
-  const headerStyle = { fontWeight: 'bold', background: '#f5f5f5', color: '#1976d2' };
 
-  // Column width state - self-contained
-  const [columnWidths, setColumnWidths] = useState({
-    suspiciousReasons: 20,
-    date: 110,
-    description: 200,
-    amount: 110,
-    filePageNumber: 80,
-    checkNumber: 90,
-    checkFilename: 120,
-    checkFilePage: 90,
-    actions: 130,
-  });
+  // Transform statement data to TransactionTableRow format
+  const data: TransactionTableRow[] = useMemo(() => {
+    if (!statement) return [];
+    
+    return statement.transactions.map(transaction => ({
+      id: transaction.id,
+      date: transaction.date ? new Date(transaction.date) : null,
+      description: transaction.description || '',
+      amount: transaction.amount || 0,
+      filePageNumber: transaction.filePageNumber || null,
+      checkNumber: transaction.checkNumber || null,
+      checkFilename: transaction.checkDataModel?.description || '',
+      checkFilePage: transaction.checkDataModel?.to ? parseInt(transaction.checkDataModel.to) || null : null,
+      suspiciousReasons: calculateTransactionSuspiciousReasons(transaction, statement),
+      isModified: modifiedTransactions.includes(transaction.id),
+      isNew: newTransactions.includes(transaction.id)
+    }));
+  }, [statement, modifiedTransactions, newTransactions]);
 
-  // Sorting state - self-contained
-  const [sorting, setSorting] = useState<SortCriteria>([]);
-  
-  // Table size state
-  const [tableSize, setTableSize] = useState<'small' | 'medium' | 'large' | 'unbounded'>('medium');
-
-  // Filter state
-  const [filters, setFilters] = useState<GenericFilterState>({
-    searchText: '',
-    advancedFilters: [],
-    quickFilters: {}
-  });
-
-  // Filter popover state
-  const [filterPopover, setFilterPopover] = useState<{
-    anchorEl: HTMLElement | null;
-    columnId: string;
-  } | null>(null);
-
-  // Add row state
-  const [addRowValues, setAddRowValues] = useState({
-    date: null as Date | null,
-    description: null as string | null,
-    amount: null as number | null,
-    filePageNumber: null as number | null,
-    checkNumber: null as number | null,
-    checkFilename: null as string | null,
-    checkFilePage: null as number | null,
-  });
-
-  // Helper function to get row style based on change status
-  const getRowStyle = (transactionId: string) => {
-    if (newTransactions.includes(transactionId)) {
-      return { background: 'rgba(76, 175, 79, 0.1)' }; // Light green for new
-    } else if (modifiedTransactions.includes(transactionId)) {
-      return { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
-    }
-    return {};
-  };
+  // Row styles for new and modified transactions
+  const rowStyle = useMemo(() => {
+    const styles: Record<string, any> = {};
+    
+    // Apply styles to modified transactions
+    modifiedTransactions.forEach(transactionId => {
+      styles[transactionId] = { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
+    });
+    
+    // Apply styles to new transactions (override modified if both)
+    newTransactions.forEach(transactionId => {
+      styles[transactionId] = { background: 'rgba(76, 175, 80, 0.1)' }; // Light green for new
+    });
+    
+    return styles;
+  }, [modifiedTransactions, newTransactions]);
 
   // Helper function to handle reset transaction
   const handleResetTransaction = (transactionId: string) => {
     dispatch(resetTransaction(transactionId));
   };
 
-  // Quick filter configuration
-  const quickFilterConfig: QuickFilterConfig[] = [
+  // Column definitions for ReactGridTable
+  const columns: TableColumn<TransactionTableRow>[] = useMemo(() => {
+    const baseColumns: TableColumn<TransactionTableRow>[] = [
+      {
+        type: 'custom',
+        field: 'id',
+        label: '',
+        columnId: 'suspiciousReasons',
+        width: 20,
+        resizable: false,
+        nonFilterable: true,
+        nonSortable: true,
+        nonSearchable: true,
+        render: (rowId, item) => (
+          <Tooltip title={
+            <div>
+              {item.suspiciousReasons.map((reason, index) => (<div key={index}>* {reason}</div>))}
+            </div>
+          }>
+            <span>{item.suspiciousReasons.length > 0 ? '⚠️' : ''}</span>
+          </Tooltip>
+        )
+      },
+      {
+        field: 'date',
+        type: 'date',
+        label: 'Date',
+        columnId: 'date',
+        width: 110,
+        resizable: true
+      },
+      {
+        field: 'description',
+        type: 'text',
+        label: 'Description',
+        columnId: 'description',
+        width: 200,
+        resizable: true
+      },
+      {
+        field: 'amount',
+        type: 'number',
+        label: 'Amount',
+        columnId: 'amount',
+        width: 110,
+        resizable: true
+      },
+      {
+        field: 'filePageNumber',
+        type: 'number',
+        label: 'Page #',
+        columnId: 'filePageNumber',
+        width: 80,
+        resizable: true
+      }
+    ];
+
+    // Add check columns for bank statements (not credit cards)
+    if (!isCreditCard) {
+      baseColumns.push(
+        {
+          field: 'checkNumber',
+          type: 'number',
+          label: 'Check #',
+          columnId: 'checkNumber',
+          width: 90,
+          resizable: true
+        },
+        {
+          field: 'checkFilename',
+          type: 'text',
+          label: 'Check File',
+          columnId: 'checkFilename',
+          width: 120,
+          resizable: true
+        },
+        {
+          field: 'checkFilePage',
+          type: 'number',
+          label: 'Check Pg',
+          columnId: 'checkFilePage',
+          width: 90,
+          resizable: true
+        }
+      );
+    }
+
+    // Add actions column
+    baseColumns.push({
+      type: 'custom',
+      field: 'id',
+      label: '',
+      columnId: 'actions',
+      width: 130,
+      resizable: false,
+      nonFilterable: true,
+      nonSortable: true,
+      nonSearchable: true,
+      render: (rowId, item) => (
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+          {item.isModified && (
+            <Tooltip title='Reset Transaction'>
+              <IconButton size="small" onClick={() => handleResetTransaction(item.id)}>
+                <Restore />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title='Invert Transaction'>
+            <IconButton size="small" onClick={() => handleInvertTransaction(item.id)}>
+              <Iso />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title='Duplicate Transaction'>
+            <IconButton size="small" onClick={() => handleDuplicateTransaction(item.id)}>
+              <FileCopySharp />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title='Delete Transaction'>
+            <IconButton size="small" onClick={() => handleDeleteTransaction(item.id)} color='error'>
+              <GridDeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )
+    });
+
+    return baseColumns;
+  }, [isCreditCard]);
+
+  // Custom filter configurations
+  const customFilters: CustomFilterConfig<TransactionTableRow>[] = [
     {
       key: 'suspicious',
+      label: 'Suspicious',
+      filterFunction: (transaction) => transaction.suspiciousReasons.length > 0,
       icon: <Warning />,
       color: 'warning',
-      tooltip: 'Show suspicious transactions',
-      filterFunction: (rowId) => {
-        const transaction = statement?.transactions.find(t => t.id === rowId);
-        if (!transaction) return false;
-        const reasons = calculateTransactionSuspiciousReasons(transaction, statement!);
-        return reasons.length > 0;
-      }
+      tooltip: 'Show suspicious transactions'
     },
     {
       key: 'new',
+      label: 'New',
+      filterFunction: (transaction) => transaction.isNew,
       icon: <Add />,
       color: 'primary',
-      tooltip: 'Show new transactions',
-      filterFunction: (rowId) => {
-        const transaction = statement?.transactions.find(t => t.id === rowId);
-        return newTransactions.includes(transaction?.id || '');
-      }
+      tooltip: 'Show new transactions'
     },
     {
       key: 'income',
+      label: 'Income',
+      filterFunction: (transaction) => transaction.amount > 0,
       icon: <TrendingUp />,
       color: 'success',
-      tooltip: 'Show income transactions',
-      filterFunction: (rowId) => {
-        const transaction = statement?.transactions.find(t => t.id === rowId);
-        return (transaction?.amount || 0) > 0;
-      }
+      tooltip: 'Show income transactions'
     },
     {
       key: 'expenses',
+      label: 'Expenses',
+      filterFunction: (transaction) => transaction.amount < 0,
       icon: <TrendingDown />,
       color: 'error',
-      tooltip: 'Show expense transactions',
-      filterFunction: (rowId) => {
-        const transaction = statement?.transactions.find(t => t.id === rowId);
-        return (transaction?.amount || 0) < 0;
-      }
+      tooltip: 'Show expense transactions'
     }
   ];
 
-  // Filter handlers
-  const handleFilterClick = (columnId: string, event: React.MouseEvent) => {
-    setFilterPopover({
-      anchorEl: event.currentTarget as HTMLElement,
-      columnId
-    });
-  };
 
-  const handleApplyFilter = (filter: GenericFilterCriteria | null) => {
-    if (filter) {
-      // Remove existing filter for this column
-      const existingFilters = filters.advancedFilters.filter(f => f.columnId !== filter.columnId);
-      // Add new filter
-      setFilters(prev => ({
-        ...prev,
-        advancedFilters: [...existingFilters, filter]
-      }));
-    } else {
-      // Remove filter for this column
-      setFilters(prev => ({
-        ...prev,
-        advancedFilters: prev.advancedFilters.filter(f => f.columnId !== filterPopover?.columnId)
-      }));
+  // Handle row add for ReactGridTable
+  const handleRowAdd = (row: Partial<TransactionTableRow>) => {
+    if (statement) {
+      // Create a new transaction with default values
+      const newTransaction: TransactionHistoryRecord = {
+        id: `new-${Date.now()}`, // Generate a unique ID
+        date: row.date ? row.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        description: row.description || 'New Transaction',
+        amount: row.amount || 0,
+        filePageNumber: row.filePageNumber || 1,
+        checkNumber: row.checkNumber || undefined,
+        checkDataModel: row.checkFilename || row.checkFilePage ? {
+          accountNumber: '',
+          checkNumber: row.checkNumber || 0,
+          date: row.date ? row.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          amount: row.amount || 0,
+          description: row.checkFilename || '',
+          to: row.checkFilePage?.toString() || ''
+        } : undefined
+      };
+      dispatch(addTransaction(newTransaction));
     }
   };
 
-  const handleCloseFilterPopover = () => {
-    setFilterPopover(null);
+  // Handle transaction actions
+  const handleDuplicateTransaction = (transactionId: Id) => {
+    dispatch(duplicateTransaction(String(transactionId)));
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-        event.preventDefault();
-        // Focus the search input - we'll need to add a ref to the search input
-        const searchInput = document.querySelector('input[placeholder*="Search transactions"]') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-          searchInput.select();
-        }
-      }
-    };
+  const handleDeleteTransaction = (transactionId: Id) => {
+    dispatch(deleteTransaction(String(transactionId)));
+  };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  const handleInvertTransaction = (transactionId: Id) => {
+    dispatch(invertTransactionAmount(String(transactionId)));
+  };
 
-  const columns: FilterableColumn[] = useMemo(() => {
-    const baseCols: FilterableColumn[] = [
-      {
-        columnId: 'suspiciousReasons',
-        width: columnWidths.suspiciousReasons,
-        resizable: false,
-        reorderable: false,
-        filterable: false, // No filtering for this column
-        nonSearchable: true, // Not included in search
-      },
-      { 
-        columnId: 'date', 
-        width: columnWidths.date, 
-        resizable: true,
-        filterable: true,
-        filterType: 'date',
-        filterLabel: 'Date',
-        nonSearchable: false, // Include in search
-      },
-      { 
-        columnId: 'description', 
-        width: columnWidths.description, 
-        resizable: true,
-        filterable: true,
-        filterType: 'text',
-        filterLabel: 'Description',
-        nonSearchable: false, // Include in search
-      },
-      { 
-        columnId: 'amount', 
-        width: columnWidths.amount, 
-        resizable: true,
-        filterable: true,
-        filterType: 'number',
-        filterLabel: 'Amount',
-        nonSearchable: false, // Include in search
-      },
-      { 
-        columnId: 'filePageNumber', 
-        width: columnWidths.filePageNumber, 
-        resizable: true,
-        filterable: true,
-        filterType: 'number',
-        filterLabel: 'Page #',
-        nonSearchable: false, // Include in search
-      },
-    ];
-    if (!isCreditCard) { // Only show check columns for BANK type
-      baseCols.push(
-        { 
-          columnId: 'checkNumber', 
-          width: columnWidths.checkNumber, 
-          resizable: true,
-          filterable: true,
-          filterType: 'number',
-          filterLabel: 'Check #',
-          nonSearchable: false, // Include in search
-        },
-        { 
-          columnId: 'checkFilename', 
-          width: columnWidths.checkFilename, 
-          resizable: true,
-          filterable: true,
-          filterType: 'text',
-          filterLabel: 'Check File',
-          nonSearchable: false, // Include in search
-        },
-        { 
-          columnId: 'checkFilePage', 
-          width: columnWidths.checkFilePage, 
-          resizable: true,
-          filterable: true,
-          filterType: 'number',
-          filterLabel: 'Check Pg',
-          nonSearchable: false, // Include in search
-        },
-      );
+  const handleAddTransaction = () => {
+    if (statement) {
+      const newTransaction: TransactionHistoryRecord = {
+        id: crypto.randomUUID(),
+        date: null,
+        description: null,
+        amount: null,
+        filePageNumber: null,
+        checkNumber: null,
+        checkDataModel: null,
+        suspiciousReasons: [],
+      };
+      dispatch(addTransaction(newTransaction));
     }
-    baseCols.push({
-      columnId: 'actions',
-      width: columnWidths.actions,
-      resizable: false,
-      reorderable: false,
-      filterable: false, // No filtering for this column
-      nonSearchable: true, // Not included in search
-    });
-    return baseCols;
-  }, [columnWidths, isCreditCard]);
-
-  // Create header row
-  const headerRow = useMemo(() => {
-    const setSortingWrapper = (newSorting: SortCriteria | ((prev: SortCriteria) => SortCriteria)) => {
-      if (typeof newSorting === 'function') {
-        setSorting(newSorting(sorting));
-      } else {
-        setSorting(newSorting);
-      }
-    };
-
-    const headerCells: any[] = [
-      { columnId: 'suspiciousReasons', type: 'header' as const, text: '', nonEditable: true }, // suspiciousReasons - no header
-      { columnId: 'date', type: 'sortableHeader' as const, text: `Date`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('date', sorting), sortOrder: getSortOrderForColumn('date', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'date'), filterable: true },
-      { columnId: 'description', type: 'sortableHeader' as const, text: `Description`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('description', sorting), sortOrder: getSortOrderForColumn('description', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'description'), filterable: true },
-      { columnId: 'amount', type: 'sortableHeader' as const, text: `Amount`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('amount', sorting), sortOrder: getSortOrderForColumn('amount', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'amount'), filterable: true },
-      { columnId: 'filePageNumber', type: 'sortableHeader' as const, text: `Page #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('filePageNumber', sorting), sortOrder: getSortOrderForColumn('filePageNumber', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'filePageNumber'), filterable: true },
-    ];
-    if (!isCreditCard) { // Only show check columns for BANK type
-      headerCells.push(
-        { columnId: 'checkNumber', type: 'sortableHeader' as const, text: `Check #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkNumber', sorting), sortOrder: getSortOrderForColumn('checkNumber', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkNumber'), filterable: true },
-        { columnId: 'checkFilename', type: 'sortableHeader' as const, text: `Check File`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkFilename', sorting), sortOrder: getSortOrderForColumn('checkFilename', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkFilename'), filterable: true },
-        { columnId: 'checkFilePage', type: 'sortableHeader' as const, text: `Check Pg`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), sortDirection: getSortDirectionForColumn('checkFilePage', sorting), sortOrder: getSortOrderForColumn('checkFilePage', sorting), onFilter: handleFilterClick, hasFilter: filters.advancedFilters.some(f => f.columnId === 'checkFilePage'), filterable: true },
-      );
-    }
-    headerCells.push({ type: 'header' as const, text: '' }); // actions - no header
-    
-    return { rowId: 'header', cells: headerCells };
-  }, [sorting, filters, isCreditCard]);
-
-  // Create data rows from transactions
-  const dataRows = useMemo(() => {
-    if (!statement) return [];
-    
-    return statement.transactions.map((txn) => {
-      const suspiciousReasons = calculateTransactionSuspiciousReasons(txn, statement);
-      const cells: CellTypes[] = [
-        {
-          type: 'text' as const, text: suspiciousReasons.length > 0 ? '⚠️' : '', nonEditable: true,
-          renderer: (text: string) => (
-              <Tooltip title={
-                <div>
-                  {suspiciousReasons.map((reason, index) => (<div key={index}>* {reason}</div>))}
-                </div>
-              }>
-                  <span>{text}</span>
-              </Tooltip>
-          ),
-        },
-        { type: 'date' as const, date: txn.date ? new Date(txn.date) : undefined },
-        { type: 'text' as const, text: txn.description || '' },
-        { type: 'number' as const, value: txn.amount?.toString() ? txn.amount : NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) },
-        { type: 'number' as const, value: txn.filePageNumber || NaN, validator: (value: number) => value > 0 },
-        ...(isCreditCard ? [] : [
-              { type: 'number' as const, value: txn.checkNumber || NaN, validator: (value: number) => value > 0 },
-              { type: 'text' as const, text: txn.checkDataModel?.description || '' },
-              { type: 'text' as const, text: txn.checkDataModel?.to || '' },
-            ]
-          ),
-        {
-          type: 'text' as const, text: txn.id, nonEditable: true,
-          renderer: (id: string) => (
-            <div style={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-              {modifiedTransactions.includes(id) && (
-                <Tooltip title='Reset Transaction'>
-                  <IconButton style={{ cursor: 'pointer' }} onClick={() => handleResetTransaction(id)}>
-                    <Restore />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Tooltip title='Invert Transaction'>
-                <IconButton style={{ cursor: 'pointer' }} onClick={() => handleInvertTransaction(id)}>
-                  <Iso />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title='Duplicate Transaction'>
-                <IconButton style={{ cursor: 'pointer' }} onClick={() => handleDuplicateTransaction(id)}>
-                  <FileCopySharp />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title='Delete Transaction'>
-                <IconButton style={{ cursor: 'pointer' }} onClick={() => handleDeleteTransaction(id)} color='error'>
-                  <GridDeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </div>
-          ),
-        },
-      ];
-      return { rowId: txn.id, cells: cells.map(c => ({...c, style: getRowStyle(txn.id)})) };
-    });
-  }, [statement, isCreditCard, modifiedTransactions]);
-
-  // Create add row
-  const addRow = useMemo(() => {
-    const addRowCells: CellTypes[] = [
-      { type: 'text' as const, text: '', nonEditable: true },
-      { type: 'date' as const, date: addRowValues.date || undefined },
-      { type: 'text' as const, text: addRowValues.description || '' },
-      { type: 'number' as const, value: addRowValues.amount || NaN, format: Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) },
-      { type: 'number' as const, value: addRowValues.filePageNumber || NaN, validator: (value: number) => value > 0 },
-      ...(!isCreditCard
-        ? [
-            { type: 'number' as const, value: addRowValues.checkNumber || NaN, validator: (value: number) => value > 0 },
-            { type: 'text' as const, text: addRowValues.checkFilename || '' },
-            { type: 'date' as const, date: addRowValues.checkFilePage ? new Date(addRowValues.checkFilePage.toString()) : undefined },
-          ]
-        : []
-      ),
-      {
-        type: 'text' as const,
-        text: '',
-        renderer: () => (
-          <Tooltip title='Add Transaction'>
-            <IconButton size="small" onClick={handleAddTransaction}>
-              <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1 }}>+</Typography>
-            </IconButton>
-          </Tooltip>
-        ),
-        nonEditable: true,
-      }
-    ];
-    
-    return { rowId: 'add-row', cells: addRowCells };
-  }, [addRowValues, isCreditCard]);
-
-  // Apply row-based filtering to data rows only
-  const filteredDataRows = useMemo(() => {
-    if (!statement) return [];
-    return applyGenericFilters(
-      dataRows,
-      filters,
-      columns,
-      quickFilterConfig
-    );
-  }, [dataRows, filters, columns, quickFilterConfig]);
-
-  // Apply sorting to filtered data rows only
-  const sortedDataRows = useMemo(() => {
-    return sortRows(filteredDataRows, sorting, columns);
-  }, [filteredDataRows, sorting, columns]);
-
-  // Combine header, sorted data rows, and add row (add row always at bottom)
-  const finalRows = useMemo(() => {
-    return [headerRow, ...sortedDataRows, addRow];
-  }, [headerRow, sortedDataRows, addRow]);
+  };
 
   // a change is a delete if all previous values are empty and all new values are empty
   const shouldDeleteTransactions = (changes: CellChange[]): boolean => {
@@ -463,7 +345,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     const editableColumnsCount = isCreditCard ? 4 : 7;
     const uniqueRowIds = Array.from(new Set(changes.map(change => change.rowId)));
     const isEntireRowOperation = uniqueRowIds.some(rowId => {
-      if (rowId === 'add-row' || rowId === 'header') return false;
+      if (rowId === 'header') return false;
       
       // Count how many cells are being changed for this row
       const changesForThisRow = changes.filter(change => change.rowId === rowId);
@@ -473,17 +355,15 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     });
     if (!isEntireRowOperation) return false;
 
-    return true
-  }
+    return true;
+  };
 
   // Handle cell changes for transactions
   const handleCellsChanged = (changes: CellChange[]) => {
     if (shouldDeleteTransactions(changes)) {
       const rowIdsToDelete = Array.from(new Set(changes.map(change => change.rowId)));
       rowIdsToDelete.forEach(rowId => {
-        if (rowId !== 'add-row') {
-          dispatch(deleteTransaction(String(rowId)));
-        }
+        dispatch(deleteTransaction(String(rowId)));
       });
       return;
     }
@@ -492,24 +372,10 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     const groupedChanges: { [key: string]: CellChange[] } = {};
     changes.forEach(change => {
       const rowId = change.rowId;
-      if (rowId === 'add-row') {
-        // Track add row values instead of automatically adding
-        const { columnId, newCell } = change;
-        console.log('Add row change detected:', columnId, newCell);
-        if (change.type === 'date') {
-          setAddRowValues(prev => ({ ...prev, [columnId]: (newCell as DateCell).date || null }));
-        } else if (change.type === 'text') {
-          setAddRowValues(prev => ({ ...prev, [columnId]: (newCell as TextCell).text }));
-        } else if (change.type === 'number') {
-          setAddRowValues(prev => ({ ...prev, [columnId]: Number.isNaN((newCell as NumberCell).value) ? null : (newCell as NumberCell).value }));
-        } 
-        return; // Skip add row changes
-      } else {
-        if (!groupedChanges[rowId]) {
-          groupedChanges[rowId] = [];
-        }
-        groupedChanges[rowId].push(change); 
+      if (!groupedChanges[rowId]) {
+        groupedChanges[rowId] = [];
       }
+      groupedChanges[rowId].push(change); 
     });
 
     // Process all changes as a single batch operation
@@ -539,58 +405,9 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     if (allUpdates.length > 0) {
       dispatch(batchUpdateMultipleTransactions(allUpdates));
     }
-  };  
-
-        
-
-  // Handle transaction actions
-  const handleDuplicateTransaction = (transactionId: Id) => {
-    dispatch(duplicateTransaction(String(transactionId)));
   };
 
-  const handleDeleteTransaction = (transactionId: Id) => {
-    dispatch(deleteTransaction(String(transactionId)));
-  };
-
-  const handleInvertTransaction = (transactionId: Id) => {
-    dispatch(invertTransactionAmount(String(transactionId)));
-  };
-
-  const handleAddTransaction = () => {
-    if (statement) {
-      const newTransaction: TransactionHistoryRecord = {
-        id: crypto.randomUUID(),
-        date: addRowValues.date ? addRowValues.date.toLocaleDateString() : null,
-        description: addRowValues.description || null,
-        amount: addRowValues.amount,
-        filePageNumber: addRowValues.filePageNumber,
-        checkNumber: addRowValues.checkNumber,
-        checkDataModel: addRowValues.checkFilename || addRowValues.checkFilePage ? {
-          accountNumber: '',
-          checkNumber: addRowValues.checkNumber || 0,
-          to: '',
-          description: addRowValues.checkFilename || '',
-          date: addRowValues.checkFilePage ? String(addRowValues.checkFilePage) : '',
-          amount: 0,
-        } : null,
-        suspiciousReasons: [],
-      };
-      dispatch(addTransaction(newTransaction));
-      
-      // Clear add row values
-      setAddRowValues({
-        date: null,
-        description: null,
-        amount: null,
-        filePageNumber: null,
-        checkNumber: null,
-        checkFilename: null,
-        checkFilePage: null,
-      });
-    }
-  };
-
-  // Context menu handler
+  // Handle context menu for ReactGridTable
   const handleContextMenu = (
     selectedRowIds: Id[],
     selectedColIds: Id[],
@@ -638,148 +455,23 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     return menuOptions;
   };
 
-  // Handle column resize - self-contained
-  const handleColumnResized = (columnId: Id, width: number, selectedColIds: Id[]) => {
-    setColumnWidths(prev => ({ ...prev, [String(columnId)]: width }));
-  };
-
-  // Handle table size change
-  const handleTableSizeChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newSize: 'small' | 'medium' | 'large' | 'unbounded' | null,
-  ) => {
-    if (newSize !== null) {
-      setTableSize(newSize);
-    }
-  };
-
-  // Calculate table height based on size
-  const getTableHeight = () => {
-    if (tableSize === 'unbounded') return 'auto';
-    if (isSideBySide) {
-      switch (tableSize) {
-        case 'small': return '400px';
-        case 'medium': return '600px';
-        case 'large': return '800px';
-        default: return '600px';
-      }
-    } else {
-      switch (tableSize) {
-        case 'small': return '300px';
-        case 'medium': return '500px';
-        case 'large': return '700px';
-        default: return '500px';
-      }
-    }
-  };
-
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header with Filter */}
-      <Box sx={{ mb: 2 }}>
-        <GenericFilter
-          filters={filters}
-          onFiltersChange={setFilters}
-          totalCount={statement?.transactions.length || 0}
-          filteredCount={finalRows.length - 2} // Subtract header and add row
-          columns={columns}
-          quickFilters={quickFilterConfig}
-          searchPlaceholder="Search transactions..."
-        />
-      </Box>
-      
-      {/* Table Controls */}
-      <Box sx={{ 
-        mb: 2, 
-        display: 'flex', 
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 2
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Chip 
-            label={`${finalRows.length - 2} of ${statement?.transactions.length || 0} transactions`}
-            size="small"
-            color="primary"
-            variant="outlined"
-            sx={{
-              borderColor: '#d1d5db',
-              color: '#374151',
-              fontWeight: 500,
-              backgroundColor: '#f8fafc'
-            }}
-          />
-        </Box>
-        
-        <ToggleButtonGroup
-          value={tableSize}
-          exclusive
-          onChange={handleTableSizeChange}
-          aria-label="table size"
-          size="small"
-        >
-          <ToggleButton value="small" aria-label="small">
-            <ViewCompact />
-          </ToggleButton>
-          <ToggleButton value="medium" aria-label="medium">
-            <ViewModule />
-          </ToggleButton>
-          <ToggleButton value="large" aria-label="large">
-            <ViewList />
-          </ToggleButton>
-          <ToggleButton value="unbounded" aria-label="unbounded">
-            <ViewStream />
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-      
-      {/* Table Container */}
-      <Box sx={{ 
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0, // Important for flex child
-        border: '1px solid #e2e8f0',
-        borderRadius: 2,
-        backgroundColor: '#ffffff',
-        height: tableSize === 'unbounded' ? 'auto' : getTableHeight()
-      }}>
-        <Box sx={{ 
-          flex: 1,
-          overflow: 'auto',
-          minHeight: 0 // Important for flex child
-        }}>
-          <ReactGrid 
-            columns={columns} 
-            rows={finalRows} 
-            onColumnResized={handleColumnResized}
-            onCellsChanged={handleCellsChanged}
-            onContextMenu={handleContextMenu}
-            customCellTemplates={{ sortableHeader: sortableHeaderTemplate, custom: customCellTemplate }}
-            enableRangeSelection
-            enableRowSelection
-            enableFillHandle
-          />
-        </Box>
-      </Box>
-      
-      {/* Filter Popover */}
-      {filterPopover && (() => {
-        const column = columns.find(col => col.columnId === filterPopover.columnId);
-        if (!column) return null;
-        
-                 return (
-           <GenericFilterPopover
-             anchorEl={filterPopover.anchorEl}
-             onClose={handleCloseFilterPopover}
-             column={column}
-             currentFilter={filters.advancedFilters.find(f => f.columnId === filterPopover.columnId) || null}
-             onApplyFilter={handleApplyFilter}
-           />
-         );
-      })()}
+      <ReactGridTable
+        columns={columns}
+        data={data}
+        handleRowAdd={handleRowAdd}
+        onCellsChanged={handleCellsChanged}
+        onContextMenu={handleContextMenu}
+        enableRangeSelection
+        enableRowSelection
+        enableFillHandle
+        initialTableSize="large"
+        customFilters={customFilters}
+        rowStyle={rowStyle}
+      />
     </Box>
   );
 };
 
-export default TransactionsTable; 
+export default TransactionsTable;

@@ -1,18 +1,18 @@
 /**
- * TransactionFilterPopover component for advanced filtering.
+ * FilterDisplayPopover component for table column filtering.
  * 
- * This component provides a popover interface for setting advanced filters on transaction columns:
- * - Dropdown for comparison operators (equals, not equals, greater than, less than, null)
+ * This component provides a popover interface for setting table column filters on any column:
+ * - Dropdown for comparison operators (based on column filter type)
  * - Input field for filter values (with type-specific handling)
  * - OK/Cancel buttons with keyboard support
  * - Clear filter functionality
  * 
- * Used by the TransactionsTable component for column-specific filtering.
+ * Used by any ReactGrid component for column-specific filtering.
  * 
  * Dependencies:
  * - @mui/material for UI components
  * - @mui/icons-material for icons
- * - filterUtils for filter logic
+ * - GenericFilterUtils for filter logic
  */
 
 import React, { useState, useEffect } from 'react';
@@ -30,25 +30,32 @@ import {
   Stack
 } from '@mui/material';
 import { Close } from '@mui/icons-material';
-import { FilterCriteria, getComparisonDisplayText, getComparisonOperators, getColumnInputType } from '../utils/filterUtils';
+import { 
+  FilterCriteria, 
 
-interface TransactionFilterPopoverProps {
+} from './FilterTypes';
+import { 
+  getComparisonDisplayText, 
+  getColumnFilterOptions,
+  convertFilterValue
+} from './filterOperations';
+import { CompatibleData, TableColumn } from '../types';
+
+interface ColumnFilterPopoverProps<T extends CompatibleData> {
   anchorEl: HTMLElement | null;
   onClose: () => void;
-  columnId: string;
-  columnName: string;
+  column: TableColumn<T>;
   currentFilter: FilterCriteria | null;
   onApplyFilter: (filter: FilterCriteria | null) => void;
 }
 
-const TransactionFilterPopover: React.FC<TransactionFilterPopoverProps> = ({
+const ColumnFilterPopover = <T extends CompatibleData>({
   anchorEl,
   onClose,
-  columnId,
-  columnName,
+  column,
   currentFilter,
   onApplyFilter
-}) => {
+}: ColumnFilterPopoverProps<T>): React.ReactElement => {
   const [comparison, setComparison] = useState<FilterCriteria['comparison']>(
     currentFilter?.comparison || 'equals'
   );
@@ -56,8 +63,9 @@ const TransactionFilterPopover: React.FC<TransactionFilterPopoverProps> = ({
     currentFilter?.value?.toString() || ''
   );
 
-  const inputType = getColumnInputType(columnId);
-  const comparisonOperators = getComparisonOperators(columnId);
+  const filterType = column.type || 'text';
+  const comparisonOperators = getColumnFilterOptions(filterType);
+  const inputType = filterType === 'number' ? 'number' : filterType === 'date' ? 'date' : 'text';
   const open = Boolean(anchorEl);
 
   // Reset form when popover opens
@@ -69,10 +77,11 @@ const TransactionFilterPopover: React.FC<TransactionFilterPopoverProps> = ({
   }, [open, currentFilter]);
 
   const handleApply = () => {
+    const convertedValue = convertFilterValue(value, filterType);
     const filter: FilterCriteria = {
-      columnId,
+      columnId: String(column.columnId),
       comparison,
-      value: comparison === 'null' ? undefined : value
+      value: comparison === 'null' ? undefined : convertedValue
     };
     onApplyFilter(filter);
     onClose();
@@ -112,7 +121,7 @@ const TransactionFilterPopover: React.FC<TransactionFilterPopoverProps> = ({
     >
       <Box onKeyDown={handleKeyDown}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography variant="h6">Filter {columnName}</Typography>
+          <Typography variant="h6">Filter {column.label || column.columnId}</Typography>
           <IconButton size="small" onClick={onClose}>
             <Close />
           </IconButton>
@@ -142,7 +151,7 @@ const TransactionFilterPopover: React.FC<TransactionFilterPopoverProps> = ({
               type={inputType}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={`Enter ${columnName.toLowerCase()}...`}
+              placeholder={`Enter ${(column.label || String(column.columnId)).toLowerCase()}...`}
             />
           )}
 
@@ -169,4 +178,4 @@ const TransactionFilterPopover: React.FC<TransactionFilterPopoverProps> = ({
   );
 };
 
-export default TransactionFilterPopover; 
+export default ColumnFilterPopover;

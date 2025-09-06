@@ -5,22 +5,28 @@
  * - Page numbers from the statement
  * - Associated bates stamps for each page
  * 
- * Supports column sorting and resizing.
+ * Supports column sorting, filtering, and resizing.
+ * Refactored to use the new ReactGridTable component.
  */
 
-import React, { useMemo, useState } from 'react';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import React, { useMemo } from 'react';
+import { Box, IconButton, Tooltip } from '@mui/material';
 import { Restore, Delete } from '@mui/icons-material';
-import { ReactGrid, Column, Row, CellChange, Id, DefaultCellTypes, TextCell, NumberCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
-import '@silevis/reactgrid/styles.css';
+import { CellChange, TextCell, NumberCell, MenuOption, SelectionMode, CellLocation } from '@silevis/reactgrid';
 import { BankStatement } from '../types/bankStatement';
-import { SortableHeaderCell, sortableHeaderTemplate, handleSort, sortRows, SortCriteria, getSortDirectionForColumn, getSortOrderForColumn } from './reactgrid/SortableHeaderCell';
+import { ReactGridTable, TableColumn } from './ReactGridTable';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { updateStatementField, resetPage, batchUpdatePages, addPage, deletePage } from '../redux/features/statementEditor/statementEditorSlice';
 import { selectPageChanges } from '../redux/features/statementEditor/statementEditorSelectors';
 
-// Extend the default cell types to include our custom type
-type CustomCellTypes = DefaultCellTypes | SortableHeaderCell;
+// Interface for the transformed page data
+interface PageTableRow {
+  id: string;           // page number as string (for rowId)
+  pageNumber: number;   // page number
+  batesStamp: string;   // bates stamp text
+  isModified: boolean;  // for row styling
+  isNew: boolean;       // for row styling
+}
 
 interface PagesTableProps {
   statement: BankStatement | null;
@@ -31,60 +37,103 @@ const PagesTable: React.FC<PagesTableProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const { modified: modifiedPages, newItems: newPages } = useAppSelector(selectPageChanges);
-  const headerStyle = { fontWeight: 'bold', background: '#f5f5f5', color: '#1976d2' };
 
-  // Column width state - self-contained
-  const [columnWidths, setColumnWidths] = useState({ filePageNumber: 100, batesStamp: 150, actions: 50 });
-  
-  // Sorting state - self-contained
-  const [sorting, setSorting] = useState<SortCriteria>([]);
-
-  // Add row state
-  const [addRowValues, setAddRowValues] = useState({
-    pageNumber: null as number | null,
-    batesStamp: '',
-  });
-
-  const columns: Column[] = [
-    { columnId: 'filePageNumber', width: columnWidths.filePageNumber, resizable: true },
-    { columnId: 'batesStamp', width: columnWidths.batesStamp, resizable: true },
-    { columnId: 'actions', width: columnWidths.actions, resizable: false },
+  // Column definitions for ReactGridTable
+  const columns: TableColumn<PageTableRow>[] = [
+    {
+      field: 'pageNumber',
+      type: 'number',
+      label: 'Page #',
+      columnId: 'pageNumber',
+      width: 100,
+      resizable: true,
+      nonFilterable: true,
+    },
+    {
+      field: 'batesStamp', 
+      type: 'text',
+      label: 'Bates Stamp',
+      columnId: 'batesStamp',
+      width: 250,
+      resizable: true,
+      nonFilterable: true,
+    },
+    {
+      type: 'custom',
+      field: 'id',
+      label: '',
+      columnId: 'actions',
+      width: 75,
+      resizable: false,
+      nonFilterable: true,
+      nonSortable: true,
+      render: (rowId, item, rowIndex) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          {item.isModified && (
+            <Tooltip title='Reset Page'>
+              <IconButton size="small" onClick={() => handleResetPage(item.pageNumber)}>
+                <Restore />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title='Delete Page'>
+            <IconButton size="small" onClick={() => handleDeletePage(item.pageNumber)}>
+              <Delete />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )
+    }
   ];
 
-  // Helper function to get row style based on change status
-  const getRowStyle = (pageNumber: number) => {
-    if (newPages.includes(pageNumber)) {
-      return { background: 'rgba(76, 175, 80, 0.1)' }; // Light green for new
-    } else if (modifiedPages.includes(pageNumber)) {
-      return { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
-    }
-    return {};
-  };
+  // Transform statement data to PageTableRow format
+  const data: PageTableRow[] = useMemo(() => {
+    if (!statement) return [];
+    
+    return statement.pageMetadata.pages.map(page => ({
+      id: String(page),
+      pageNumber: page,
+      batesStamp: statement.batesStamps[page] || '',
+      isModified: modifiedPages.includes(page),
+      isNew: newPages.includes(page)
+    }));
+  }, [statement, modifiedPages, newPages]);
+
+  // Row styles for new and modified pages
+  const rowStyle = useMemo(() => {
+    const styles: Record<string, any> = {};
+    
+    // Apply styles to modified pages
+    modifiedPages.forEach(page => {
+      styles[String(page)] = { background: 'rgba(255, 235, 59, 0.1)' }; // Light yellow for modified
+    });
+    
+    // Apply styles to new pages (override modified if both)
+    newPages.forEach(page => {
+      styles[String(page)] = { background: 'rgba(76, 175, 80, 0.1)' }; // Light green for new
+    });
+    
+    return styles;
+  }, [modifiedPages, newPages]);
 
   // Helper function to handle reset page
   const handleResetPage = (pageNumber: number) => {
     dispatch(resetPage(pageNumber));
   };
 
-  // Handle page management
-  const handleAddPage = () => {
-    if (statement && addRowValues.pageNumber) {
+  // Handle row add for ReactGridTable
+  const handleRowAdd = (row: Partial<PageTableRow>) => {
+    if (statement && row.pageNumber) {
       // Add the page with the specified number
-      dispatch(addPage(addRowValues.pageNumber));
+      dispatch(addPage(row.pageNumber));
       
       // If there's a bates stamp, we need to update it separately
-      if (addRowValues.batesStamp) {
+      if (row.batesStamp) {
         // We need to update the bates stamps after adding the page
         const updatedBatesStamps = { ...statement.batesStamps };
-        updatedBatesStamps[addRowValues.pageNumber] = addRowValues.batesStamp;
+        updatedBatesStamps[row.pageNumber] = row.batesStamp;
         dispatch(updateStatementField({ field: 'batesStamps', value: updatedBatesStamps }));
       }
-      
-      // Clear add row values
-      setAddRowValues({
-        pageNumber: null,
-        batesStamp: '',
-      });
     } else if (statement) {
       // Fallback to auto-increment if no page number specified
       const maxPage = Math.max(...statement.pageMetadata.pages, 0);
@@ -97,27 +146,13 @@ const PagesTable: React.FC<PagesTableProps> = ({
     dispatch(deletePage(pageNumber));
   };
 
-  // Handle cell changes
+  // Handle cell changes for ReactGridTable
   const handleCellsChanged = (changes: CellChange[]) => {
     // Group changes by page number
     const groupedChanges: { [key: string]: CellChange[] } = {};
     changes.forEach(change => {
       const rowId = change.rowId;
-      if (rowId === 'header') return; // Skip header changes
-      
-      if (rowId === 'add-row') {
-        // Track add row values instead of automatically adding
-        const { columnId, newCell } = change;
-        if (change.type === 'number' && columnId === 'filePageNumber') {
-          const newPageNumber = (newCell as NumberCell).value;
-          if (!isNaN(newPageNumber) && newPageNumber > 0) {
-            setAddRowValues(prev => ({ ...prev, pageNumber: newPageNumber }));
-          }
-        } else if (change.type === 'text' && columnId === 'batesStamp') {
-          setAddRowValues(prev => ({ ...prev, batesStamp: (newCell as TextCell).text }));
-        }
-        return; // Skip add row changes
-      }
+      if (rowId === 'header' || rowId === 'add-row') return; // Skip header and add row changes
       
       if (!groupedChanges[rowId]) {
         groupedChanges[rowId] = [];
@@ -135,7 +170,7 @@ const PagesTable: React.FC<PagesTableProps> = ({
       changesForPage.forEach(change => {
         if (change.type === 'text' && change.columnId === 'batesStamp') {
           changes.push({ field: 'batesStamp', value: (change.newCell as TextCell).text });
-        } else if (change.type === 'number' && change.columnId === 'filePageNumber') {
+        } else if (change.type === 'number' && change.columnId === 'pageNumber') {
           const newPageNumber = (change.newCell as NumberCell).value;
           if (!isNaN(newPageNumber)) {
             changes.push({ field: 'pageNumber', value: newPageNumber });
@@ -154,10 +189,10 @@ const PagesTable: React.FC<PagesTableProps> = ({
     }
   };
 
-  // Handle context menu
+  // Handle context menu for ReactGridTable
   const handleContextMenu = (
-    selectedRowIds: Id[],
-    selectedColIds: Id[],
+    selectedRowIds: any[],
+    selectedColIds: any[],
     selectionMode: SelectionMode,
     menuOptions: MenuOption[],
     selectedRanges: Array<CellLocation[]>
@@ -169,7 +204,12 @@ const PagesTable: React.FC<PagesTableProps> = ({
       id: 'add-page',
       label: 'Add Page',
       handler: () => {
-        handleAddPage();
+        // Auto-increment page number
+        if (statement) {
+          const maxPage = Math.max(...statement.pageMetadata.pages, 0);
+          const newPageNumber = maxPage + 1;
+          dispatch(addPage(newPageNumber));
+        }
       },
     });
 
@@ -190,98 +230,18 @@ const PagesTable: React.FC<PagesTableProps> = ({
     return [...newMenuOptions, ...menuOptions];
   };
 
-  const rows: Row<CustomCellTypes>[] = useMemo(() => {
-    if (!statement) return [];
-    
-    const setSortingWrapper = (newSorting: SortCriteria | ((prev: SortCriteria) => SortCriteria)) => {
-      if (typeof newSorting === 'function') {
-        setSorting(newSorting(sorting));
-      } else {
-        setSorting(newSorting);
-      }
-    };
-    
-    const headerRow = { 
-      rowId: 'header', 
-      cells: [ 
-        { type: 'sortableHeader' as const, text: `Page #`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), columnId: 'filePageNumber', sortDirection: getSortDirectionForColumn('filePageNumber', sorting), sortOrder: getSortOrderForColumn('filePageNumber', sorting) }, 
-        { type: 'sortableHeader' as const, text: `Bates Stamp`, style: headerStyle, onSort: (columnId: string) => handleSort(columnId, sorting, setSortingWrapper), columnId: 'batesStamp', sortDirection: getSortDirectionForColumn('batesStamp', sorting), sortOrder: getSortOrderForColumn('batesStamp', sorting) },
-        { type: 'header' as const, text: '', nonEditable: true }, // actions - no header
-      ] 
-    };
-    
-    const dataRows = statement.pageMetadata.pages.map((page) => ({
-      rowId: String(page),
-      cells: [
-        { type: 'number' as const, value: page, validator: (value: number) => value > 0, style: getRowStyle(page) },
-        { type: 'text' as const, text: statement.batesStamps[page] || '', style: getRowStyle(page) },
-        { type: 'text' as const, text: '', renderer: () => (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            {modifiedPages.includes(page) && (
-              <Tooltip title='Reset Page'>
-                <IconButton size="small" onClick={() => handleResetPage(page)}>
-                  <Restore />
-                </IconButton>
-              </Tooltip>
-            )}
-            <Tooltip title='Delete Page'>
-              <IconButton size="small" onClick={() => handleDeletePage(page)}>
-                <Delete />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ), nonEditable: true, style: getRowStyle(page) },
-      ]
-    }));
-
-    // Add sticky add row
-    const addRow = {
-      rowId: 'add-row',
-      cells: [
-        { type: 'number' as const, value: addRowValues.pageNumber || NaN, validator: (value: number) => value > 0 },
-        { type: 'text' as const, text: addRowValues.batesStamp },
-        { type: 'text' as const, text: '', renderer: () => (
-          <Tooltip title='Add Page'>
-            <IconButton size="small" onClick={handleAddPage}>
-              <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1 }}>+</Typography>
-            </IconButton>
-          </Tooltip>
-        ), nonEditable: true },
-      ]
-    };
-    
-    // Apply sorting if needed (skip header row)
-    if (sorting && sorting.length > 0) {
-      const sortedDataRows = sortRows(dataRows, sorting, columns);
-      return [headerRow, addRow, ...sortedDataRows];
-    }
-    
-    return [headerRow, addRow, ...dataRows];
-  }, [statement, sorting, modifiedPages, addRowValues]);
-
-  // Handle column resize - self-contained
-  const handleColumnResized = (columnId: Id, width: number, selectedColIds: Id[]) => {
-    setColumnWidths(prev => ({ ...prev, [String(columnId)]: width }));
-  };
-
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ 
-        border: '1px solid #e2e8f0',
-        borderRadius: 2,
-        backgroundColor: '#ffffff',
-        overflow: 'hidden'
-      }}>
-        <ReactGrid
-          columns={columns} 
-          rows={rows} 
-          onColumnResized={handleColumnResized}
-          onCellsChanged={handleCellsChanged}
-          onContextMenu={handleContextMenu}
-          customCellTemplates={{ sortableHeader: sortableHeaderTemplate }}
-          enableRangeSelection
-        />
-      </Box>
+      <ReactGridTable
+        columns={columns}
+        data={data}
+        handleRowAdd={handleRowAdd}
+        onCellsChanged={handleCellsChanged}
+        onContextMenu={handleContextMenu}
+        enableRangeSelection
+        initialTableSize="unbounded"
+        rowStyle={rowStyle}
+      />
     </Box>
   );
 };

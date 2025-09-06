@@ -33,12 +33,7 @@ import React from 'react';
 import { Box, Button, IconButton, Tooltip } from '@mui/material';
 import { KeyboardArrowUp, KeyboardArrowDown, UnfoldMore, FilterList } from '@mui/icons-material';
 import { Cell, CellTemplate, Column, Compatible, Row, Uncertain, UncertainCompatible, getCellProperty } from '@silevis/reactgrid';
-
-export enum SortDirection {
-  ASC = 'asc',
-  DESC = 'desc',
-  NONE = 'none'
-}
+import { SortDirection } from '../ReactGridTable/hooks/useTableSorting';
 
 // Custom cell type for sortable headers
 export interface SortableHeaderCell extends Cell {
@@ -172,113 +167,5 @@ export class SortableHeaderTemplate implements CellTemplate<SortableHeaderCell> 
     return content;
   }
 }
-
-// --- Sorting Helper Functions ---
-// Type for a single sort criterion
-export interface SortCriterion {
-  columnId: string;
-  direction: SortDirection;
-}
-
-// Type for multiple sort criteria
-export type SortCriteria = SortCriterion[];
-
-/**
- * click handler for the sortable header cell
- * updates the sorting criteria object when a column is clicked
- */
-export const handleSort = (
-  columnId: string, 
-  currentSorting: SortCriteria,
-  setSorting: React.Dispatch<React.SetStateAction<SortCriteria>>
-) => {
-  // Find if this column is already in the sorting criteria
-  const existingIndex = currentSorting.findIndex(criterion => criterion.columnId === columnId);
-  
-  if (existingIndex !== -1) {
-    // Column exists, cycle through directions
-    const existingCriterion = currentSorting[existingIndex];
-    if (existingCriterion.direction === SortDirection.ASC) {
-      // Change to descending
-      const newSorting = [...currentSorting];
-      newSorting[existingIndex] = { ...existingCriterion, direction: SortDirection.DESC };
-      setSorting(newSorting);
-    } else if (existingCriterion.direction === SortDirection.DESC) {
-      // Remove this column from sorting
-      const newSorting = currentSorting.filter((_, index) => index !== existingIndex);
-      setSorting(newSorting);
-    }
-  } else {
-    // Add new column to sorting (at the end)
-    setSorting([...currentSorting, { columnId, direction: SortDirection.ASC }]);
-  }
-};
-
-/**
- * Sort rows based on sorting criteria.  
- * Null, undefined, or other invalid values like NaN or invalid dates should appear to be "less" than valid values.  
- * If two null/undefined or invalid values are compared, the sort won't change the order.
- */
-export const sortRows = (
-  rows: Row<any>[],
-  sorting: SortCriteria,
-  columns: Column[]
-): Row[] => {
-  if (!sorting || sorting.length === 0) return rows;
-  
-  return [...rows].sort((a, b) => {
-    // Skip header rows
-    if (a.rowId === 'header' || b.rowId === 'header') return 0;
-    
-    // Compare using each sort criterion in order
-    for (const criterion of sorting) {
-      const columnIndex = columns.findIndex(col => col.columnId === criterion.columnId);
-      if (columnIndex === -1) continue;
-      
-      const aCell = a.cells[columnIndex];
-      const bCell = b.cells[columnIndex];
-      
-      if (!aCell || !bCell || aCell.type !== bCell.type) continue;
-
-      let comparisonResult;
-      if (aCell.type === 'text') {
-        comparisonResult = (aCell.text || '').localeCompare(bCell.text || '');
-      } else if (aCell.type === 'number') {
-        const aValue = !Number.isNaN(aCell.value || NaN) ? aCell.value : Number.MIN_VALUE;
-        const bValue = !Number.isNaN(bCell.value || NaN) ? bCell.value : Number.MIN_VALUE;
-        comparisonResult = aValue - bValue;
-      } else if (aCell.type === 'date') {
-        const aDate = !isNaN(aCell.date?.valueOf() || NaN) ? aCell.date : new Date(0);
-        const bDate = !isNaN(bCell.date?.valueOf() || NaN) ? bCell.date : new Date(0);
-        comparisonResult = aDate.getTime() - bDate.getTime();
-      }
-
-      if (comparisonResult !== 0) {
-        return criterion.direction === SortDirection.ASC ? comparisonResult : -comparisonResult;
-      }
-    }
-    
-    return 0; // All criteria are equal
-  });
-};
-
-// Export the template instance for easy use
-// Helper function to get sort direction for a specific column
-export const getSortDirectionForColumn = (
-  columnId: string,
-  sorting: SortCriteria
-): SortDirection => {
-  const criterion = sorting.find(c => c.columnId === columnId);
-  return criterion ? criterion.direction : SortDirection.NONE;
-};
-
-// Helper function to get sort order for a specific column
-export const getSortOrderForColumn = (
-  columnId: string,
-  sorting: SortCriteria
-): number => {
-  const index = sorting.findIndex(c => c.columnId === columnId);
-  return index !== -1 ? index + 1 : 0;
-};
 
 export const sortableHeaderTemplate = new SortableHeaderTemplate(); 
