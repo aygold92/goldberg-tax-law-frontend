@@ -56,7 +56,9 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
               variant="body2" 
               className={styles.value}
             >
-              ${isCreditCard ? statement?.beginningBalance?.toFixed(2) || '0.00' : statement?.endingBalance?.toFixed(2) || '0.00'}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                isCreditCard ? statement?.beginningBalance || 0 : statement?.endingBalance || 0
+              )}
             </Typography>
           </Box>
           
@@ -83,7 +85,9 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
               variant="body2" 
               className={`${styles.value} ${styles.valueWide}`}
             >
-              ${isCreditCard ? statement?.endingBalance?.toFixed(2) || '0.00' : statement?.beginningBalance?.toFixed(2) || '0.00'}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                isCreditCard ? statement?.endingBalance || 0 : statement?.beginningBalance || 0
+              )}
             </Typography>
           </Box>
           
@@ -111,7 +115,7 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
               className={styles.expectedValue}
             >
               {statement?.endingBalance?.toString() && statement?.beginningBalance?.toString() ? (
-                `$${expectedValue?.toFixed(2)}`
+                new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(expectedValue || 0)
               ) : (
                 <Tooltip title="Must specify beginning and ending balance">
                   <span style={{ color: COLORS.status.warning }}>⚠️</span>
@@ -121,13 +125,13 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
             {actualValue !== null && (
               <Box className={styles.actualContainer}>
                 <Badge 
-                  badgeContent={`Actual: $${actualValue.toFixed(2)}`}
+                    badgeContent={`Actual: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(actualValue || 0)}`}
                   color={expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? 'success' : 'error'}
                   sx={{ 
                     '& .MuiBadge-badge': {
                       fontSize: '10px',
                       height: '16px',
-                      minWidth: '100px',
+                      minWidth: '120px',
                       backgroundColor: expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? COLORS.status.success : COLORS.status.error,
                       color: '#ffffff',
                       fontWeight: 500
@@ -136,7 +140,6 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
                 >
                   <Box className={styles.actualSpacer} />
                 </Badge>
-                <Typography variant="body2" className={styles.actualClose}>)</Typography>
               </Box>
             )}
           </Box>

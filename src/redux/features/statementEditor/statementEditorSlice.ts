@@ -68,7 +68,7 @@ const initialState: StatementEditorState = {
 };
 
 // Add thunk for loading a single BankStatement
-export const loadBankStatement = createAsyncThunk<BankStatement, { clientName: string; accountNumber: string; classification: string; date: string }>(
+export const loadBankStatement = createAsyncThunk<BankStatement, { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }>(
   'statementEditor/loadBankStatement',
   async (params, { rejectWithValue }) => {
     try {

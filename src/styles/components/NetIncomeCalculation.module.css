@@ -33,14 +33,14 @@
 }
 
 .label {
-  min-width: 120px;
+  min-width: 140px;
   text-align: right;
   color: #64748b;
   font-weight: 500;
 }
 
 .value {
-  min-width: 80px;
+  min-width: 120px;
   text-align: right;
   margin-left: 8px;
   font-weight: 600;
@@ -48,16 +48,16 @@
 }
 
 .valueWide {
-  min-width: 100px;
+  min-width: 120px;
 }
 
 .minusSign {
-  min-width: 120px;
+  min-width: 140px;
   text-align: right;
 }
 
 .minusValue {
-  min-width: 80px;
+  min-width: 120px;
   text-align: right;
   margin-left: 8px;
   color: #64748b;
@@ -89,14 +89,14 @@
 }
 
 .expectedLabel {
-  min-width: 120px;
+  min-width: 140px;
   text-align: right;
   color: #64748b;
   font-weight: 500;
 }
 
 .expectedValue {
-  min-width: 100px;
+  min-width: 120px;
   text-align: right;
   margin-left: 8px;
   font-weight: 600;
@@ -106,17 +106,14 @@
 .actualContainer {
   display: flex;
   align-items: center;
-  margin-left: 24px;
-  gap: 4px;
+  margin-left: 16px;
 }
 
-.actualBadge {
-  /* Badge styling handled by MUI */
-}
+/* Badge styling handled by MUI */
 
 .actualSpacer {
-  width: 35px;
-  height: 0px;
+  width: 1px;
+  height: 1px;
 }
 
 .actualClose {

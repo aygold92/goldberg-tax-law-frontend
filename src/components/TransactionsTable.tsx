@@ -32,7 +32,7 @@ interface TransactionTableRow {
   id: string;                    // transaction ID
   date: Date | null;             // transaction date
   description: string;           // transaction description
-  amount: number;                // transaction amount
+  amount: number | undefined | null;    // transaction amount
   filePageNumber: number | null; // page number
   checkNumber: number | null;    // check number (for bank statements)
   checkFilename: string;         // check filename (for bank statements)
@@ -64,7 +64,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       id: transaction.id,
       date: transaction.date ? new Date(transaction.date) : null,
       description: transaction.description || '',
-      amount: transaction.amount || 0,
+      amount: transaction.amount,
       filePageNumber: transaction.filePageNumber || null,
       checkNumber: transaction.checkNumber || null,
       checkFilename: transaction.checkDataModel?.description || '',
@@ -142,7 +142,8 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         label: 'Amount',
         columnId: 'amount',
         width: 110,
-        resizable: true
+        resizable: true,
+        format: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
       },
       {
         field: 'filePageNumber',
@@ -247,7 +248,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     {
       key: 'income',
       label: 'Income',
-      filterFunction: (transaction) => transaction.amount > 0,
+      filterFunction: (transaction) => !!transaction.amount && transaction.amount > 0,
       icon: <TrendingUp />,
       color: 'success',
       tooltip: 'Show income transactions'
@@ -255,7 +256,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     {
       key: 'expenses',
       label: 'Expenses',
-      filterFunction: (transaction) => transaction.amount < 0,
+      filterFunction: (transaction) => !!transaction.amount && transaction.amount < 0,
       icon: <TrendingDown />,
       color: 'error',
       tooltip: 'Show expense transactions'

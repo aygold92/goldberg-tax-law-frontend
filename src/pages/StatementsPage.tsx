@@ -19,7 +19,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackbar, Popover, TextField, InputAdornment, Tooltip } from '@mui/material';
-import { TableChart, Delete, Download, Edit, Search, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard } from '@mui/icons-material';
+import { TableChart, Delete, Download, Edit, Search, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectStatements, selectStatementsLoading, selectStatementsError, selectSpreadsheetResult, selectSpreadsheetLoading, selectSpreadsheetError } from '../redux/features/statementsList/statementsListSelectors';
@@ -31,6 +31,7 @@ import { ReactGridTableExample } from '../components/ReactGridTable';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/StatementsPage.module.css';
+import { constructFilenameWithPages } from '../utils/filenameUtils';
 
 const StatementsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -92,31 +93,44 @@ const StatementsPage: React.FC = () => {
     );
   }
 
-  const selectedKeys: BankStatementKey[] = selectionModel.map((id) => {
-    const stmt = statements.find((s) => s.metadata.md5 === id);
-    return stmt ? stmt.key : null;
-  }).filter(Boolean) as BankStatementKey[];
+  const selectedStatements: BankStatementMetadata[] = selectionModel.map((id) => {
+    return statements.find((s) => s.metadata.md5 === id);
+  }).filter(Boolean) as BankStatementMetadata[];
 
   const handleDelete = () => {
-    if (selectedKeys.length > 0) {
-      dispatch(deleteStatements({ clientName: selectedClient, keys: selectedKeys }));
+    if (selectedStatements.length > 0) {
+      dispatch(deleteStatements({ clientName: selectedClient, statements: selectedStatements }));
       setSelectionModel([]);
     }
   };
 
   const handleCreateSpreadsheet = () => {
-    if (selectedKeys.length > 0) {
+    if (selectedStatements.length > 0) {
+      const selectedKeys = selectedStatements.map(s => s.key);
       dispatch(createSpreadsheet({ clientName: selectedClient, keys: selectedKeys, outputDirectory: '' }));
     }
   };
 
-  const handleEditStatement = (key: BankStatementKey) => {
+  const handleRefresh = () => {
+    if (selectedClient) {
+      dispatch(fetchStatements({ clientName: selectedClient }));
+    }
+  };
+
+  const handleEditStatement = (key: BankStatementKey, filename: string, pageRange: { first: number; second: number }) => {
     const params = new URLSearchParams({
       clientName: selectedClient,
       accountNumber: key.accountNumber,
       classification: key.classification,
       date: key.date,
     });
+    
+    // Add filenameWithPages if accountNumber or date is null
+    if (key.accountNumber === 'null' || key.date === 'null') {
+      const filenameWithPages = constructFilenameWithPages(filename, pageRange);
+      params.append('filenameWithPages', filenameWithPages);
+    }
+    
     window.open(`/edit?${params.toString()}`, '_blank');
   };
 
@@ -186,7 +200,7 @@ const StatementsPage: React.FC = () => {
         <Tooltip title="Edit statement">
           <Button
             size="small"
-            onClick={() => handleEditStatement(params.row.key)}
+            onClick={() => handleEditStatement(params.row.key, params.row.filename, params.row.pageRange)}
             className={styles.actionButton}
           >
             <Edit fontSize="small" />
@@ -234,9 +248,7 @@ const StatementsPage: React.FC = () => {
       width: 280,
       cellClassName: 'filename-cell',
       renderCell: (params) => {
-        const pageRange = params.row.pageRange;
-        const pageRangeText = pageRange && pageRange.first && pageRange.second ? `[${pageRange.first}-${pageRange.second}]` : '';
-        const fullText = `${params.value}${pageRangeText}`;
+        const fullText = constructFilenameWithPages(params.value, params.row.pageRange);
         
         return (
           <Box
@@ -301,10 +313,20 @@ const StatementsPage: React.FC = () => {
       <Paper className={styles.paperContainer}>
         <Stack direction="row" spacing={2} className={styles.actionsContainer}>
           <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<Refresh />}
+            disabled={loading}
+            onClick={handleRefresh}
+            className={styles.actionButton}
+          >
+            Refresh
+          </Button>
+          <Button
             variant="contained"
             color="error"
             startIcon={<Delete />}
-            disabled={selectedKeys.length === 0 || loading}
+            disabled={selectedStatements.length === 0 || loading}
             onClick={handleDelete}
             className={styles.actionButton}
           >
@@ -314,7 +336,7 @@ const StatementsPage: React.FC = () => {
             variant="contained"
             color="primary"
             startIcon={<Download />}
-            disabled={selectedKeys.length === 0 || spreadsheetLoading}
+            disabled={selectedStatements.length === 0 || spreadsheetLoading}
             onClick={handleCreateSpreadsheet}
             className={styles.actionButton}
           >

@@ -59,7 +59,7 @@ const PdfDisplay: React.FC<PdfDisplayProps> = ({
           setPdfError('No source filename available');
           return;
         }
-        const url = `https://${storageAccountName}.blob.core.windows.net/${clientName}-input/${sourceFilename}?${sasResp.token}`;
+        const url = `https://${storageAccountName}.blob.core.windows.net/${clientName}-input/${sourceFilename}?${sasResp.token}#page=${statement?.pageMetadata.pages[0]}`;
         console.log('PDF URL:', url);
         setPdfUrl(url);
         pdfUrlRef.current = url;

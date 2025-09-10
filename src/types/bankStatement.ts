@@ -24,7 +24,7 @@ export interface TransactionHistoryRecord {
   date?: string | null;
   checkNumber?: number | null;
   description?: string | null;
-  amount?: number | null;
+  amount?: number | null | undefined;
   filePageNumber?: number | null;
   checkDataModel?: CheckDataModel | null;
   suspiciousReasons?: string[]; // always empty for now, but required for UI

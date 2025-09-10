@@ -200,7 +200,7 @@ class ApiService {
   }
 
   // Add loadBankStatement method
-  async loadBankStatement(params: { clientName: string; accountNumber: string; classification: string; date: string }): Promise<BankStatement> {
+  async loadBankStatement(params: { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }): Promise<BankStatement> {
     const response = await this.api.post<BankStatement>('/api/LoadBankStatement', params);
     return response.data;
   }
@@ -211,7 +211,7 @@ class ApiService {
     return response.data;
   }
 
-  async deleteStatement(request: { clientName: string; accountNumber: string; classification: string; date: string }): Promise<void> {
+  async deleteStatement(request: { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }): Promise<void> {
     await this.api.post('/api/DeleteStatement', request);
   }
 

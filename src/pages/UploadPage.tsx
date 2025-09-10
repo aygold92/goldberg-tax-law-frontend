@@ -18,12 +18,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Box, Alert } from '@mui/material';
+import { Box, Alert, Button } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import ClientSelector from '../components/ClientSelector';
 import DocumentUpload from '../components/DocumentUpload';
 import AnalysisStatus from '../components/AnalysisStatus';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
+import { clearAnalysisResults } from '../redux/features/analysis/analysisSlice';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/UploadPage.module.css';
@@ -51,6 +53,12 @@ const UploadPage: React.FC = () => {
     setAnalysisComplete(true);
   };
 
+  const handleBackToUpload = () => {
+    setStatusQueryUrl('');
+    setAnalysisComplete(false);
+    dispatch(clearAnalysisResults());
+  };
+
   return (
     <Box>
       <ClientSelector />
@@ -66,15 +74,35 @@ const UploadPage: React.FC = () => {
         />
       )}
       {statusQueryUrl && (
-        <AnalysisStatus
-          statusQueryUrl={statusQueryUrl}
-          onAnalysisComplete={handleAnalysisComplete}
-        />
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            onClick={handleBackToUpload}
+            sx={{ mb: 2 }}
+          >
+            Back to Upload
+          </Button>
+          <AnalysisStatus
+            statusQueryUrl={statusQueryUrl}
+            onAnalysisComplete={handleAnalysisComplete}
+          />
+        </Box>
       )}
       {analysisComplete && (
-        <Alert severity="success" className={styles.successAlert}>
-          Analysis completed successfully! You can now view the extracted statements.
-        </Alert>
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            onClick={handleBackToUpload}
+            sx={{ mb: 2 }}
+          >
+            Back to Upload
+          </Button>
+          <Alert severity="success" className={styles.successAlert}>
+            Analysis completed successfully! You can now view the extracted statements.
+          </Alert>
+        </Box>
       )}
     </Box>
   );

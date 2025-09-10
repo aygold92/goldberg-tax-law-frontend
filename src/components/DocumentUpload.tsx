@@ -39,7 +39,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridValueGetter } from '@mui/x-data-grid';
-import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon, Refresh } from '@mui/icons-material';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/DocumentUpload.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
@@ -64,7 +64,8 @@ import {
   deleteInputDocument,
   loadAzureFiles,
   convertFileToUploadedFile,
-  convertObjectUrlToFile
+  convertObjectUrlToFile,
+  resetErrorStatus
 } from '../redux/features/files/filesSlice';
 import { startAnalysis } from '../redux/features/analysis/analysisSlice';
 
@@ -129,6 +130,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     // Load Azure files using async thunk
     dispatch(loadAzureFiles(selectedClient));
   }, [selectedClient, dispatch]);
+
+  // Sync selectionModel with Redux state when files change
+  useEffect(() => {
+    const selectedFileNames = files
+      .filter(file => file.selected)
+      .map(file => file.name);
+    
+    // Only update if there's a difference to avoid infinite loops
+    if (JSON.stringify(selectedFileNames.sort()) !== JSON.stringify(selectionModel.sort())) {
+      setSelectionModel(selectedFileNames);
+    }
+  }, [files, selectionModel]);
 
   // Modified onDrop to handle duplicates
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -240,6 +253,11 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     }
   };
 
+  // Reset error status handler for failed files
+  const handleResetErrorStatus = (file: any) => {
+    dispatch(resetErrorStatus([file.name]));
+  };
+
   // DataGrid columns
   const numStatementsGetter: GridValueGetter<any> = (value, row) => row.metadata?.numstatements ?? '';
   const statementsGetter: GridValueGetter<any> = (value, row) => (row.metadata?.statements ? row.metadata.statements.join(', ') : '');
@@ -270,7 +288,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
         if (status === 'pending') return <Chip label="Pending upload" color="default" size="small" />;
         if (status === 'uploading') return <Chip label="Uploading" color="info" size="small" icon={<CircularProgress size={16} />} />;
         if (status === 'uploaded') return <Chip label="Uploaded" color="success" size="small" icon={<CheckCircle />} />;
-        if (status === 'error') return <Chip label="Error" color="error" size="small" icon={<ErrorIcon />} />;
+        if (status === 'error') {
+          const errorMessage = params.row.error || 'Upload failed';
+          return (
+            <Tooltip title={errorMessage} placement="top" arrow>
+              <Chip label="Error" color="error" size="small" icon={<ErrorIcon />} />
+            </Tooltip>
+          );
+        }
         return null;
       },
     },
@@ -281,9 +306,20 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     { field: 'numstatements', headerName: '# Statements', flex: 1, valueGetter: numStatementsGetter },
     { field: 'statements', headerName: 'Statements', flex: 2, valueGetter: statementsGetter },
     { field: 'actions', headerName: '', flex: 0.5, sortable: false, filterable: false, renderCell: (params: GridRenderCellParams<any, any>) => (
-      <IconButton onClick={() => handleDelete(params.row)}>
-        <Delete />
-      </IconButton>
+      <Box sx={{ display: 'flex', gap: 0.5 }}>
+        {params.row.status === 'error' && (
+          <Tooltip title="Reset to pending" placement="top" arrow>
+            <IconButton onClick={() => handleResetErrorStatus(params.row)} size="small">
+              <Refresh />
+            </IconButton>
+          </Tooltip>
+        )}
+        <Tooltip title="Delete file" placement="top" arrow>
+          <IconButton onClick={() => handleDelete(params.row)} size="small">
+            <Delete />
+          </IconButton>
+        </Tooltip>
+      </Box>
     ) },
   ];
 

@@ -213,10 +213,22 @@ function ReactGridTable<T extends CompatibleData>({
               cell = { type: 'text' as const, text: String(value || '') };
               break;
             case 'number':
-              cell = { type: 'number' as const, value: Number(value) || NaN };
+              const numValue = value === null || value === undefined || value === '' ? NaN : Number(value);
+              const isNumberFormat = column.format && typeof column.format === 'object' && 'format' in column.format;
+              cell = { 
+                type: 'number' as const, 
+                value: numValue,
+                ...(isNumberFormat && { format: column.format as Intl.NumberFormat })
+              };
               break;
             case 'date':
-              cell = { type: 'date' as const, date: value ? new Date(value) : undefined };
+              const dateValue = value ? new Date(value) : undefined;
+              const isDateFormat = column.format && typeof column.format === 'object' && 'format' in column.format;
+              cell = { 
+                type: 'date' as const, 
+                date: dateValue,
+                ...(isDateFormat && { format: column.format as Intl.DateTimeFormat })
+              };
               break;
             case 'dropdown':
               cell = { type: 'dropdown' as const, values: [], selectedValue: undefined };
@@ -388,6 +400,8 @@ function ReactGridTable<T extends CompatibleData>({
           height: state.tableSize === 'unbounded' ? 'auto' : 
                  state.tableSize === 'small' ? '300px' :
                  state.tableSize === 'medium' ? '500px' : '700px',
+          overflowY: state.tableSize === 'unbounded' ? 'visible' : 'auto',
+          overflowX: 'auto',
         }}
       >
         <ReactGrid

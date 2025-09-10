@@ -47,6 +47,9 @@ export interface DataTableColumn<T extends CompatibleData> extends Column {
   /** Display name for the column */
   label: string;
   
+  /** Optional formatter for the cell value */
+  format?: Intl.NumberFormat | Intl.DateTimeFormat | ((value: any) => string);
+  
   /** Whether to exclude from filtering (default: false = filterable) */
   nonFilterable?: boolean;
   

@@ -123,16 +123,22 @@ export const loadAzureFiles = createAsyncThunk(
 // Async thunk for uploading files to Azure
 export const uploadFilesToAzure = createAsyncThunk(
   'files/uploadFilesToAzure',
-  async ({ selectedClient }: { selectedClient: string }, { getState, rejectWithValue }) => {
+  async ({ selectedClient }: { selectedClient: string }, { getState, rejectWithValue, dispatch }) => {
+    const state = getState() as { files: FilesState };
+    const pendingFiles = state.files.files.filter(
+      file => file.status === 'pending' && file.selected
+    );
+    
+    if (pendingFiles.length === 0) {
+      return [];
+    }
+
     try {
-      const state = getState() as { files: FilesState };
-      const pendingFiles = state.files.files.filter(
-        file => file.status === 'pending' && file.selected
-      );
-      
-      if (pendingFiles.length === 0) {
-        return [];
-      }
+      // Update files to uploading status now that we have them captured
+      dispatch(updateMultipleFiles({ 
+        names: pendingFiles.map(f => f.name), 
+        updates: { status: 'uploading', progress: 0 } 
+      }));
 
       // Import the API service dynamically to avoid circular dependencies
       const { default: apiService } = await import('../../../services/api');
@@ -187,7 +193,11 @@ export const uploadFilesToAzure = createAsyncThunk(
       
       return await Promise.all(uploadPromises);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Upload failed');
+      // Return the pending files so the rejected reducer can set them to error status
+      return rejectWithValue({
+        error: error instanceof Error ? error.message : 'Upload failed',
+        pendingFiles: pendingFiles.map((f: UploadedFile) => f.name)
+      });
     }
   }
 );
@@ -231,6 +241,15 @@ const filesSlice = createSlice({
         state.files[fileIndex] = { ...state.files[fileIndex], ...updates };
       }
     },
+    updateMultipleFiles: (state, action: PayloadAction<{ names: string[]; updates: Partial<UploadedFile> }>) => {
+      const { names, updates } = action.payload;
+      names.forEach(name => {
+        const fileIndex = state.files.findIndex(file => file.name === name);
+        if (fileIndex !== -1) {
+          state.files[fileIndex] = { ...state.files[fileIndex], ...updates };
+        }
+      });
+    },
     removeFile: (state, action: PayloadAction<string>) => {
       const fileToRemove = state.files.find(file => file.name === action.payload);
       if (fileToRemove?.fileObjectUrl) {
@@ -263,6 +282,17 @@ const filesSlice = createSlice({
       state.files = [];
       state.error = null;
     },
+    resetErrorStatus: (state, action: PayloadAction<string[]>) => {
+      // Reset specified files from error status back to pending
+      action.payload.forEach(fileName => {
+        const fileIndex = state.files.findIndex(f => f.name === fileName);
+        if (fileIndex !== -1 && state.files[fileIndex].status === 'error') {
+          state.files[fileIndex].status = 'pending';
+          state.files[fileIndex].progress = 0;
+          state.files[fileIndex].error = undefined;
+        }
+      });
+    },
   },
   extraReducers: (builder) => {
     // Load Azure files
@@ -285,13 +315,7 @@ const filesSlice = createSlice({
       .addCase(uploadFilesToAzure.pending, (state) => {
         state.isUploading = true;
         state.error = null;
-        // Update files to uploading status
-        state.files.forEach(file => {
-          if (file.status === 'pending' && file.selected) {
-            file.status = 'uploading';
-            file.progress = 0;
-          }
-        });
+        // File status updates are now handled in the thunk itself
       })
       .addCase(uploadFilesToAzure.fulfilled, (state, action) => {
         state.isUploading = false;
@@ -305,7 +329,25 @@ const filesSlice = createSlice({
       })
       .addCase(uploadFilesToAzure.rejected, (state, action) => {
         state.isUploading = false;
-        state.error = action.payload as string;
+        
+        // Handle the new payload structure
+        if (action.payload && typeof action.payload === 'object' && 'error' in action.payload) {
+          const payload = action.payload as { error: string; pendingFiles: string[] };
+          state.error = payload.error;
+          
+          // Set uploading files back to error status
+          payload.pendingFiles.forEach(fileName => {
+            const fileIndex = state.files.findIndex(f => f.name === fileName);
+            if (fileIndex !== -1) {
+              state.files[fileIndex].status = 'error';
+              state.files[fileIndex].progress = 0;
+              state.files[fileIndex].error = payload.error;
+            }
+          });
+        } else {
+          // Fallback for old payload format
+          state.error = action.payload as string;
+        }
       });
 
     // Delete input document
@@ -332,11 +374,13 @@ export const {
   addFiles,
   addAzureFiles,
   updateFile,
+  updateMultipleFiles,
   removeFile,
   setFileSelection,
   setAllFilesSelection,
   clearError,
   clearFiles,
+  resetErrorStatus,
 } = filesSlice.actions;
 
 export default filesSlice.reducer; 

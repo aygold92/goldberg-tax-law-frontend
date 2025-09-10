@@ -209,9 +209,17 @@ const PdfSplitterPage: React.FC = () => {
 
   // Main split logic
   const handleSplit = async () => {
-    setError(null);
-    setSuccessFiles([]);
-    setSplitFiles([]);
+    try {
+      console.log('handleSplit called');
+      console.log('pdfFiles.length:', pdfFiles.length);
+      console.log('groups.length:', groups.length);
+      console.log('individualPages.length:', individualPages.length);
+      console.log('outputDirHandle:', outputDirHandle);
+      console.log('outputDir:', outputDir);
+      
+      setError(null);
+      setSuccessFiles([]);
+      setSplitFiles([]);
     if (!pdfFiles.length) {
       setError('Please select PDF files.');
       return;
@@ -263,6 +271,8 @@ const PdfSplitterPage: React.FC = () => {
     }
     // Split each file accordingly
     const createdFiles: { name: string; blob: Blob }[] = [];
+    
+    // Process individual pages
     for (const [fileIdxStr, pages] of Object.entries(fileSplits)) {
       const fileIdx = parseInt(fileIdxStr, 10);
       const file = pdfFiles[fileIdx];
@@ -279,24 +289,40 @@ const PdfSplitterPage: React.FC = () => {
         const outName = `${fileName}/${fileName}[${pageNum}]${ext}`;
         createdFiles.push({ name: outName, blob: new Blob([pdfBytes], { type: 'application/pdf' }) });
       }
-      // For groups, create group files
-      for (const group of groups) {
-        if (!validateGroupSingleFile(group)) continue;
-        const m = map[group[0] - 1];
-        if (!m || m.fileIdx !== fileIdx) continue;
-        const indices = group.map(p => map[p - 1].pageInFile - 1).filter(idx => idx >= 0 && idx < pdfDoc.getPageCount());
-        const newPdf = await PDFDocument.create();
-        const copiedPages = await newPdf.copyPages(pdfDoc, indices);
-        copiedPages.forEach(page => newPdf.addPage(page));
-        const min = Math.min(...group.map(p => map[p - 1].pageInFile));
-        const max = Math.max(...group.map(p => map[p - 1].pageInFile));
-        const outName = group.length === 1
-          ? `${fileName}/${fileName}[${min}]${ext}`
-          : `${fileName}/${fileName}[${min}-${max}]${ext}`;
-        const pdfBytes = await newPdf.save();
-        createdFiles.push({ name: outName, blob: new Blob([pdfBytes], { type: 'application/pdf' }) });
-      }
     }
+    
+    // Process groups (independent of individual pages)
+    console.log('Processing groups:', groups);
+    for (const group of groups) {
+      console.log('Processing group:', group);
+      if (!validateGroupSingleFile(group)) {
+        console.log('Group validation failed for:', group);
+        continue;
+      }
+      const m = map[group[0] - 1];
+      if (!m) {
+        console.log('No mapping found for group:', group);
+        continue;
+      }
+      const fileIdx = m.fileIdx;
+      const file = pdfFiles[fileIdx];
+      const fileName = getFileNameWithoutExtension(file.name);
+      const ext = getFileExtension(file.name);
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const indices = group.map(p => map[p - 1].pageInFile - 1).filter(idx => idx >= 0 && idx < pdfDoc.getPageCount());
+      const newPdf = await PDFDocument.create();
+      const copiedPages = await newPdf.copyPages(pdfDoc, indices);
+      copiedPages.forEach(page => newPdf.addPage(page));
+      const min = Math.min(...group.map(p => map[p - 1].pageInFile));
+      const max = Math.max(...group.map(p => map[p - 1].pageInFile));
+      const outName = group.length === 1
+        ? `${fileName}/${fileName}[${min}]${ext}`
+        : `${fileName}/${fileName}[${min}-${max}]${ext}`;
+      const pdfBytes = await newPdf.save();
+      createdFiles.push({ name: outName, blob: new Blob([pdfBytes], { type: 'application/pdf' }) });
+    }
+    console.log('Created files:', createdFiles.length);
     setSplitFiles(createdFiles);
     // Save files using File System Access API if available
     if (dirHandle) {
@@ -327,6 +353,10 @@ const PdfSplitterPage: React.FC = () => {
         document.body.removeChild(a);
       }
       setSuccessFiles(createdFiles.map(f => f.name));
+    }
+    } catch (error: any) {
+      console.error('Error in handleSplit:', error);
+      setError('An error occurred while splitting PDFs: ' + (error.message || error.toString()));
     }
   };
 

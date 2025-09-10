@@ -17,6 +17,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { BankStatementMetadata, BankStatementKey, WriteCsvSummaryResponse } from '../../../types/api';
 import apiService from '../../../services/api';
+import { constructFilenameWithPages } from '../../../utils/filenameUtils';
 
 interface StatementsListState {
   statements: BankStatementMetadata[];
@@ -47,19 +48,25 @@ export const fetchStatements = createAsyncThunk<BankStatementMetadata[], { clien
   }
 );
 
-export const deleteStatements = createAsyncThunk<BankStatementKey[], { clientName: string; keys: BankStatementKey[] }>(
+export const deleteStatements = createAsyncThunk<BankStatementKey[], { clientName: string; statements: BankStatementMetadata[] }>(
   'statementsList/deleteStatements',
-  async ({ clientName, keys }, { rejectWithValue }) => {
+  async ({ clientName, statements }, { rejectWithValue }) => {
     try {
-      for (const key of keys) {
+      for (const statement of statements) {
+        const key = statement.key;
+        const filenameWithPages = (key.accountNumber === 'null' || key.date === 'null') 
+          ? constructFilenameWithPages(statement.metadata.filename, statement.metadata.pageRange)
+          : undefined;
+        
         await apiService.deleteStatement({
           clientName,
           accountNumber: key.accountNumber,
           classification: key.classification,
           date: key.date,
+          filenameWithPages,
         });
       }
-      return keys;
+      return statements.map(s => s.key);
     } catch (error: any) {
       return rejectWithValue(error.userMessage || error.message || 'Failed to delete statements');
     }

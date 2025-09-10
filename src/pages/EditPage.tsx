@@ -79,6 +79,7 @@ const EditPage: React.FC = () => {
   const accountNumber = query.get('accountNumber') || '';
   const classification = query.get('classification') || '';
   const date = query.get('date') || '';
+  const filenameWithPages = query.get('filenameWithPages') || undefined;
 
   const statement = useAppSelector(selectCurrentStatement);
   const loading = useAppSelector(selectCurrentStatementLoading);
@@ -110,10 +111,10 @@ const EditPage: React.FC = () => {
   // Load statement data
   useEffect(() => {
     if (clientName && accountNumber && classification && date) {
-      console.log('Loading statement with params:', { clientName, accountNumber, classification, date });
-      dispatch(loadBankStatement({ clientName, accountNumber, classification, date }));
+      console.log('Loading statement with params:', { clientName, accountNumber, classification, date, filenameWithPages });
+      dispatch(loadBankStatement({ clientName, accountNumber, classification, date, filenameWithPages }));
     }
-  }, [clientName, accountNumber, classification, date, dispatch]);
+  }, [clientName, accountNumber, classification, date, filenameWithPages, dispatch]);
 
   // Clear validation errors when statement is initially loaded
   useEffect(() => {
