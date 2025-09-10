@@ -120,29 +120,6 @@ export const loadAzureFiles = createAsyncThunk(
   }
 );
 
-// Async thunk for uploading files
-export const uploadFiles = createAsyncThunk(
-  'files/uploadFiles',
-  async (_, { getState, rejectWithValue }) => {
-    try {
-      const state = getState() as { files: FilesState };
-      const pendingFiles = state.files.files.filter(
-        file => file.status === 'pending' && file.selected
-      );
-      
-      // This will be implemented when we integrate with the upload service
-      // For now, simulate upload
-      return pendingFiles.map(file => ({
-        ...file,
-        status: 'uploaded' as const,
-        progress: 100,
-      }));
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Upload failed');
-    }
-  }
-);
-
 // Async thunk for uploading files to Azure
 export const uploadFilesToAzure = createAsyncThunk(
   'files/uploadFilesToAzure',
@@ -300,27 +277,6 @@ const filesSlice = createSlice({
       })
       .addCase(loadAzureFiles.rejected, (state, action) => {
         state.loadingAzureFiles = false;
-        state.error = action.payload as string;
-      });
-
-    // Upload files
-    builder
-      .addCase(uploadFiles.pending, (state) => {
-        state.isUploading = true;
-        state.error = null;
-      })
-      .addCase(uploadFiles.fulfilled, (state, action) => {
-        state.isUploading = false;
-        // Update files with upload results
-        action.payload.forEach(updatedFile => {
-          const fileIndex = state.files.findIndex(f => f.name === updatedFile.name);
-          if (fileIndex !== -1) {
-            state.files[fileIndex] = updatedFile;
-          }
-        });
-      })
-      .addCase(uploadFiles.rejected, (state, action) => {
-        state.isUploading = false;
         state.error = action.payload as string;
       });
 

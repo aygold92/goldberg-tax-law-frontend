@@ -56,6 +56,7 @@ import {
   selectSaveError,
 } from '../redux/features/statementEditor/statementEditorSelectors';
 import { validateBankStatement } from '../utils/validation';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Import the components
 import EditPageHeader from '../components/EditPageHeader';
@@ -85,6 +86,19 @@ const EditPage: React.FC = () => {
   const hasUnsavedChanges = useAppSelector(selectHasUnsavedChanges);
   const saveLoading = useAppSelector(selectSaveLoading);
   const saveError = useAppSelector(selectSaveError);
+  const { setPageTitle } = usePageTitle();
+
+  // Set dynamic page title based on statement data
+  useEffect(() => {
+    if (statement) {
+      const title = `Edit ${statement.pageMetadata.classification}-${statement.accountNumber}: ${statement.date}`;
+      setPageTitle(title);
+    } else if (clientName && accountNumber && classification && date) {
+      setPageTitle(`Edit ${classification}-${accountNumber}: ${date}`);
+    } else {
+      setPageTitle('Edit Statement');
+    }
+  }, [statement, clientName, accountNumber, classification, date, setPageTitle]);
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([]);

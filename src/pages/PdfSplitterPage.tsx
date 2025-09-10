@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib'; // If you see a type error, run: npm install pdf-lib
 import { Box, Button, Typography, TextField, Alert, List, ListItem, ListItemText, Paper, Chip, Stack } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Helper to get file name without extension
 function getFileNameWithoutExtension(filename: string) {
@@ -30,6 +31,13 @@ function getFilePageMap(filePageCounts: number[]) {
 }
 
 const PdfSplitterPage: React.FC = () => {
+  const { setPageTitle } = usePageTitle();
+
+  // Set page title
+  useEffect(() => {
+    setPageTitle('PDF Splitter');
+  }, [setPageTitle]);
+
   // Multi-file support
   const [pdfFiles, setPdfFiles] = useState<File[]>([]); // All selected files
   const [aggregatePdfDoc, setAggregatePdfDoc] = useState<PDFDocument | null>(null); // For preview
@@ -227,24 +235,28 @@ const PdfSplitterPage: React.FC = () => {
     const map = getFilePageMap(filePageCounts);
     // Prepare split instructions: for each file, collect the pages to extract
     const fileSplits: { [fileIdx: number]: number[] } = {};
-    // Individual pages
-    for (const page of individualPages) {
-      const m = map[page - 1];
-      if (!m) continue;
-      if (!fileSplits[m.fileIdx]) fileSplits[m.fileIdx] = [];
-      fileSplits[m.fileIdx].push(m.pageInFile);
-    }
-    // Groups
+    const groupPages: Set<number> = new Set(); // Track pages that are part of groups
+    
+    // First, collect all pages that are part of groups
     for (const group of groups) {
       if (!validateGroupSingleFile(group)) {
         setGroupValidationError('A group cannot contain pages from multiple files.');
         return;
       }
-      const m = map[group[0] - 1];
+      for (const page of group) {
+        groupPages.add(page);
+      }
+    }
+    
+    // Individual pages (only those not in groups)
+    for (const page of individualPages) {
+      if (groupPages.has(page)) continue; // Skip if page is part of a group
+      const m = map[page - 1];
       if (!m) continue;
       if (!fileSplits[m.fileIdx]) fileSplits[m.fileIdx] = [];
-      fileSplits[m.fileIdx].push(...group.map(p => map[p - 1].pageInFile));
+      fileSplits[m.fileIdx].push(m.pageInFile);
     }
+    
     // Remove duplicates and sort
     for (const idx in fileSplits) {
       fileSplits[idx] = Array.from(new Set(fileSplits[idx])).sort((a, b) => a - b);

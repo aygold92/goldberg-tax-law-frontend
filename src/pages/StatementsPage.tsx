@@ -28,6 +28,7 @@ import { selectSelectedClient } from '../redux/features/client/clientSelectors';
 import { BankStatementKey, BankStatementMetadata } from '../types/api';
 import ClientSelector from '../components/ClientSelector';
 import { ReactGridTableExample } from '../components/ReactGridTable';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/StatementsPage.module.css';
 
@@ -40,6 +41,12 @@ const StatementsPage: React.FC = () => {
   const spreadsheetResult = useAppSelector(selectSpreadsheetResult);
   const spreadsheetLoading = useAppSelector(selectSpreadsheetLoading);
   const spreadsheetError = useAppSelector(selectSpreadsheetError);
+  const { setPageTitle } = usePageTitle();
+
+  // Set page title
+  useEffect(() => {
+    setPageTitle('View Statements');
+  }, [setPageTitle]);
 
   const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);

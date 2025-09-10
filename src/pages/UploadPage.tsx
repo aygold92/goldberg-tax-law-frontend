@@ -24,6 +24,7 @@ import DocumentUpload from '../components/DocumentUpload';
 import AnalysisStatus from '../components/AnalysisStatus';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/UploadPage.module.css';
 
@@ -32,6 +33,12 @@ const UploadPage: React.FC = () => {
   const selectedClient = useAppSelector(selectSelectedClient);
   const [statusQueryUrl, setStatusQueryUrl] = useState<string>('');
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const { setPageTitle } = usePageTitle();
+
+  // Set page title
+  useEffect(() => {
+    setPageTitle('Upload Documents');
+  }, [setPageTitle]);
 
   // handleClientChange and setSelectedClient are no longer needed
 

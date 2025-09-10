@@ -60,7 +60,6 @@ import {
   setFileSelection, 
   setAllFilesSelection, 
   clearError,
-  uploadFiles,
   uploadFilesToAzure,
   deleteInputDocument,
   loadAzureFiles,

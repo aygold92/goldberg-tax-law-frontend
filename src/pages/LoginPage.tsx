@@ -33,6 +33,7 @@ import { Microsoft } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectIsAuthenticated, selectAuthLoading, selectAuthError } from '../redux/features/auth/authSelectors';
 import { loginUser, clearError } from '../redux/features/auth/authSlice';
+import { usePageTitle } from '../hooks/usePageTitle';
 import styles from '../styles/components/LoginPage.module.css';
 
 const LoginPage: React.FC = () => {
@@ -40,6 +41,12 @@ const LoginPage: React.FC = () => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const loading = useAppSelector(selectAuthLoading);
   const error = useAppSelector(selectAuthError);
+  const { setPageTitle } = usePageTitle();
+
+  // Set page title
+  React.useEffect(() => {
+    setPageTitle('Sign In');
+  }, [setPageTitle]);
 
   // Redirect to home if already authenticated
   if (isAuthenticated) {
