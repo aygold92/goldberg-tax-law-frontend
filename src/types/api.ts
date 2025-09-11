@@ -204,4 +204,35 @@ export interface Transaction {
   vendor: string;
 }
 
-export interface LoadTransactionsFromModelResponse extends Array<Transaction> {} 
+export interface LoadTransactionsFromModelResponse extends Array<Transaction> {}
+
+// File Metadata Operations
+export interface InputFileMetadata {
+  numstatements?: number;
+  classified: boolean;
+  analyzed: boolean;
+  statements?: string[];
+}
+
+export interface GetInputFileMetadataRequest {
+  clientName: string;
+  filename: string;
+}
+
+export interface GetInputFileMetadataResponse {
+  status: string;
+  message: string;
+  metadata: InputFileMetadata | null;
+}
+
+export interface UpdateInputFileMetadataRequest {
+  clientName: string;
+  filename: string;
+  metadata: InputFileMetadata;
+}
+
+export interface UpdateInputFileMetadataResponse {
+  status: string;
+  message: string;
+  updatedMetadata: InputFileMetadata | null;
+} 

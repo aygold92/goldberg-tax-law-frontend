@@ -43,6 +43,11 @@ import {
   LoadTransactionsFromModelRequest,
   LoadTransactionsFromModelResponse,
   BankStatementMetadata,
+  GetInputFileMetadataRequest,
+  GetInputFileMetadataResponse,
+  UpdateInputFileMetadataRequest,
+  UpdateInputFileMetadataResponse,
+  InputFileMetadata,
 } from '../types/api';
 import authService from './auth';
 // Add BankStatement import
@@ -218,6 +223,19 @@ class ApiService {
   // Delete input document
   async deleteInputDocument(clientName: string, filename: string): Promise<void> {
     await this.api.post('/api/DeleteInputDocument', { clientName, filename });
+  }
+
+  // File Metadata Operations
+  async getInputFileMetadata(request: GetInputFileMetadataRequest): Promise<GetInputFileMetadataResponse> {
+    const response = await this.api.get<GetInputFileMetadataResponse>(
+      `/api/GetInputFileMetadata?clientName=${encodeURIComponent(request.clientName)}&filename=${encodeURIComponent(request.filename)}`
+    );
+    return response.data;
+  }
+
+  async updateInputFileMetadata(request: UpdateInputFileMetadataRequest): Promise<UpdateInputFileMetadataResponse> {
+    const response = await this.api.post<UpdateInputFileMetadataResponse>('/api/UpdateInputFileMetadata', request);
+    return response.data;
   }
 }
 

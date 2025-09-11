@@ -1,0 +1,126 @@
+/* FileMetadataEditor component styles */
+
+.card {
+  margin-top: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.cardHeader .MuiCardHeader-title {
+  color: #333;
+  font-weight: 600;
+}
+
+.cardHeader .MuiCardHeader-subheader {
+  color: #666;
+}
+
+.cardContent {
+  padding: 24px !important;
+}
+
+.loadingContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px !important;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statementsSection {
+  margin-top: 16px;
+}
+
+.statementsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.statementsActions {
+  display: flex;
+  gap: 8px;
+}
+
+.statementsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.statementItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cardContent {
+    padding: 16px !important;
+  }
+  
+  .statementsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .statementsActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .headerActions {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+/* Animation for smooth transitions */
+.card {
+  transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Form field styling */
+.MuiTextField-root {
+  margin-bottom: 16px;
+}
+
+.MuiFormControlLabel-root {
+  margin-bottom: 8px;
+}
+
+/* Alert styling */
+.MuiAlert-root {
+  border-radius: 8px;
+}
+
+/* Button styling */
+.MuiButton-root {
+  text-transform: none;
+  border-radius: 6px;
+}
+
+/* Switch styling */
+.MuiSwitch-root {
+  margin-right: 8px;
+}

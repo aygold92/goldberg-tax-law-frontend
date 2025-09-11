@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Typography,
   Button,
   Alert,
   CircularProgress,
   FormControlLabel,
   Checkbox,
   Snackbar,
+  Card,
+  CardContent,
+  CardHeader,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { Refresh, Save } from '@mui/icons-material';
 import { ClassificationType } from '../../types/bankStatement';
@@ -23,6 +27,7 @@ import ClassificationInput from './components/ClassificationInput';
 import ClassificationList from './components/ClassificationList';
 import AnalyzePageResult from './components/AnalyzePageResult';
 import ReloadConfirmationDialog from './components/ReloadConfirmationDialog';
+import styles from './DocumentClassificationEditor.module.css';
 
 interface DocumentClassificationEditorProps {
   clientName: string;
@@ -170,50 +175,47 @@ const DocumentClassificationEditor: React.FC<DocumentClassificationEditorProps> 
   }
 
   return (
-    <Box sx={{ p: 1 }}>
-      {/* Compact header with actions */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle2" color="text.secondary">
-          Classifications
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-          {!readOnly && (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={runAnalyzePage}
-                  onChange={(e) => setRunAnalyzePage(e.target.checked)}
-                  size="small"
-                />
-              }
-              label="Analyze pages"
-              sx={{ mr: 1 }}
-            />
-          )}
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Refresh />}
-            onClick={handleReload}
-            disabled={saving || analyzePageLoading}
-            sx={{ minWidth: 'auto', px: 1 }}
-          >
-            Reload
-          </Button>
-          {!readOnly && (
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<Save />}
-              onClick={handleSave}
-              disabled={saving || analyzePageLoading || validationErrors.length > 0 || !hasUnsavedChanges}
-              sx={{ minWidth: 'auto', px: 1 }}
-            >
-              {saving ? 'Saving...' : analyzePageLoading ? 'Analyzing...' : 'Save'}
-            </Button>
-          )}
-        </Box>
-      </Box>
+    <Card className={styles.card}>
+      <CardHeader
+        title="Document Classification Editor"
+        subheader={`File: ${filename}`}
+        action={
+          <Box className={styles.headerActions}>
+            {!readOnly && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={runAnalyzePage}
+                    onChange={(e) => setRunAnalyzePage(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label="Analyze pages"
+                sx={{ mr: 1 }}
+              />
+            )}
+            <Tooltip title="Reload classifications">
+              <IconButton onClick={handleReload} size="small" disabled={saving || analyzePageLoading}>
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            {!readOnly && (
+              <Button
+                variant="contained"
+                startIcon={saving ? <CircularProgress size={16} /> : <Save />}
+                onClick={handleSave}
+                disabled={saving || analyzePageLoading || validationErrors.length > 0 || !hasUnsavedChanges}
+                size="small"
+              >
+                {saving ? 'Saving...' : analyzePageLoading ? 'Analyzing...' : 'Save'}
+              </Button>
+            )}
+          </Box>
+        }
+        className={styles.cardHeader}
+      />
+      
+      <CardContent className={styles.cardContent}>
 
       {/* Error/Success messages */}
       {error && (
@@ -277,7 +279,8 @@ const DocumentClassificationEditor: React.FC<DocumentClassificationEditorProps> 
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Box>
+      </CardContent>
+    </Card>
   );
 };
 

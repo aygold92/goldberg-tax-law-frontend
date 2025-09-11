@@ -6,6 +6,9 @@ import {
   Alert,
   CircularProgress,
   Snackbar,
+  Card,
+  CardContent,
+  CardHeader,
 } from '@mui/material';
 import { PlayArrow, SelectAll, Clear } from '@mui/icons-material';
 
@@ -20,6 +23,7 @@ import { useSelection } from './hooks/useSelection';
 // Import components
 import SelectionBadge from './components/SelectionBadge';
 import AnalyzePageResult from '../DocumentClassificationEditor/components/AnalyzePageResult';
+import styles from './AnalyzePagesSelector.module.css';
 
 interface AnalyzePagesSelectorProps {
   clientName: string;
@@ -113,45 +117,45 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
   }
 
   return (
-    <Box sx={{ p: 1 }}>
-      {/* Header with actions */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle2" color="text.secondary">
-          Analyze Pages
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SelectAll />}
-            onClick={handleSelectAll}
-            disabled={classifications.length === 0}
-            sx={{ minWidth: 'auto', px: 1 }}
-          >
-            Select All
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Clear />}
-            onClick={handleClearSelection}
-            disabled={selectionCount === 0}
-            sx={{ minWidth: 'auto', px: 1 }}
-          >
-            Clear
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<PlayArrow />}
-            onClick={handleAnalyze}
-            disabled={analyzePageLoading || selectionCount === 0}
-            sx={{ minWidth: 'auto', px: 1 }}
-          >
-            {analyzePageLoading ? 'Analyzing...' : `Analyze (${selectionCount})`}
-          </Button>
-        </Box>
-      </Box>
+    <Card className={styles.card}>
+      <CardHeader
+        title="Analyze Pages Selector"
+        subheader={`File: ${filename}`}
+        action={
+          <Box className={styles.headerActions}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SelectAll />}
+              onClick={handleSelectAll}
+              disabled={classifications.length === 0}
+            >
+              Select All
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Clear />}
+              onClick={handleClearSelection}
+              disabled={selectionCount === 0}
+            >
+              Clear
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={analyzePageLoading ? <CircularProgress size={16} /> : <PlayArrow />}
+              onClick={handleAnalyze}
+              disabled={analyzePageLoading || selectionCount === 0}
+              size="small"
+            >
+              {analyzePageLoading ? 'Analyzing...' : `Analyze (${selectionCount})`}
+            </Button>
+          </Box>
+        }
+        className={styles.cardHeader}
+      />
+      
+      <CardContent className={styles.cardContent}>
 
       {/* Error messages */}
       {error && (
@@ -212,7 +216,8 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Box>
+      </CardContent>
+    </Card>
   );
 };
 

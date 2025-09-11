@@ -68,6 +68,7 @@ import NetIncomeCalculation from '../components/NetIncomeCalculation';
 import PdfDisplay from '../components/PdfDisplay';
 import { DocumentClassificationEditor } from '../components/DocumentClassificationEditor';
 import { AnalyzePagesSelector } from '../components/AnalyzePagesSelector';
+import { FileMetadataEditor } from '../components/FileMetadataEditor';
 
 // Helper to parse query params
 function useQuery() {
@@ -425,6 +426,14 @@ const EditPage: React.FC = () => {
         {/* Analyze Pages Selector */}
         <Box sx={{ mt: 4 }}>
           <AnalyzePagesSelector
+            clientName={clientName}
+            filename={statement.pageMetadata.filename}
+          />
+        </Box>
+
+        {/* File Metadata Editor */}
+        <Box sx={{ mt: 4 }}>
+          <FileMetadataEditor
             clientName={clientName}
             filename={statement.pageMetadata.filename}
           />

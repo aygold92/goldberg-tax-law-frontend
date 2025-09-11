@@ -1,5 +1,37 @@
 /* DocumentClassificationEditor component styles */
 
+.card {
+  margin-top: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.cardHeader .MuiCardHeader-title {
+  color: #333;
+  font-weight: 600;
+}
+
+.cardHeader .MuiCardHeader-subheader {
+  color: #666;
+}
+
+.cardContent {
+  padding: 24px !important;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .container {
   padding: 24px;
   max-width: 1200px;
