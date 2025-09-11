@@ -9,5 +9,20 @@
 ### Coding rules
 boolean values should always default to false
 
+### Styling
+* avoid inline styles unless it's a calculated value
+* use the styles/components folder for styling, unless it's a global style
+* use the styles/constants folder for constants
+* use the styles/theme folder for theme
+* use the styles/utils folder for utils
+* use the styles/hooks folder for hooks
+* use the styles/types folder for types
+
+### Code Organization
+* Please do not create utils or constants files, as these are just dumping grounds for random code.  
+Instead, place them where they are needed, or create a more specific compnent for related functionality.
+* use CSS modules for styling
+
+
 ### Tests
 **NEVER** update tests to match the implementation unless explicitly asked.

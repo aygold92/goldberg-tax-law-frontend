@@ -32,6 +32,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/StatementsPage.module.css';
 import { constructFilenameWithPages } from '../utils/filenameUtils';
+import { AccountSummary } from '../components/AccountSummary';
 
 const StatementsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -310,6 +311,10 @@ const StatementsPage: React.FC = () => {
         <TableChart className={styles.headerIcon} />
         <Typography variant="h4">View Statements</Typography>
       </Box>
+      
+      {/* Account Summary Component */}
+      <AccountSummary statements={statements} selectedClient={selectedClient} />
+      
       <Paper className={styles.paperContainer}>
         <Stack direction="row" spacing={2} className={styles.actionsContainer}>
           <Button

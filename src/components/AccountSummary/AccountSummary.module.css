@@ -1,0 +1,416 @@
+.container {
+  margin-bottom: 24px;
+}
+
+.title {
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.accountCard {
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.accountCard:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.accountHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-right: 16px;
+}
+
+.accountInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accountTitle {
+  font-weight: 600;
+  color: #333;
+}
+
+.summaryChips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.accountDetails {
+  padding: 16px 0;
+}
+
+.timelineSection,
+.gapsSection,
+.suspiciousSection,
+.missingChecksSection {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.yearRow {
+  margin-bottom: 24px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #fafafa;
+}
+
+.yearLabel {
+  margin-bottom: 12px;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.monthsContainer {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 8px;
+}
+
+.monthBlock {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.monthBlock.clickable {
+  cursor: pointer;
+}
+
+.monthBlock.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.monthBlock.hasStatement {
+  background-color: #e8f5e8;
+  border-color: #4caf50;
+}
+
+.monthBlock.isMissing {
+  background-color: #fff3e0;
+  border-color: #ff9800;
+}
+
+.monthBlock.isNeutral {
+  background-color: #f5f5f5;
+  border-color: #e0e0e0;
+}
+
+
+.monthName {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.statementDate {
+  color: #666;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
+}
+
+.statusIndicators {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.editLink {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.editButton {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  min-width: auto;
+}
+
+.invalidDateSection {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.invalidDateList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invalidDateItem {
+  border: 1px solid #ff9800;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #fff3e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.invalidDateItem:hover {
+  background-color: #ffe0b2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.invalidDateHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.filename {
+  font-weight: 600;
+  color: #333;
+}
+
+.invalidDateInfo {
+  color: #666;
+  font-size: 0.75rem;
+}
+
+/* Tooltip Styles */
+.tooltipContent {
+  max-width: 300px;
+  padding: 8px;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  color: #1976d2 !important;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+.tooltipDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltipRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltipLabel {
+  font-weight: 600;
+  color: #666666 !important;
+  min-width: 80px;
+}
+
+.tooltipValue {
+  color: #333333 !important;
+  text-align: right;
+  flex: 1;
+}
+
+.tooltipIssues {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltipIssue {
+  color: #d32f2f !important;
+  font-weight: 500;
+}
+
+.tooltipClickHint {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0 !important;
+  color: #1976d2 !important;
+  font-style: italic;
+  text-align: center;
+}
+
+.suspiciousHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.suspiciousItem,
+.missingChecksItem {
+  border-left: 3px solid #f44336;
+  margin-bottom: 4px;
+  background-color: #ffebee;
+  border-radius: 4px;
+}
+
+.missingChecksItem {
+  border-left-color: #ff9800;
+  background-color: #fff3e0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .accountHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .summaryChips {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .monthsContainer {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+  }
+  
+  .monthBlock {
+    min-height: 50px;
+    padding: 6px;
+  }
+  
+  .monthName {
+    font-size: 0.7rem;
+  }
+  
+  .editButton {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .monthsContainer {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .accountCard {
+    background-color: #2d2d2d;
+    border-color: #404040;
+  }
+  
+  .accountTitle {
+    color: #fff;
+  }
+  
+  .sectionTitle {
+    color: #fff;
+  }
+  
+  .yearRow {
+    background-color: #3d3d3d;
+    border-color: #404040;
+  }
+  
+  .yearLabel {
+    color: #64b5f6;
+  }
+  
+  .monthBlock {
+    border-color: #404040;
+  }
+  
+  .monthBlock.hasStatement {
+    background-color: #2e4a2e;
+    border-color: #4caf50;
+  }
+  
+  .monthBlock.isMissing {
+    background-color: #4a3a2e;
+    border-color: #ff9800;
+  }
+  
+  .monthBlock.isNeutral {
+    background-color: #3d3d3d;
+    border-color: #404040;
+  }
+  
+  .monthName {
+    color: #fff;
+  }
+  
+  .statementDate {
+    color: #ccc;
+  }
+  
+  .invalidDateSection {
+    border-top-color: #404040;
+  }
+  
+  .invalidDateItem {
+    background-color: #4a3a2e;
+    border-color: #ff9800;
+  }
+  
+  .invalidDateItem:hover {
+    background-color: #5a4a3e;
+  }
+  
+  .filename {
+    color: #fff;
+  }
+  
+  .invalidDateInfo {
+    color: #ccc;
+  }
+  
+  .tooltipTitle {
+    color: #90caf9 !important;
+  }
+  
+  .tooltipLabel {
+    color: #e0e0e0 !important;
+  }
+  
+  .tooltipValue {
+    color: #ffffff !important;
+  }
+  
+  .tooltipIssues {
+    border-top-color: #555555 !important;
+  }
+  
+  .tooltipIssue {
+    color: #ff6b6b !important;
+  }
+  
+  .tooltipClickHint {
+    border-top-color: #555555 !important;
+    color: #90caf9 !important;
+  }
+}

@@ -24,7 +24,7 @@
 .calculationContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .calculationRow {
@@ -103,19 +103,3 @@
   color: #1e293b;
 }
 
-.actualContainer {
-  display: flex;
-  align-items: center;
-  margin-left: 16px;
-}
-
-/* Badge styling handled by MUI */
-
-.actualSpacer {
-  width: 1px;
-  height: 1px;
-}
-
-.actualClose {
-  color: #64748b;
-}

@@ -102,7 +102,7 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
             </Typography>
           </Box>
           
-          {/* Expected Value and Actual */}
+          {/* Expected Value */}
           <Box className={styles.calculationRow}>
             <Typography 
               variant="body2" 
@@ -122,27 +122,31 @@ const NetIncomeCalculation: React.FC<NetIncomeCalculationProps> = ({
                 </Tooltip>
               )}
             </Typography>
-            {actualValue !== null && (
-              <Box className={styles.actualContainer}>
-                <Badge 
-                    badgeContent={`Actual: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(actualValue || 0)}`}
-                  color={expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? 'success' : 'error'}
-                  sx={{ 
-                    '& .MuiBadge-badge': {
-                      fontSize: '10px',
-                      height: '16px',
-                      minWidth: '120px',
-                      backgroundColor: expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? COLORS.status.success : COLORS.status.error,
-                      color: '#ffffff',
-                      fontWeight: 500
-                    }
+          </Box>
+          
+          {/* Actual Value */}
+          {actualValue !== null && (
+            <Box className={styles.calculationRow}>
+              <Typography 
+                variant="body2" 
+                className={styles.label}
+              >
+                Actual:
+              </Typography>
+                <Typography 
+                  variant="body2" 
+                  className={styles.value}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'flex-end'
                   }}
                 >
-                  <Box className={styles.actualSpacer} />
-                </Badge>
-              </Box>
-            )}
-          </Box>
+                  <span style={{ backgroundColor: expectedValue !== null && Math.abs(expectedValue - actualValue) < 0.01 ? COLORS.status.success : COLORS.status.error, color: '#ffffff', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 500, marginRight: '-7px' }}>
+                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(actualValue || 0)}
+                    </span>
+                </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>
