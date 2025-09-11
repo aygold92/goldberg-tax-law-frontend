@@ -91,7 +91,7 @@ export const loadAzureFiles = createAsyncThunk(
       const { default: apiService, listBlobsWithMetadata } = await import('../../../services/api');
       
       const action = 'input';
-      const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT || 'goldbergtaxlawanalyzed';
+      const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT || '';
       const sasResponse = await apiService.requestSASToken(clientName, action);
       const containerName = `${clientName}-${action}`;
       const blobs = await listBlobsWithMetadata(containerName, sasResponse.token, storageAccountName);
@@ -153,7 +153,7 @@ export const uploadFilesToAzure = createAsyncThunk(
           
           // Upload to Azure
           const action = 'input';
-          const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT || 'goldbergtaxlawanalyzed';
+          const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT;
           const sasResponse = await apiService.requestSASToken(selectedClient, action);
           const containerName = `${selectedClient}-${action}`;
           const uploadUrl = `https://${storageAccountName}.blob.core.windows.net/${containerName}/${encodeURIComponent(fileObj.name)}?${sasResponse.token}`;
