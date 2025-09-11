@@ -161,7 +161,7 @@ export interface PutDocumentClassificationRequest {
 export interface PutDocumentClassificationResponse extends ApiResponse {}
 
 // Page Analysis
-export interface PageRequest {
+export interface ProcessDataModelActivityInput {
   requestId: string;
   clientName: string;
   classifiedPdfMetadata: {
@@ -169,13 +169,14 @@ export interface PageRequest {
     pages: number[];
     classification: string;
   };
+  useOriginalFile: boolean;
 }
 
-export interface AnalyzePageRequest {
-  pageRequests: PageRequest[];
+export interface AnalyzePagesRequest {
+  pageRequests: ProcessDataModelActivityInput[];
 }
 
-export interface AnalyzePageResponse extends ApiResponse {}
+export interface AnalyzePagesResponse extends ApiResponse {}
 
 // Statement Models
 export interface UpdateStatementModelsRequest {

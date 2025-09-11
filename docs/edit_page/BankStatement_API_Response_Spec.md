@@ -48,6 +48,7 @@
 * "WF Bank Joint"
 * "BofA"
 * "NFCU Bank"
+* "Truist
 * "Checks"
 
 ### TransactionHistoryRecord

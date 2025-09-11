@@ -66,6 +66,8 @@ import PagesTable from '../components/PagesTable';
 import TransactionsTable from '../components/TransactionsTable';
 import NetIncomeCalculation from '../components/NetIncomeCalculation';
 import PdfDisplay from '../components/PdfDisplay';
+import { DocumentClassificationEditor } from '../components/DocumentClassificationEditor';
+import { AnalyzePagesSelector } from '../components/AnalyzePagesSelector';
 
 // Helper to parse query params
 function useQuery() {
@@ -410,6 +412,23 @@ const EditPage: React.FC = () => {
             </Box>
           </Alert>
         </Snackbar>
+
+        {/* Document Classification Editor */}
+        <Box sx={{ mt: 4 }}>
+          <DocumentClassificationEditor
+            clientName={clientName}
+            filename={statement.pageMetadata.filename}
+            defaultClassification={statement.pageMetadata.classification}
+          />
+        </Box>
+
+        {/* Analyze Pages Selector */}
+        <Box sx={{ mt: 4 }}>
+          <AnalyzePagesSelector
+            clientName={clientName}
+            filename={statement.pageMetadata.filename}
+          />
+        </Box>
       </Box>
     </Fade>
   );

@@ -1,0 +1,143 @@
+/* DocumentClassificationEditor component styles */
+
+.container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.filename {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.classificationsContainer {
+  margin-bottom: 24px;
+}
+
+.addButton {
+  margin-bottom: 16px;
+}
+
+.previewSection {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.previewTitle {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.previewList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.previewItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.previewItem:last-child {
+  border-bottom: none;
+}
+
+.previewPages {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.previewClassification {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.errorAlert {
+  margin-bottom: 16px;
+}
+
+.successAlert {
+  margin-bottom: 16px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+}
+
+.emptyStateIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.emptyStateText {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.emptyStateSubtext {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .previewItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}

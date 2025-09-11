@@ -36,8 +36,8 @@ import {
   GetDocumentClassificationResponse,
   PutDocumentClassificationRequest,
   PutDocumentClassificationResponse,
-  AnalyzePageRequest,
-  AnalyzePageResponse,
+  AnalyzePagesRequest,
+  AnalyzePagesResponse,
   UpdateStatementModelsRequest,
   UpdateStatementModelsResponse,
   LoadTransactionsFromModelRequest,
@@ -182,8 +182,8 @@ class ApiService {
   }
 
   // Page Analysis
-  async analyzePage(request: AnalyzePageRequest): Promise<AnalyzePageResponse> {
-    const response = await this.api.post<AnalyzePageResponse>('/api/AnalyzePage', request);
+  async analyzePages(request: AnalyzePagesRequest): Promise<AnalyzePagesResponse> {
+    const response = await this.api.post<AnalyzePagesResponse>('/api/AnalyzePage', request);
     return response.data;
   }
 

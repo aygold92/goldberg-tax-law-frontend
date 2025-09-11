@@ -469,7 +469,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         enableRangeSelection
         enableRowSelection
         enableFillHandle
-        initialTableSize="unbounded"
+        initialTableSize="large"
         customFilters={customFilters}
         rowStyle={rowStyle}
       />

@@ -61,5 +61,6 @@ export enum ClassificationType {
   WF_BANK_JOINT = "WF Bank Joint",
   BOFA = "BofA",
   NFCU_BANK = "NFCU Bank",
+  TRUIST = "Truist",
   CHECKS = "Checks"
 }
