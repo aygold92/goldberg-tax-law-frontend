@@ -16,6 +16,8 @@ export interface CheckDataModel {
   description: string;
   date: string;
   amount: number;
+  batesStamp: string;
+  pageMetadata: ClassifiedPdfMetadata;
   // ...other fields as needed
 }
 

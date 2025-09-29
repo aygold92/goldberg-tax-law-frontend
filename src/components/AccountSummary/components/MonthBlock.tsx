@@ -17,9 +17,32 @@ interface MonthBlockProps {
 }
 
 const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) => {
+  // Generate tooltip content
+  const getTooltipContent = () => {
+    if (monthBlock.hasStatement && monthBlock.statement) {
+      return <StatementTooltip statement={monthBlock.statement} />;
+    } else {
+      // Handle month blocks without statements
+      if (monthBlock.hasStatement) {
+        const issues = [];
+        if (monthBlock.isSuspicious) issues.push('Suspicious');
+        if (monthBlock.hasMissingChecks) issues.push('Missing checks');
+        
+        if (issues.length > 0) {
+          return `${monthBlock.monthName}: ${issues.join(', ')} - Click to edit`;
+        }
+        return `${monthBlock.monthName}: Statement available - Click to edit`;
+      } else if (monthBlock.isMissing) {
+        return `${monthBlock.monthName}: Missing statement`;
+      } else {
+        return `${monthBlock.monthName}: No statement expected`;
+      }
+    }
+  };
+
   return (
     <Tooltip
-      title={<StatementTooltip monthBlock={monthBlock} />}
+      title={getTooltipContent()}
       placement="top"
       arrow
       enterDelay={300}

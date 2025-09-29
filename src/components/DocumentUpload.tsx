@@ -39,7 +39,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridValueGetter } from '@mui/x-data-grid';
-import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon, Refresh } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon, Refresh, Refresh as RefreshIcon } from '@mui/icons-material';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/DocumentUpload.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
@@ -258,6 +258,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     dispatch(resetErrorStatus([file.name]));
   };
 
+  // Refresh documents from Azure
+  const handleRefresh = async () => {
+    if (!selectedClient) return;
+    
+    try {
+      dispatch(clearError());
+      await dispatch(loadAzureFiles(selectedClient)).unwrap();
+    } catch (error) {
+      console.error('Failed to refresh documents:', error);
+    }
+  };
+
   // DataGrid columns
   const numStatementsGetter: GridValueGetter<any> = (value, row) => row.metadata?.numstatements ?? '';
   const statementsGetter: GridValueGetter<any> = (value, row) => (row.metadata?.statements ? row.metadata.statements.join(', ') : '');
@@ -395,6 +407,16 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
         </Box>
         
         <Box className={styles.actionsContainer}>
+          <Button
+            variant="outlined"
+            size="large"
+            className={styles.actionButton}
+            onClick={handleRefresh}
+            disabled={!selectedClient || loadingAzureFiles || isUploading || isAnalyzing}
+            startIcon={<RefreshIcon />}
+          >
+            {loadingAzureFiles ? 'Refreshing...' : 'Refresh Documents'}
+          </Button>
           <Button
             variant="contained"
             size="large"

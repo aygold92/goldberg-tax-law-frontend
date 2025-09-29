@@ -31,12 +31,12 @@ import styles from '../styles/components/TransactionsTable.module.css';
 interface TransactionTableRow {
   id: string;                    // transaction ID
   date: Date | null;             // transaction date
-  description: string;           // transaction description
-  amount: number | undefined | null;    // transaction amount
-  filePageNumber: number | null; // page number
-  checkNumber: number | null;    // check number (for bank statements)
-  checkFilename: string;         // check filename (for bank statements)
-  checkFilePage: number | null;  // check file page (for bank statements)
+  description: string | null | undefined;           // transaction description
+  amount: number | null | undefined;    // transaction amount
+  filePageNumber: number | null | undefined; // page number
+  checkNumber: number | null | undefined;    // check number (for bank statements)
+  checkFilename: string | null | undefined;         // check filename (for bank statements)
+  checkFilePage: number | null | undefined;  // check file page (for bank statements)
   suspiciousReasons: string[];   // suspicious reasons for display
   isModified: boolean;           // for row styling
   isNew: boolean;                // for row styling
@@ -63,12 +63,12 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     return statement.transactions.map(transaction => ({
       id: transaction.id,
       date: transaction.date ? new Date(transaction.date) : null,
-      description: transaction.description || '',
+      description: transaction.description,
       amount: transaction.amount,
-      filePageNumber: transaction.filePageNumber || null,
-      checkNumber: transaction.checkNumber || null,
-      checkFilename: transaction.checkDataModel?.description || '',
-      checkFilePage: transaction.checkDataModel?.to ? parseInt(transaction.checkDataModel.to) || null : null,
+      filePageNumber: transaction.filePageNumber,
+      checkNumber: transaction.checkNumber,
+      checkFilename: transaction.checkDataModel?.pageMetadata.filename,
+      checkFilePage: transaction.checkDataModel?.pageMetadata.pages[0],
       suspiciousReasons: calculateTransactionSuspiciousReasons(transaction, statement),
       isModified: modifiedTransactions.includes(transaction.id),
       isNew: newTransactions.includes(transaction.id)
@@ -263,31 +263,6 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     }
   ];
 
-
-  // Handle row add for ReactGridTable
-  const handleRowAdd = (row: Partial<TransactionTableRow>) => {
-    if (statement) {
-      // Create a new transaction with default values
-      const newTransaction: TransactionHistoryRecord = {
-        id: `new-${Date.now()}`, // Generate a unique ID
-        date: row.date ? row.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        description: row.description || 'New Transaction',
-        amount: row.amount || 0,
-        filePageNumber: row.filePageNumber || 1,
-        checkNumber: row.checkNumber || undefined,
-        checkDataModel: row.checkFilename || row.checkFilePage ? {
-          accountNumber: '',
-          checkNumber: row.checkNumber || 0,
-          date: row.date ? row.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          amount: row.amount || 0,
-          description: row.checkFilename || '',
-          to: row.checkFilePage?.toString() || ''
-        } : undefined
-      };
-      dispatch(addTransaction(newTransaction));
-    }
-  };
-
   // Handle transaction actions
   const handleDuplicateTransaction = (transactionId: Id) => {
     dispatch(duplicateTransaction(String(transactionId)));
@@ -302,19 +277,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   };
 
   const handleAddTransaction = () => {
-    if (statement) {
-      const newTransaction: TransactionHistoryRecord = {
-        id: crypto.randomUUID(),
-        date: null,
-        description: null,
-        amount: null,
-        filePageNumber: null,
-        checkNumber: null,
-        checkDataModel: null,
-        suspiciousReasons: [],
-      };
-      dispatch(addTransaction(newTransaction));
-    }
+    dispatch(addTransaction({ id: crypto.randomUUID() }));
   };
 
   // a change is a delete if all previous values are empty and all new values are empty
@@ -463,7 +426,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       <ReactGridTable
         columns={columns}
         data={data}
-        handleRowAdd={handleRowAdd}
+        handleRowAdd={handleAddTransaction}
         onCellsChanged={handleCellsChanged}
         onContextMenu={handleContextMenu}
         enableRangeSelection

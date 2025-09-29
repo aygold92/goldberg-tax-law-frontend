@@ -186,7 +186,25 @@ const statementEditorSlice = createSlice({
           const transaction = state.currentStatement!.transactions.find(t => t.id === transactionId);
           if (transaction) {
             changes.forEach(({ field, value }) => {
-              (transaction as any)[field] = value;
+              if (field === 'checkFilename') {
+                (transaction as any).checkDataModel = {
+                  ...transaction.checkDataModel,
+                  pageMetadata: {
+                    ...transaction.checkDataModel?.pageMetadata,
+                    filename: value,
+                  },
+                };
+              } else if (field === 'checkFilePage') {
+                (transaction as any).checkDataModel = {
+                  ...transaction.checkDataModel,
+                  pageMetadata: {
+                    ...transaction.checkDataModel?.pageMetadata,
+                    pages: [value],
+                  },
+                };
+              } else {
+                (transaction as any)[field] = value;
+              }
             });
           }
         });

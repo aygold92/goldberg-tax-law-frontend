@@ -117,7 +117,6 @@ export interface WriteCsvSummaryResponse {
 
 // Document Data Model
 export interface GetDocumentDataModelRequest {
-  requestId: string;
   clientName: string;
   pdfMetadata: {
     filename: string;
@@ -235,4 +234,4 @@ export interface UpdateInputFileMetadataResponse {
   status: string;
   message: string;
   updatedMetadata: InputFileMetadata | null;
-} 
+}

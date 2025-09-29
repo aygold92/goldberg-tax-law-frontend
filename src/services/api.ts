@@ -60,7 +60,7 @@ class ApiService {
   constructor(baseURL: string = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001') {
     this.api = axios.create({
       baseURL,
-      timeout: 30000,
+      timeout: 120000,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

@@ -120,7 +120,7 @@ const ReactGridTableExample: React.FC = () => {
     '5': { background: 'rgba(33, 150, 243, 0.1)' }, // Light blue for Eva
   };
 
-  const handleRowAdd = (row: Partial<Person>) => {
+  const   handleRowAdd = () => {
     // Since we're not using an add-row anymore, we'll create a new person with default values
     const newPerson: Person = {
       id: String(Date.now()),

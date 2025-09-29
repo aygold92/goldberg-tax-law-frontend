@@ -19,10 +19,12 @@ import { useSnackbar } from '../DocumentClassificationEditor/hooks/useSnackbar';
 
 // Import new selection hook
 import { useSelection } from './hooks/useSelection';
+import { useDocumentDataModel } from './hooks/useDocumentDataModel';
 
 // Import components
 import SelectionBadge from './components/SelectionBadge';
 import AnalyzePageResult from '../DocumentClassificationEditor/components/AnalyzePageResult';
+import DocumentDataModelResult from './components/DocumentDataModelResult';
 import styles from './AnalyzePagesSelector.module.css';
 
 interface AnalyzePagesSelectorProps {
@@ -78,6 +80,14 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     closeSnackbar,
   } = useSnackbar();
 
+  const {
+    dataModelResult,
+    loading: dataModelLoading,
+    error: dataModelError,
+    getDocumentDataModel,
+    clearResults: clearDataModelResults,
+  } = useDocumentDataModel();
+
   // Handle analyzing selected classifications
   const handleAnalyze = async () => {
     if (selectedClassifications.length === 0) {
@@ -106,6 +116,22 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
   // Handle clear selection
   const handleClearSelection = () => {
     clearSelection();
+  };
+
+  // Handle fetching document data model for a classification
+  const handleFetchDataModel = async (classification: any) => {
+    clearDataModelResults();
+    const success = await getDocumentDataModel(
+      clientName,
+      filename,
+      classification.pages
+    );
+    
+    if (success) {
+      showSnackbar('Document data model loaded successfully!', 'success');
+    } else {
+      showSnackbar('Failed to load document data model', 'error');
+    }
   };
 
   if (loading) {
@@ -184,6 +210,7 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
                 classification={classification}
                 isSelected={isSelected(classification)}
                 onToggle={() => toggleSelection(classification)}
+                onFetchDataModel={handleFetchDataModel}
               />
             ))}
           </Box>
@@ -199,6 +226,13 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
         result={analyzePageResult}
         loading={analyzePageLoading}
         error={analyzeError}
+      />
+
+      {/* Document Data Model result display */}
+      <DocumentDataModelResult
+        result={dataModelResult}
+        loading={dataModelLoading}
+        error={dataModelError}
       />
 
       {/* Snackbar notifications */}

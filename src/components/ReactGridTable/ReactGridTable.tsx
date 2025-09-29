@@ -332,7 +332,7 @@ function ReactGridTable<T extends CompatibleData>({
               {/* Add Row Button - Compact */}
               {enableAddRow && (
                 <button
-                  onClick={() => handleRowAdd({})}
+                  onClick={() => handleRowAdd()}
                   className={styles.addRowButton}
                   title="Add new row"
                 >

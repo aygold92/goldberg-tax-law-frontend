@@ -114,7 +114,7 @@ export interface ReactGridTableProps<T extends CompatibleData> extends Omit<Reac
   data: T[];
   
   /** Callback for when a row should be added (if not provided, no add-row is shown) */
-  handleRowAdd?: (row: Partial<T>) => void;
+  handleRowAdd?: () => void;
   
   /** Initial table size (default: 'medium') */
   initialTableSize?: 'small' | 'medium' | 'large' | 'unbounded';

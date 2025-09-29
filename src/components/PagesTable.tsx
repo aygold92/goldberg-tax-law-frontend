@@ -124,24 +124,10 @@ const PagesTable: React.FC<PagesTableProps> = ({
   };
 
   // Handle row add for ReactGridTable
-  const handleRowAdd = (row: Partial<PageTableRow>) => {
-    if (statement && row.pageNumber) {
-      // Add the page with the specified number
-      dispatch(addPage(row.pageNumber));
-      
-      // If there's a bates stamp, we need to update it separately
-      if (row.batesStamp) {
-        // We need to update the bates stamps after adding the page
-        const updatedBatesStamps = { ...statement.batesStamps };
-        updatedBatesStamps[row.pageNumber] = row.batesStamp;
-        dispatch(updateStatementField({ field: 'batesStamps', value: updatedBatesStamps }));
-      }
-    } else if (statement) {
-      // Fallback to auto-increment if no page number specified
-      const maxPage = Math.max(...statement.pageMetadata.pages, 0);
-      const newPageNumber = maxPage + 1;
-      dispatch(addPage(newPageNumber));
-    }
+  const handleRowAdd = () => {
+      // auto-increment page number
+      const maxPage = Math.max(...statement?.pageMetadata.pages || [], 0);
+      dispatch(addPage(maxPage + 1));
   };
 
   const handleDeletePage = (pageNumber: number) => {

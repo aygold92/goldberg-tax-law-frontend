@@ -4,50 +4,64 @@
  */
 
 import React from 'react';
-import { Box, Typography } from '@mui/material';
-import { Error, Warning } from '@mui/icons-material';
-import { MonthBlock } from '../types/accountSummary';
+import { Box, Typography, IconButton, Snackbar, Alert } from '@mui/material';
+import { Error, Warning, Delete } from '@mui/icons-material';
+import { BankStatementMetadata } from '../../../types/api';
+import { constructFilenameWithPages } from '../../../utils/filenameUtils';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import { selectSelectedClient } from '../../../redux/features/client/clientSelectors';
+import { deleteStatements } from '../../../redux/features/statementsList/statementsListSlice';
+import { useSnackbar } from '../../DocumentClassificationEditor/hooks/useSnackbar';
 import styles from '../AccountSummary.module.css';
 
 interface StatementTooltipProps {
-  monthBlock: MonthBlock;
+  statement: BankStatementMetadata;
 }
 
-/**
- * Generates tooltip content for month blocks without statements
- */
-function getMonthBlockTooltip(monthBlock: MonthBlock): string {
-  if (monthBlock.hasStatement) {
-    const issues = [];
-    if (monthBlock.isSuspicious) issues.push('Suspicious');
-    if (monthBlock.hasMissingChecks) issues.push('Missing checks');
-    
-    if (issues.length > 0) {
-      return `${monthBlock.monthName}: ${issues.join(', ')} - Click to edit`;
-    }
-    return `${monthBlock.monthName}: Statement available - Click to edit`;
-  } else if (monthBlock.isMissing) {
-    return `${monthBlock.monthName}: Missing statement`;
-  } else {
-    return `${monthBlock.monthName}: No statement expected`;
-  }
-}
-
-const StatementTooltip: React.FC<StatementTooltipProps> = ({ monthBlock }) => {
-  if (!monthBlock.hasStatement || !monthBlock.statement) {
-    return <>{getMonthBlockTooltip(monthBlock)}</>;
-  }
-
-  const statement = monthBlock.statement;
+const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
+  const dispatch = useAppDispatch();
+  const selectedClient = useAppSelector(selectSelectedClient);
+  const { showSnackbar, snackbarOpen, snackbarMessage, snackbarSeverity, closeSnackbar } = useSnackbar();
+  
   const spending = statement.metadata.totalSpending || 0;
   const income = statement.metadata.totalIncomeCredits || 0;
   const transactions = statement.metadata.numTransactions || 0;
+  
+  // Generate filename with page range
+  const filenameWithPages = constructFilenameWithPages(statement.metadata.filename, statement.metadata.pageRange);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      await dispatch(deleteStatements({ 
+        clientName: selectedClient, 
+        statements: [statement] 
+      })).unwrap();
+      
+      showSnackbar('Statement deleted successfully', 'success');
+    } catch (error) {
+      showSnackbar('Failed to delete statement', 'error');
+    }
+  };
 
   return (
     <Box className={styles.tooltipContent}>
-      <Typography variant="subtitle2" className={styles.tooltipTitle}>
-        {statement.metadata.filename}
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="subtitle2" className={styles.tooltipTitle}>
+          {filenameWithPages}
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={handleDelete}
+          sx={{ 
+            color: '#d32f2f',
+            '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.1)' }
+          }}
+        >
+          <Delete fontSize="small" />
+        </IconButton>
+      </Box>
       
       <Box className={styles.tooltipDetails}>
         <Box className={styles.tooltipRow}>
@@ -55,7 +69,7 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ monthBlock }) => {
             Date:
           </Typography>
           <Typography variant="caption" className={styles.tooltipValue}>
-            {monthBlock.statementDate}
+            {statement.key.date || 'null'}
           </Typography>
         </Box>
         
@@ -86,9 +100,9 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ monthBlock }) => {
           </Typography>
         </Box>
         
-        {(monthBlock.isSuspicious || monthBlock.hasMissingChecks) && (
+        {(statement.metadata.suspicious || statement.metadata.missingChecks) && (
           <Box className={styles.tooltipIssues}>
-            {monthBlock.isSuspicious && (
+            {statement.metadata.suspicious && (
               <Box className={styles.tooltipRow}>
                 <Error color="error" fontSize="small" />
                 <Typography variant="caption" className={styles.tooltipIssue}>
@@ -96,7 +110,7 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ monthBlock }) => {
                 </Typography>
               </Box>
             )}
-            {monthBlock.hasMissingChecks && (
+            {statement.metadata.missingChecks && (
               <Box className={styles.tooltipRow}>
                 <Warning color="warning" fontSize="small" />
                 <Typography variant="caption" className={styles.tooltipIssue}>
@@ -111,6 +125,22 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ monthBlock }) => {
           Click to edit statement
         </Typography>
       </Box>
+      
+      {/* Snackbar notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={closeSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={closeSnackbar} 
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
