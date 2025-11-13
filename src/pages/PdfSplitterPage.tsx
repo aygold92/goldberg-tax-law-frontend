@@ -239,6 +239,21 @@ const PdfSplitterPage: React.FC = () => {
       setError('Please select an output directory.');
       return;
     }
+    
+    // Request write permission immediately while user activation is still valid
+    if (dirHandle) {
+      try {
+        const permission = await dirHandle.requestPermission({ mode: 'readwrite' });
+        if (permission !== 'granted') {
+          setError('Write permission not granted for the selected directory.');
+          return;
+        }
+      } catch (err: any) {
+        console.error('Permission request error:', err);
+        setError('Failed to obtain write permission: ' + (err.message || err.toString()));
+        return;
+      }
+    }
     // Prepare filePageMap
     const map = getFilePageMap(filePageCounts);
     // Prepare split instructions: for each file, collect the pages to extract

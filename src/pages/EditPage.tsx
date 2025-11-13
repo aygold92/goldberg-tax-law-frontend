@@ -55,7 +55,7 @@ import {
   selectSaveLoading,
   selectSaveError,
 } from '../redux/features/statementEditor/statementEditorSelectors';
-import { validateBankStatement } from '../utils/validation';
+import { validateBankStatement, ValidationError } from '../utils/validation';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // Import the components
@@ -69,6 +69,7 @@ import PdfDisplay from '../components/PdfDisplay';
 import { DocumentClassificationEditor } from '../components/DocumentClassificationEditor';
 import { AnalyzePagesSelector } from '../components/AnalyzePagesSelector';
 import { FileMetadataEditor } from '../components/FileMetadataEditor';
+import ValidationConfirmationDialog from '../components/ValidationConfirmationDialog';
 
 // Helper to parse query params
 function useQuery() {
@@ -105,8 +106,9 @@ const EditPage: React.FC = () => {
   }, [statement, clientName, accountNumber, classification, date, setPageTitle]);
 
   // Validation state
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showValidationAlert, setShowValidationAlert] = useState(false);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
   
   // Layout state
   const [layoutMode, setLayoutMode] = useState<'side-by-side' | 'stacked'>('side-by-side');
@@ -128,7 +130,7 @@ const EditPage: React.FC = () => {
   }, [statement, hasUnsavedChanges]);
 
   // --- Determine Statement Type ---
-  const isCreditCard = statement?.pageMetadata.classification?.endsWith('CC') || false;
+  const isCreditCard = statement?.pageMetadata.classification?.includes(' CC') || false;
 
   // --- Handle Layout Change ---
   const handleLayoutChange = (
@@ -147,10 +149,19 @@ const EditPage: React.FC = () => {
     // Validate before saving
     const validationResult = validateBankStatement(statement);
     if (!validationResult.isValid) {
-      setValidationErrors(validationResult.errors.map(error => error.message));
-      setShowValidationAlert(true);
+      // Show confirmation dialog instead of blocking
+      setValidationErrors(validationResult.errors);
+      setShowValidationDialog(true);
       return;
     }
+
+    // No validation errors, proceed with save
+    await performSave();
+  };
+
+  // --- Perform Save ---
+  const performSave = async () => {
+    if (!statement) return;
 
     try {
       await dispatch(saveStatementChanges({ 
@@ -161,9 +172,22 @@ const EditPage: React.FC = () => {
       })).unwrap();
       setValidationErrors([]);
       setShowValidationAlert(false);
+      setShowValidationDialog(false);
     } catch (error) {
       console.error('Save error:', error);
+      setShowValidationDialog(false);
     }
+  };
+
+  // --- Handle Validation Dialog Confirm ---
+  const handleValidationDialogConfirm = () => {
+    setShowValidationDialog(false);
+    performSave();
+  };
+
+  // --- Handle Validation Dialog Cancel ---
+  const handleValidationDialogCancel = () => {
+    setShowValidationDialog(false);
   };
 
   if (loading) {
@@ -388,7 +412,15 @@ const EditPage: React.FC = () => {
           </Grid>
         )}
 
-        {/* Validation Alert */}
+        {/* Validation Confirmation Dialog */}
+        <ValidationConfirmationDialog
+          open={showValidationDialog}
+          onClose={handleValidationDialogCancel}
+          onConfirm={handleValidationDialogConfirm}
+          errors={validationErrors}
+        />
+
+        {/* Validation Alert (kept for backwards compatibility if needed) */}
         <Snackbar
           open={showValidationAlert}
           autoHideDuration={8000}
@@ -407,7 +439,7 @@ const EditPage: React.FC = () => {
             <Box component="ul" sx={{ m: 0, pl: 2 }}>
               {validationErrors.map((error, index) => (
                 <Typography key={index} component="li" variant="body2" sx={{ mb: 0.5 }}>
-                  {error}
+                  {error.message}
                 </Typography>
               ))}
             </Box>

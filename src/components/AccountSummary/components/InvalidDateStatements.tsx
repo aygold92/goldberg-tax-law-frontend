@@ -73,7 +73,7 @@ const InvalidDateStatements: React.FC<InvalidDateStatementsProps> = ({
                 </Box>
               </Box>
               <Typography variant="caption" className={styles.invalidDateInfo}>
-                Date: {statement.key.date || 'null'} | Account: {statement.key.accountNumber}
+                Date: {statement.key.date || 'null'} | Account: {statement.key.accountNumber} | Pages: {statement.metadata.pageRange.first}-{statement.metadata.pageRange.second}
               </Typography>
             </Box>
           </Tooltip>

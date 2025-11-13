@@ -28,6 +28,8 @@ import {
   PollForStatusResponse,
   WriteCsvSummaryRequest,
   WriteCsvSummaryResponse,
+  RetrieveOutputFileRequest,
+  RetrieveOutputFileResponse,
   GetDocumentDataModelRequest,
   GetDocumentDataModelResponse,
   PutDocumentDataModelRequest,
@@ -42,6 +44,8 @@ import {
   UpdateStatementModelsResponse,
   LoadTransactionsFromModelRequest,
   LoadTransactionsFromModelResponse,
+  MatchStatementsWithChecksRequest,
+  MatchStatementsWithChecksResponse,
   BankStatementMetadata,
   GetInputFileMetadataRequest,
   GetInputFileMetadataResponse,
@@ -51,7 +55,7 @@ import {
 } from '../types/api';
 import authService from './auth';
 // Add BankStatement import
-import { BankStatement } from '../types/bankStatement';
+import { LoadBankStatementResponse } from '../types/bankStatement';
 
 
 class ApiService {
@@ -164,6 +168,11 @@ class ApiService {
     return response.data;
   }
 
+  async retrieveOutputFile(request: RetrieveOutputFileRequest): Promise<RetrieveOutputFileResponse> {
+    const response = await this.api.post<RetrieveOutputFileResponse>('/api/RetrieveOutputFile', request);
+    return response.data;
+  }
+
   // Document Data Model
   async getDocumentDataModel(request: GetDocumentDataModelRequest): Promise<GetDocumentDataModelResponse> {
     const response = await this.api.post<GetDocumentDataModelResponse>('/api/GetDocumentDataModel', request);
@@ -204,9 +213,14 @@ class ApiService {
     return response.data;
   }
 
+  async matchStatementsWithChecks(request: MatchStatementsWithChecksRequest): Promise<MatchStatementsWithChecksResponse> {
+    const response = await this.api.post<MatchStatementsWithChecksResponse>('/api/MatchStatementsWithChecks', request);
+    return response.data;
+  }
+
   // Add loadBankStatement method
-  async loadBankStatement(params: { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }): Promise<BankStatement> {
-    const response = await this.api.post<BankStatement>('/api/LoadBankStatement', params);
+  async loadBankStatement(params: { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }): Promise<LoadBankStatementResponse> {
+    const response = await this.api.post<LoadBankStatementResponse>('/api/LoadBankStatement', params);
     return response.data;
   }
 

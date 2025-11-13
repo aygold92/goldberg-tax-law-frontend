@@ -20,7 +20,7 @@ import { UpdateStatementModelsRequest, UpdateStatementModelsResponse } from '../
 import apiService from '../../../services/api';
 
 // Add BankStatement type import
-import { BankStatement, TransactionHistoryRecord } from '../../../types/bankStatement';
+import { BankStatement, LoadBankStatementResponse, TransactionHistoryRecord } from '../../../types/bankStatement';
 
 // Helper function to create hash for change detection
 const createHash = (obj: any): string => {
@@ -68,7 +68,7 @@ const initialState: StatementEditorState = {
 };
 
 // Add thunk for loading a single BankStatement
-export const loadBankStatement = createAsyncThunk<BankStatement, { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }>(
+export const loadBankStatement = createAsyncThunk<LoadBankStatementResponse, { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }>(
   'statementEditor/loadBankStatement',
   async (params, { rejectWithValue }) => {
     try {
@@ -105,8 +105,8 @@ export const saveStatementChanges = createAsyncThunk<UpdateStatementModelsRespon
             amount: txn.amount,
             checkNumber: txn.checkNumber || null,
             checkPdfMetadata: txn.checkDataModel ? {
-              filename: txn.checkDataModel.description || '',
-              pages: [1], // Default to page 1 for check
+              filename: txn.checkDataModel.pageMetadata.filename,
+              pages: txn.checkDataModel.pageMetadata.pages,
               classification: 'CHECK'
             } : null,
             filePageNumber: txn.filePageNumber,
@@ -342,13 +342,17 @@ const statementEditorSlice = createSlice({
         state.currentStatementLoading = true;
         state.currentStatementError = null;
       })
-      .addCase(loadBankStatement.fulfilled, (state, action: PayloadAction<BankStatement>) => {
+      .addCase(loadBankStatement.fulfilled, (state, action: PayloadAction<LoadBankStatementResponse>) => {
         state.currentStatementLoading = false;
-        state.currentStatement = action.payload;
+        const statementWithSuspicious: BankStatement = {
+          ...action.payload.statement,
+          suspiciousReasons: action.payload.suspiciousReasons,
+        };
+        state.currentStatement = statementWithSuspicious;
         state.hasUnsavedChanges = false;
         
         // Store original state and hashes
-        state.originalStatement = JSON.parse(JSON.stringify(action.payload));
+        state.originalStatement = JSON.parse(JSON.stringify(statementWithSuspicious));
         state.originalHashes = {
           transactions: {},
           pages: {},
@@ -356,25 +360,25 @@ const statementEditorSlice = createSlice({
         };
         
         // Create transaction hashes
-        action.payload.transactions.forEach(tx => {
+        statementWithSuspicious.transactions.forEach(tx => {
           state.originalHashes.transactions[tx.id] = createHash(tx);
         });
         
         // Create page hashes
-        action.payload.pageMetadata.pages.forEach(pageNum => {
-          const pageData = { pageNumber: pageNum, batesStamp: action.payload.batesStamps[pageNum] };
+        statementWithSuspicious.pageMetadata.pages.forEach(pageNum => {
+          const pageData = { pageNumber: pageNum, batesStamp: statementWithSuspicious.batesStamps[pageNum] };
           state.originalHashes.pages[pageNum] = createHash(pageData);
         });
         
         // Create statement field hashes
         const statementFields = {
-          date: action.payload.date,
-          accountNumber: action.payload.accountNumber,
-          beginningBalance: action.payload.beginningBalance,
-          endingBalance: action.payload.endingBalance,
-          interestCharged: action.payload.interestCharged,
-          feesCharged: action.payload.feesCharged,
-          classification: action.payload.pageMetadata.classification,
+          date: statementWithSuspicious.date,
+          accountNumber: statementWithSuspicious.accountNumber,
+          beginningBalance: statementWithSuspicious.beginningBalance,
+          endingBalance: statementWithSuspicious.endingBalance,
+          interestCharged: statementWithSuspicious.interestCharged,
+          feesCharged: statementWithSuspicious.feesCharged,
+          classification: statementWithSuspicious.pageMetadata.classification,
         };
         Object.entries(statementFields).forEach(([key, value]) => {
           state.originalHashes.statementFields[key] = createHash(value);

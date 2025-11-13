@@ -22,8 +22,9 @@ import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackba
 import { TableChart, Delete, Download, Edit, Search, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { selectStatements, selectStatementsLoading, selectStatementsError, selectSpreadsheetResult, selectSpreadsheetLoading, selectSpreadsheetError } from '../redux/features/statementsList/statementsListSelectors';
-import { fetchStatements, deleteStatements, createSpreadsheet, clearSpreadsheetResult } from '../redux/features/statementsList/statementsListSlice';
+import { selectStatements, selectStatementsLoading, selectStatementsError } from '../redux/features/statementsList/statementsListSelectors';
+import { fetchStatements, deleteStatements } from '../redux/features/statementsList/statementsListSlice';
+import CsvOutputDropdown from '../components/CsvOutputDropdown';
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
 import { BankStatementKey, BankStatementMetadata } from '../types/api';
 import ClientSelector from '../components/ClientSelector';
@@ -40,9 +41,6 @@ const StatementsPage: React.FC = () => {
   const statements = useAppSelector(selectStatements) || [];
   const loading = useAppSelector(selectStatementsLoading);
   const error = useAppSelector(selectStatementsError);
-  const spreadsheetResult = useAppSelector(selectSpreadsheetResult);
-  const spreadsheetLoading = useAppSelector(selectSpreadsheetLoading);
-  const spreadsheetError = useAppSelector(selectSpreadsheetError);
   const { setPageTitle } = usePageTitle();
 
   // Set page title
@@ -56,6 +54,20 @@ const StatementsPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [filenamePopover, setFilenamePopover] = useState<{ anchorEl: HTMLElement | null; filename: string }>({ anchorEl: null, filename: '' });
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track column widths to persist resizing
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+    status: 50,
+    actions: 50,
+    accountNumber: 120,
+    classification: 140,
+    date: 110,
+    bankType: 150,
+    filename: 280,
+    numTransactions: 90,
+    totalSpending: 120,
+    totalIncomeCredits: 120,
+  });
 
   useEffect(() => {
     if (selectedClient) {
@@ -63,18 +75,6 @@ const StatementsPage: React.FC = () => {
     }
   }, [dispatch, selectedClient]);
 
-  useEffect(() => {
-    if (spreadsheetResult && spreadsheetResult.status === 'success') {
-      setSnackbarMsg('Spreadsheet created successfully!');
-      setSnackbarOpen(true);
-      // TODO: handle spreadsheetResult (download links, etc.)
-      dispatch(clearSpreadsheetResult());
-    }
-    if (spreadsheetError) {
-      setSnackbarMsg(spreadsheetError);
-      setSnackbarOpen(true);
-    }
-  }, [spreadsheetResult, spreadsheetError, dispatch]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -105,12 +105,6 @@ const StatementsPage: React.FC = () => {
     }
   };
 
-  const handleCreateSpreadsheet = () => {
-    if (selectedStatements.length > 0) {
-      const selectedKeys = selectedStatements.map(s => s.key);
-      dispatch(createSpreadsheet({ clientName: selectedClient, keys: selectedKeys, outputDirectory: '' }));
-    }
-  };
 
   const handleRefresh = () => {
     if (selectedClient) {
@@ -146,11 +140,21 @@ const StatementsPage: React.FC = () => {
     setFilenamePopover({ anchorEl: null, filename: '' });
   };
 
+  const handleColumnWidthChange = (params: { colDef: GridColDef; width: number }) => {
+    const field = params.colDef.field;
+    if (field) {
+      setColumnWidths(prev => ({
+        ...prev,
+        [field]: params.width,
+      }));
+    }
+  };
+
   const columns: GridColDef[] = [
     {
       field: 'status',
       headerName: '',
-      width: 50,
+      width: columnWidths.status,
       sortable: false,
       filterable: false,
       hideable: false,
@@ -190,7 +194,7 @@ const StatementsPage: React.FC = () => {
     {
       field: 'actions',
       headerName: '',
-      width: 50,
+      width: columnWidths.actions,
       sortable: false,
       filterable: false,
       hideable: false,
@@ -212,13 +216,13 @@ const StatementsPage: React.FC = () => {
     { 
       field: 'accountNumber', 
       headerName: 'Account #', 
-      width: 120,
+      width: columnWidths.accountNumber,
       cellClassName: 'account-cell'
     },
     { 
       field: 'classification', 
       headerName: 'Classification', 
-      width: 140,
+      width: columnWidths.classification,
       cellClassName: 'classification-cell',
       renderCell: (params) => (
         <Box className={styles.classificationCell}>
@@ -234,27 +238,56 @@ const StatementsPage: React.FC = () => {
     { 
       field: 'date', 
       headerName: 'Date', 
-      width: 110,
-      cellClassName: 'date-cell'
+      width: columnWidths.date,
+      cellClassName: 'date-cell',
+      sortComparator: (v1, v2) => {
+        // Handle null/undefined values
+        if (!v1 && !v2) return 0;
+        if (!v1) return 1;
+        if (!v2) return -1;
+        
+        // Parse dates in mm/dd/yyyy format
+        const parseDate = (dateStr: string): Date | null => {
+          if (dateStr === 'null' || !dateStr) return null;
+          const parts = dateStr.split('/');
+          if (parts.length !== 3) return null;
+          const month = parseInt(parts[0], 10) - 1; // Month is 0-indexed
+          const day = parseInt(parts[1], 10);
+          const year = parseInt(parts[2], 10);
+          return new Date(year, month, day);
+        };
+        
+        const date1 = parseDate(v1);
+        const date2 = parseDate(v2);
+        
+        if (!date1 && !date2) return 0;
+        if (!date1) return 1;
+        if (!date2) return -1;
+        
+        return date1.getTime() - date2.getTime();
+      }
     },
     { 
       field: 'bankType', 
       headerName: 'Bank Type', 
-      width: 150,
+      width: columnWidths.bankType,
       cellClassName: 'bank-type-cell'
     },
     { 
       field: 'filename', 
       headerName: 'Filename', 
-      width: 280,
+      width: columnWidths.filename,
       cellClassName: 'filename-cell',
+      valueGetter: (value, row) => {
+        return constructFilenameWithPages(row.filename, row.pageRange);
+      },
       renderCell: (params) => {
-        const fullText = constructFilenameWithPages(params.value, params.row.pageRange);
+        const fullText = constructFilenameWithPages(params.row.filename, params.row.pageRange);
         
         return (
           <Box
             className={styles.filenameCell}
-            onDoubleClick={(e) => handleFilenameClick(e, params.value)}
+            onDoubleClick={(e) => handleFilenameClick(e, params.row.filename)}
           >
             {fullText}
           </Box>
@@ -264,13 +297,13 @@ const StatementsPage: React.FC = () => {
     { 
       field: 'numTransactions', 
       headerName: '# Txns', 
-      width: 90,
+      width: columnWidths.numTransactions,
       cellClassName: 'transactions-cell'
     },
     { 
       field: 'totalSpending', 
       headerName: 'Spending', 
-      width: 120,
+      width: columnWidths.totalSpending,
       cellClassName: 'spending-cell',
       valueFormatter: (value: any) => {
         return value !== undefined && value !== null ? `$${Number(value).toLocaleString()}` : '$0.00';
@@ -279,7 +312,7 @@ const StatementsPage: React.FC = () => {
     { 
       field: 'totalIncomeCredits', 
       headerName: 'Income', 
-      width: 120,
+      width: columnWidths.totalIncomeCredits,
       cellClassName: 'income-cell',
       valueFormatter: (value: any) => {
         return value !== undefined && value !== null ? `$${Number(value).toLocaleString()}` : '$0.00';
@@ -337,16 +370,11 @@ const StatementsPage: React.FC = () => {
           >
             Delete Selected
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Download />}
-            disabled={selectedStatements.length === 0 || spreadsheetLoading}
-            onClick={handleCreateSpreadsheet}
-            className={styles.actionButton}
-          >
-            Create Spreadsheet
-          </Button>
+          <CsvOutputDropdown
+            clientName={selectedClient}
+            selectedStatements={selectedStatements.map(s => s.key)}
+            disabled={loading}
+          />
         </Stack>
 
         {loading ? (
@@ -364,9 +392,10 @@ const StatementsPage: React.FC = () => {
             disableRowSelectionOnClick
             rowSelectionModel={selectionModel}
             onRowSelectionModelChange={setSelectionModel}
-            pageSizeOptions={[10, 25, 50]}
+            onColumnWidthChange={handleColumnWidthChange}
+            pageSizeOptions={[25, 50, 100]}
             initialState={{ 
-              pagination: { paginationModel: { pageSize: 25 } },
+              pagination: { paginationModel: { pageSize: 100 } },
               filter: {
                 filterModel: {
                   items: [],

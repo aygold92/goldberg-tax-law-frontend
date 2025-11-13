@@ -86,7 +86,7 @@ export function validateBankStatement(statement: BankStatement): ValidationResul
   // Validate balance calculation - only if both balances are provided (including 0)
   if (statement.beginningBalance !== null && statement.beginningBalance !== undefined && 
       statement.endingBalance !== null && statement.endingBalance !== undefined) {
-    const isCreditCard = statement.pageMetadata.classification?.endsWith('CC') || false;
+    const isCreditCard = statement.pageMetadata.classification?.includes(' CC') || false;
     let expectedValue: number;
     
     if (isCreditCard) {
@@ -152,7 +152,7 @@ export function validateTransaction(transaction: TransactionHistoryRecord, state
     });
   }
 
-  if (transaction.amount === null || transaction.amount === undefined) {
+  if ((transaction.amount === null || transaction.amount === undefined) && transaction.description?.toLowerCase().startsWith('interest rate change from') === false) {
     errors.push({
       field: 'amount',
       message: 'Transaction amount is required'
@@ -202,7 +202,7 @@ export function calculateTransactionSuspiciousReasons(transaction: TransactionHi
     reasons.push('Missing transaction description');
   }
 
-  if (transaction.amount === null || transaction.amount === undefined || Number.isNaN(transaction.amount)) {
+  if ((transaction.amount === null || transaction.amount === undefined || Number.isNaN(transaction.amount)) && transaction.description?.toLowerCase().startsWith('interest rate change from') === false) {
     reasons.push('Missing transaction amount');
   }
 
@@ -234,7 +234,7 @@ export function calculateStatementSuspiciousReasons(statement: BankStatement): s
   // Check balance calculation - only if both balances are provided (including 0)
   if (statement.beginningBalance !== null && statement.beginningBalance !== undefined && 
       statement.endingBalance !== null && statement.endingBalance !== undefined) {
-    const isCreditCard = statement.pageMetadata.classification?.endsWith('CC') || false;
+    const isCreditCard = statement.pageMetadata.classification?.includes(' CC') || false;
     let expectedValue: number;
     
     if (isCreditCard) {

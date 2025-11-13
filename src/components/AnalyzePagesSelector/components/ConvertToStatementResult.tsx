@@ -7,13 +7,13 @@ import {
   Alert,
 } from '@mui/material';
 
-interface DocumentDataModelResultProps {
+interface ConvertToStatementResultProps {
   result: any;
   loading: boolean;
   error: string | null;
 }
 
-const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
+const ConvertToStatementResult: React.FC<ConvertToStatementResultProps> = ({
   result,
   loading,
   error,
@@ -23,7 +23,7 @@ const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
         <CircularProgress size={16} />
         <Typography variant="body2" color="text.secondary">
-          Loading document data model...
+          Converting to statement...
         </Typography>
       </Box>
     );
@@ -44,14 +44,14 @@ const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
   return (
     <Box sx={{ mt: 2 }}>
       <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-        Document Data Model:
+        Convert to Statement Result:
       </Typography>
       <Paper
         variant="outlined"
         sx={{
           p: 2,
           backgroundColor: 'grey.50',
-          maxHeight: 300,
+          maxHeight: 400,
           overflow: 'auto',
         }}
       >
@@ -69,6 +69,7 @@ const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
   );
 };
 
-export default DocumentDataModelResult;
+export default ConvertToStatementResult;
+
 
 

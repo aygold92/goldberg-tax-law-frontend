@@ -100,9 +100,16 @@ export interface BankStatementMetadata {
 }
 
 // CSV Operations
+export interface StatementRequest {
+  accountNumber: string | null;
+  classification: string;
+  date: string | null;
+  filenameWithPages?: string;
+}
+
 export interface WriteCsvSummaryRequest {
   clientName: string;
-  statementKeys: BankStatementKey[];
+  statementKeys: StatementRequest[];
   outputDirectory: string;
 }
 
@@ -113,6 +120,19 @@ export interface WriteCsvSummaryResponse {
   accountSummaryFile?: string;
   statementSummaryFile?: string;
   checkSummaryFile?: string;
+}
+
+// Retrieve Output File
+export interface RetrieveOutputFileRequest {
+  clientName: string;
+  fileName: string;
+}
+
+export interface RetrieveOutputFileResponse {
+  status: string;
+  fileName?: string;
+  content?: string;
+  errorMessage?: string;
 }
 
 // Document Data Model
@@ -204,6 +224,23 @@ export interface Transaction {
 }
 
 export interface LoadTransactionsFromModelResponse extends Array<Transaction> {}
+
+// Match Statements with Checks
+export interface MatchStatementsWithChecksRequest {
+  clientName: string;
+  statements: Array<{
+    filename: string;
+    pages: number[];
+  }>;
+  checks: Array<{
+    filename: string;
+    pages: number[];
+  }>;
+}
+
+export interface MatchStatementsWithChecksResponse {
+  filenameStatementMap: Record<string, string[]>;
+}
 
 // File Metadata Operations
 export interface InputFileMetadata {

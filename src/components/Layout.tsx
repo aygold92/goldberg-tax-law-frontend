@@ -45,6 +45,7 @@ import styles from '../styles/components/Layout.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectUser, selectAuthLoading } from '../redux/features/auth/authSelectors';
 import { logoutUser } from '../redux/features/auth/authSlice';
+import GoogleSignIn from './GoogleSignIn';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -120,6 +121,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             
             {/* User Menu */}
             <Box className={styles.userSection}>
+              {/* Google Sign-in */}
+              <GoogleSignIn variant="icon" size="small" />
+              
               {user?.name && (
                 <Chip
                   label={user.name}

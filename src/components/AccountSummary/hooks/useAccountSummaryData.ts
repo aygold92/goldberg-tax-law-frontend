@@ -51,15 +51,20 @@ function createYearlyTimeline(statements: BankStatementMetadata[]): YearlyTimeli
   
   if (statements.length === 0) return timeline;
   
-  // Get the range of years
+  // Get the range of years (min and max)
   const years = new Set<number>();
   statements.forEach(statement => {
     const date = new Date(statement.key.date);
     years.add(date.getFullYear());
   });
   
-  // Create timeline for each year
-  years.forEach(year => {
+  // Find min and max years to fill in gaps
+  const yearArray = Array.from(years);
+  const minYear = Math.min(...yearArray);
+  const maxYear = Math.max(...yearArray);
+  
+  // Create timeline for each year between min and max (inclusive)
+  for (let year = minYear; year <= maxYear; year++) {
     const yearStatements = statements.filter(s => new Date(s.key.date).getFullYear() === year);
     
     // Create 12 month blocks for this year
@@ -81,29 +86,40 @@ function createYearlyTimeline(statements: BankStatementMetadata[]): YearlyTimeli
     }
     
     timeline[year.toString()] = { months };
+  }
+  
+  // Mark missing months (gaps between statements across all years)
+  // Sort all statements chronologically to detect gaps across years
+  const sortedStatements = [...statements].sort((a, b) => {
+    const dateA = new Date(a.key.date);
+    const dateB = new Date(b.key.date);
+    return dateA.getTime() - dateB.getTime();
   });
   
-  // Mark missing months (gaps between statements)
-  Object.values(timeline).forEach(yearData => {
-    const firstStatementIndex = yearData.months.findIndex(m => m.hasStatement);
-    let lastStatementIndex = -1;
+  // For each pair of consecutive statements, mark the months in between as missing
+  for (let i = 0; i < sortedStatements.length - 1; i++) {
+    const currentDate = new Date(sortedStatements[i].key.date);
+    const nextDate = new Date(sortedStatements[i + 1].key.date);
     
-    // Find last statement index manually
-    for (let i = yearData.months.length - 1; i >= 0; i--) {
-      if (yearData.months[i].hasStatement) {
-        lastStatementIndex = i;
-        break;
-      }
-    }
+    // Start from the month after the current statement
+    let checkDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
     
-    if (firstStatementIndex !== -1 && lastStatementIndex !== -1) {
-      for (let i = firstStatementIndex + 1; i < lastStatementIndex; i++) {
-        if (!yearData.months[i].hasStatement) {
-          yearData.months[i].isMissing = true;
-        }
+    // Mark all months between current and next statement as missing
+    // Stop when we reach the month that contains the next statement
+    while (checkDate.getFullYear() < nextDate.getFullYear() || 
+           (checkDate.getFullYear() === nextDate.getFullYear() && checkDate.getMonth() < nextDate.getMonth())) {
+      const checkYear = checkDate.getFullYear();
+      const checkMonth = checkDate.getMonth();
+      
+      // Mark this month as missing in the timeline
+      if (timeline[checkYear.toString()]) {
+        timeline[checkYear.toString()].months[checkMonth].isMissing = true;
       }
+      
+      // Move to next month
+      checkDate.setMonth(checkDate.getMonth() + 1);
     }
-  });
+  }
   
   return timeline;
 }

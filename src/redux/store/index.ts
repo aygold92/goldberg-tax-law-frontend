@@ -17,6 +17,8 @@ import analysisReducer from '../features/analysis/analysisSlice';
 import clientReducer from '../features/client/clientSlice';
 import statementsListReducer from '../features/statementsList/statementsListSlice';
 import statementEditorReducer from '../features/statementEditor/statementEditorSlice';
+import csvOutputReducer from '../features/csvOutput/csvOutputSlice';
+import googleAuthReducer from '../features/googleAuth/googleAuthSlice';
 import { undoRedoMiddleware } from '../middleware/undoRedoMiddleware';
 
 const store = configureStore({
@@ -27,6 +29,8 @@ const store = configureStore({
     client: clientReducer,
     statementsList: statementsListReducer,
     statementEditor: statementEditorReducer,
+    csvOutput: csvOutputReducer,
+    googleAuth: googleAuthReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(undoRedoMiddleware),

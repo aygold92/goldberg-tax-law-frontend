@@ -15,7 +15,7 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { BankStatementMetadata, BankStatementKey, WriteCsvSummaryResponse } from '../../../types/api';
+import { BankStatementMetadata, BankStatementKey } from '../../../types/api';
 import apiService from '../../../services/api';
 import { constructFilenameWithPages } from '../../../utils/filenameUtils';
 
@@ -23,18 +23,12 @@ interface StatementsListState {
   statements: BankStatementMetadata[];
   loading: boolean;
   error: string | null;
-  spreadsheetResult: WriteCsvSummaryResponse | null;
-  spreadsheetLoading: boolean;
-  spreadsheetError: string | null;
 }
 
 const initialState: StatementsListState = {
   statements: [],
   loading: false,
   error: null,
-  spreadsheetResult: null,
-  spreadsheetLoading: false,
-  spreadsheetError: null,
 };
 
 export const fetchStatements = createAsyncThunk<BankStatementMetadata[], { clientName: string }>(
@@ -73,31 +67,11 @@ export const deleteStatements = createAsyncThunk<BankStatementKey[], { clientNam
   }
 );
 
-export const createSpreadsheet = createAsyncThunk<WriteCsvSummaryResponse, { clientName: string; keys: BankStatementKey[]; outputDirectory: string }>(
-  'statementsList/createSpreadsheet',
-  async ({ clientName, keys, outputDirectory }, { rejectWithValue }) => {
-    try {
-      const response = await apiService.writeCsvSummary({
-        clientName,
-        statementKeys: keys,
-        outputDirectory,
-      });
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.userMessage || error.message || 'Failed to create spreadsheet');
-    }
-  }
-);
 
 const statementsListSlice = createSlice({
   name: 'statementsList',
   initialState,
-  reducers: {
-    clearSpreadsheetResult(state) {
-      state.spreadsheetResult = null;
-      state.spreadsheetError = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchStatements.pending, (state) => {
@@ -130,24 +104,8 @@ const statementsListSlice = createSlice({
       .addCase(deleteStatements.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
-      .addCase(createSpreadsheet.pending, (state) => {
-        state.spreadsheetLoading = true;
-        state.spreadsheetError = null;
-        state.spreadsheetResult = null;
-      })
-      .addCase(createSpreadsheet.fulfilled, (state, action: PayloadAction<WriteCsvSummaryResponse>) => {
-        state.spreadsheetLoading = false;
-        state.spreadsheetResult = action.payload;
-      })
-      .addCase(createSpreadsheet.rejected, (state, action) => {
-        state.spreadsheetLoading = false;
-        state.spreadsheetError = action.payload as string;
       });
   },
 });
 
-export const { 
-  clearSpreadsheetResult,
-} = statementsListSlice.actions;
 export default statementsListSlice.reducer; 

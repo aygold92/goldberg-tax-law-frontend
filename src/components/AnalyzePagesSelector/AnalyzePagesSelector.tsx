@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -10,7 +10,7 @@ import {
   CardContent,
   CardHeader,
 } from '@mui/material';
-import { PlayArrow, SelectAll, Clear } from '@mui/icons-material';
+import { PlayArrow, SelectAll, Clear, Transform } from '@mui/icons-material';
 
 // Import existing hooks from DocumentClassificationEditor
 import { useDocumentClassifications } from '../DocumentClassificationEditor/hooks/useDocumentClassifications';
@@ -20,11 +20,13 @@ import { useSnackbar } from '../DocumentClassificationEditor/hooks/useSnackbar';
 // Import new selection hook
 import { useSelection } from './hooks/useSelection';
 import { useDocumentDataModel } from './hooks/useDocumentDataModel';
+import { useConvertToStatement } from './hooks/useConvertToStatement';
 
 // Import components
 import SelectionBadge from './components/SelectionBadge';
 import AnalyzePageResult from '../DocumentClassificationEditor/components/AnalyzePageResult';
 import DocumentDataModelResult from './components/DocumentDataModelResult';
+import ConvertToStatementResult from './components/ConvertToStatementResult';
 import styles from './AnalyzePagesSelector.module.css';
 
 interface AnalyzePagesSelectorProps {
@@ -88,6 +90,17 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     clearResults: clearDataModelResults,
   } = useDocumentDataModel();
 
+  const {
+    convertResult,
+    loading: convertLoading,
+    error: convertError,
+    convertToStatement: convertToStatementHook,
+    clearResults: clearConvertResults,
+  } = useConvertToStatement();
+
+  // Local state to store accumulated convert results
+  const [accumulatedConvertResults, setAccumulatedConvertResults] = useState<any[]>([]);
+
   // Handle analyzing selected classifications
   const handleAnalyze = async () => {
     if (selectedClassifications.length === 0) {
@@ -134,6 +147,46 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     }
   };
 
+  // Handle converting selected classifications to statements
+  const handleConvertToStatement = async () => {
+    if (selectedClassifications.length === 0) {
+      showSnackbar('Please select at least one classification to convert', 'error');
+      return;
+    }
+
+    clearConvertResults();
+    setAccumulatedConvertResults([]);
+
+    try {
+      // Call the new API with all selected classifications at once
+      const result = await convertToStatementHook(
+        clientName,
+        selectedClassifications
+      );
+      
+      // Store the result (filenameStatementMap)
+      setAccumulatedConvertResults([result]);
+      
+      // Count statements created from the filenameStatementMap
+      const statementCount = Object.values(result.filenameStatementMap).reduce(
+        (sum, statements) => sum + statements.length,
+        0
+      );
+      
+      if (statementCount > 0) {
+        showSnackbar(
+          `Successfully processed ${selectedClassifications.length} classification${selectedClassifications.length !== 1 ? 's' : ''} and created ${statementCount} statement${statementCount !== 1 ? 's' : ''}!`,
+          'success'
+        );
+      } else {
+        showSnackbar('Processed classifications but no statements were created', 'error');
+      }
+    } catch (err) {
+      console.error('Error matching statements with checks:', err);
+      showSnackbar('Failed to process classifications', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
@@ -175,6 +228,16 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
               size="small"
             >
               {analyzePageLoading ? 'Analyzing...' : `Analyze (${selectionCount})`}
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={convertLoading ? <CircularProgress size={16} /> : <Transform />}
+              onClick={handleConvertToStatement}
+              disabled={convertLoading || selectionCount === 0}
+              size="small"
+            >
+              {convertLoading ? 'Converting...' : `Convert to Statement (${selectionCount})`}
             </Button>
           </Box>
         }
@@ -233,6 +296,13 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
         result={dataModelResult}
         loading={dataModelLoading}
         error={dataModelError}
+      />
+
+      {/* Convert to Statement result display */}
+      <ConvertToStatementResult
+        result={accumulatedConvertResults.length > 0 ? accumulatedConvertResults : convertResult}
+        loading={convertLoading}
+        error={convertError}
       />
 
       {/* Snackbar notifications */}

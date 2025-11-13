@@ -4,7 +4,16 @@
 
 `POST /api/LoadBankStatement`
 
-## Response Body: `BankStatement` (JSON)
+## Response Body: `LoadBankStatementResponse` (JSON)
+
+| Field               | Type                                       | Description                                                                 |
+|---------------------|--------------------------------------------|-----------------------------------------------------------------------------|
+| `statement`         | [BankStatement](#bankstatement)            | The full bank statement payload returned from storage.                      |
+| `suspiciousReasons` | Array of `string`                          | (Computed) Reasons why the statement may be flagged as suspicious.         |
+
+---
+
+### BankStatement
 
 | Field                | Type                                         | Description                                                                                  |
 |----------------------|----------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -21,7 +30,6 @@
 | `netTransactions`    | `number`                                     | (Computed) Net of all transactions: total income minus total spending.                       |
 | `totalSpending`      | `number`                                     | (Computed) Total spending (sum of all negative transactions).                                |
 | `totalIncomeCredits` | `number`                                     | (Computed) Total income/credits (sum of all positive transactions).                          |
-| `suspiciousReasons`  | Array of `string`                            | (Computed) List of reasons why this statement may be flagged as suspicious.                  |
 
 ---
 
@@ -43,12 +51,14 @@
 * "WF CC"
 * "BofA CC"
 * "NFCU CC"
+* "C1 CC"
 * "Eagle Bank"
 * "WF Bank"
 * "WF Bank Joint"
 * "BofA"
 * "NFCU Bank"
-* "Truist
+* "Capital One Joint"
+* "Truist"
 * "Checks"
 
 ### TransactionHistoryRecord
@@ -90,37 +100,39 @@
 
 ```json
 {
-  "pageMetadata": {
-    "filename": "WF_Bank_Standard.pdf",
-    "pages": [1,2,3],
-    "classification": "WF_BANK"
+  "statement": {
+    "pageMetadata": {
+      "filename": "WF_Bank_Standard.pdf",
+      "pages": [1, 2, 3],
+      "classification": "WF_BANK"
+    },
+    "date": "04/30/2024",
+    "accountNumber": "12345678",
+    "beginningBalance": 1000.00,
+    "endingBalance": 1200.00,
+    "interestCharged": 0.00,
+    "feesCharged": 10.00,
+    "transactions": [
+      {
+        "id": "txn1",
+        "date": "04/01/2024",
+        "description": "Deposit",
+        "amount": 500.00,
+        "filePageNumber": 1,
+        "checkNumber": null,
+        "checkDataModel": null
+      }
+      // ... more transactions ...
+    ],
+    "batesStamps": {
+      "1": "BATES001",
+      "2": "BATES002"
+    },
+    "checks": {},
+    "netTransactions": 200.00,
+    "totalSpending": 300.00,
+    "totalIncomeCredits": 500.00
   },
-  "date": "04/30/2024",
-  "accountNumber": "12345678",
-  "beginningBalance": 1000.00,
-  "endingBalance": 1200.00,
-  "interestCharged": 0.00,
-  "feesCharged": 10.00,
-  "transactions": [
-    {
-      "id": "txn1",
-      "date": "04/01/2024",
-      "description": "Deposit",
-      "amount": 500.00,
-      "filePageNumber": 1,
-      "checkNumber": null,
-      "checkDataModel": null
-    }
-    // ... more transactions ...
-  ],
-  "batesStamps": {
-    "1": "BATES001",
-    "2": "BATES002"
-  },
-  "checks": {},
-  "netTransactions": 200.00,
-  "totalSpending": 300.00,
-  "totalIncomeCredits": 500.00,
   "suspiciousReasons": []
 }
 ``` 

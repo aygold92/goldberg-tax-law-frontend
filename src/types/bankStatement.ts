@@ -47,8 +47,13 @@ export interface BankStatement {
   netTransactions: number;
   totalSpending: number;
   totalIncomeCredits: number;
-  suspiciousReasons: string[];
+  suspiciousReasons?: string[];
 } 
+
+export interface LoadBankStatementResponse {
+  statement: BankStatement;
+  suspiciousReasons: string[];
+}
 
 // Classification types as per BankStatement_API_Response_Spec.md
 export enum ClassificationType {
@@ -57,7 +62,10 @@ export enum ClassificationType {
   CITI_CC = "CITI CC",
   WF_CC = "WF CC",
   BOFA_CC = "BofA CC",
+  BOFA_CC_BUSINESS = "BofA CC Business",
   NFCU_CC = "NFCU CC",
+  CAPITAL_ONE_CC = "C1 CC",
+  CAPITAL_ONE_JOINT = "Capital One Joint",
   EAGLE_BANK = "Eagle Bank",
   WF_BANK = "WF Bank",
   WF_BANK_JOINT = "WF Bank Joint",
