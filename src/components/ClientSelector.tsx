@@ -120,7 +120,7 @@ const ClientSelector: React.FC = () => {
             variant="outlined"
             value={newClientName}
             onChange={(e) => setNewClientName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleCreateClient()}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateClient()}
           />
         </DialogContent>
         <DialogActions>

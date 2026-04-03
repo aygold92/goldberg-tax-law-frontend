@@ -82,7 +82,7 @@ const ClassificationInput: React.FC<ClassificationInputProps> = ({
           size="small"
           value={pageInput}
           onChange={(e) => setPageInput(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           error={hasError}
           helperText={pageError?.message}
           placeholder="Enter pages (e.g., 1,3-7,10)"
