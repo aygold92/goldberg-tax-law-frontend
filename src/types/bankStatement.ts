@@ -75,5 +75,9 @@ export enum ClassificationType {
   SANDY_SPRING = "Sandy Spring",
   ATLANTIC_UNION = "Atlantic Union",
   MT_BANK = "M&T Bank",
+  TFCU_BANK = "TFCU Bank",
+  TFCU_BANK_OLD = "TFCU Bank (Old)",
+  ALLY_CC = "Ally CC",
+  TFCU_CC = "TFCU CC",
   CHECKS = "Checks"
 }
