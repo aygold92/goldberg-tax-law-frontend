@@ -70,6 +70,7 @@ The `ApiService` defaults to `http://localhost:3001` if `REACT_APP_API_BASE_URL`
 | `/` | `UploadPage` | Yes |
 | `/statements` | `StatementsPage` | Yes |
 | `/edit` | `EditPage` | Yes |
+| `/view-file` | `ViewFileDataPage` | Yes |
 | `/pdf-splitter` | `PdfSplitterPage` | No |
 
 Protected routes are wrapped in `<ProtectedRoute>` which redirects to `/login` if unauthenticated. All authenticated pages are also wrapped in `<Layout>` (provides nav bar).

@@ -22,6 +22,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import {
   Box,
@@ -39,7 +40,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridValueGetter } from '@mui/x-data-grid';
-import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon, Refresh, Refresh as RefreshIcon } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon, Refresh, Refresh as RefreshIcon, Visibility } from '@mui/icons-material';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/DocumentUpload.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
@@ -90,7 +91,8 @@ interface DocumentUploadProps {
 
 const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnalysisStarted }) => {
   const dispatch = useAppDispatch();
-  
+  const navigate = useNavigate();
+
   // Redux state
   const files = useAppSelector(selectFiles);
   const isUploading = useAppSelector(selectIsUploading);
@@ -258,6 +260,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     dispatch(resetErrorStatus([file.name]));
   };
 
+  const handleViewFile = (file: any) => {
+    navigate(`/view-file?filename=${encodeURIComponent(file.name)}`);
+  };
+
   // Refresh documents from Azure
   const handleRefresh = async () => {
     if (!selectedClient) return;
@@ -323,6 +329,13 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
           <Tooltip title="Reset to pending" placement="top" arrow>
             <IconButton onClick={() => handleResetErrorStatus(params.row)} size="small">
               <Refresh />
+            </IconButton>
+          </Tooltip>
+        )}
+        {(params.row.status === 'azure' || params.row.status === 'uploaded') && (
+          <Tooltip title="View file data" placement="top" arrow>
+            <IconButton onClick={() => handleViewFile(params.row)} size="small">
+              <Visibility />
             </IconButton>
           </Tooltip>
         )}

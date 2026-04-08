@@ -364,11 +364,9 @@ const EditPage: React.FC = () => {
                 />
                 <CardContent className={styles.pdfCardContent}>
                   <PdfDisplay
-                    statement={statement}
                     clientName={clientName}
-                    accountNumber={accountNumber}
-                    classification={classification}
-                    date={date}
+                    filename={statement?.pageMetadata.filename ?? ''}
+                    pages={statement?.pageMetadata.pages}
                   />
                 </CardContent>
               </Card>
@@ -400,11 +398,9 @@ const EditPage: React.FC = () => {
                 />
                 <CardContent className={styles.stackedCardContent}>
                   <PdfDisplay
-                    statement={statement}
                     clientName={clientName}
-                    accountNumber={accountNumber}
-                    classification={classification}
-                    date={date}
+                    filename={statement?.pageMetadata.filename ?? ''}
+                    pages={statement?.pageMetadata.pages}
                   />
                 </CardContent>
               </Card>

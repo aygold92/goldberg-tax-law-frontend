@@ -1,16 +1,18 @@
 /**
  * TypeScript interfaces and types for API communication in the Bank Statement Frontend.
- * 
+ *
  * This file defines all the TypeScript interfaces used for:
  * - API request/response structures
  * - Client management operations
  * - Document analysis and processing workflows
  * - Azure Blob Storage operations
  * - Statement and transaction data models
- * 
+ *
  * These types ensure type safety when communicating with the backend API
  * and provide clear contracts for data structures used throughout the application.
  */
+
+import { ClassifiedPdfMetadata } from './bankStatement';
 
 // API Types based on the JSON spec
 export interface ApiResponse<T = any> {
@@ -271,4 +273,9 @@ export interface UpdateInputFileMetadataResponse {
   status: string;
   message: string;
   updatedMetadata: InputFileMetadata | null;
+}
+
+export interface ClassifyDocumentResponse {
+  filename: string;
+  classifiedDocuments: ClassifiedPdfMetadata[];
 }

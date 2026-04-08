@@ -28,6 +28,7 @@ import UploadPage from './pages/UploadPage';
 import StatementsPage from './pages/StatementsPage';
 import EditPage from './pages/EditPage';
 import PdfSplitterPage from './pages/PdfSplitterPage';
+import ViewFileDataPage from './pages/ViewFileDataPage';
 
 // Component to initialize authentication state
 const AuthInitializer: React.FC = () => {
@@ -50,6 +51,16 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pdf-splitter" element={<PdfSplitterPage />} />
+            <Route
+              path="/view-file"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ViewFileDataPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/"
               element={

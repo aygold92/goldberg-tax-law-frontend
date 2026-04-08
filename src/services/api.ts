@@ -52,6 +52,7 @@ import {
   UpdateInputFileMetadataRequest,
   UpdateInputFileMetadataResponse,
   InputFileMetadata,
+  ClassifyDocumentResponse,
 } from '../types/api';
 import authService from './auth';
 // Add BankStatement import
@@ -249,6 +250,11 @@ class ApiService {
 
   async updateInputFileMetadata(request: UpdateInputFileMetadataRequest): Promise<UpdateInputFileMetadataResponse> {
     const response = await this.api.post<UpdateInputFileMetadataResponse>('/api/UpdateInputFileMetadata', request);
+    return response.data;
+  }
+
+  async classifyDocument(requestId: string, clientName: string, filename: string): Promise<ClassifyDocumentResponse> {
+    const response = await this.api.post<ClassifyDocumentResponse>('/api/ClassifyDocument', { requestId, clientName, filename });
     return response.data;
   }
 }
