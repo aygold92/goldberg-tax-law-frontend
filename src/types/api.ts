@@ -12,7 +12,7 @@
  * and provide clear contracts for data structures used throughout the application.
  */
 
-import { ClassifiedPdfMetadata } from './bankStatement';
+import { ClassifiedPdfMetadata, CheckDataModel } from './bankStatement';
 
 // API Types based on the JSON spec
 export interface ApiResponse<T = any> {
@@ -153,7 +153,9 @@ export interface GetDocumentDataModelResponse extends ApiResponse {
 export interface PutDocumentDataModelRequest {
   clientName: string;
   model: {
-    statementType: any;
+    statementDataModel?: any,
+    checkDataModel?: CheckDataModel,
+    extraPageDataModel?: ClassifiedPdfMetadata
   };
 }
 

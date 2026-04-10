@@ -10,13 +10,13 @@ export interface ClassifiedPdfMetadata {
 }
 
 export interface CheckDataModel {
-  accountNumber: string;
-  checkNumber: number;
-  to: string;
-  description: string;
-  date: string;
-  amount: number;
-  batesStamp: string;
+  accountNumber?: string;
+  checkNumber?: number;
+  to?: string;
+  description?: string;
+  date?: string;
+  amount?: number;
+  batesStamp?: string;
   pageMetadata: ClassifiedPdfMetadata;
   // ...other fields as needed
 }

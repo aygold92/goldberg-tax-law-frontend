@@ -297,6 +297,19 @@ Pages and Redux slices currently have no tests. Focus new tests on utility funct
 
 ---
 
+## Package Installation
+
+**Never use `npm install <package>` to add new dependencies.** Instead, add the package and version directly to the `"dependencies"` section of `package.json`. The user will run `npm install` themselves.
+
+```json
+// Correct — edit package.json directly
+"some-library": "^1.2.3"
+```
+
+This keeps version choices explicit and avoids unintended lockfile changes during code generation.
+
+---
+
 ## Linting & Formatting
 
 ESLint is configured via the `eslintConfig` field in `package.json` (extends `react-app` and `react-app/jest` — standard CRA configuration). There is **no Prettier** configured. Do not add Prettier formatting or a `.prettierrc`.

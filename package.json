@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@azure/msal-browser": "^3.7.0",
     "@azure/msal-react": "^2.2.0",
     "@emotion/react": "^11.11.4",
@@ -32,6 +33,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.2.3",
+    "react-diff-viewer-continued": "^4.2.0",
     "react-redux": "^9.1.2",
     "react-rnd": "^10.3.11",
     "react-router-dom": "^6.22.3",

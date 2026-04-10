@@ -5,18 +5,23 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import { Edit } from '@mui/icons-material';
 
 interface DocumentDataModelResultProps {
   result: any;
   loading: boolean;
   error: string | null;
+  onEdit?: () => void;
 }
 
 const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
   result,
   loading,
   error,
+  onEdit,
 }) => {
   if (loading) {
     return (
@@ -43,9 +48,18 @@ const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
 
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-        Document Data Model:
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+          Document Data Model:
+        </Typography>
+        {onEdit && (
+          <Tooltip title="Edit data model" placement="top">
+            <IconButton size="small" onClick={onEdit}>
+              <Edit fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
       <Paper
         variant="outlined"
         sx={{
@@ -55,9 +69,9 @@ const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
           overflow: 'auto',
         }}
       >
-        <pre style={{ 
-          margin: 0, 
-          fontSize: '0.8rem', 
+        <pre style={{
+          margin: 0,
+          fontSize: '0.8rem',
           fontFamily: 'monospace',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word'
@@ -70,5 +84,3 @@ const DocumentDataModelResult: React.FC<DocumentDataModelResultProps> = ({
 };
 
 export default DocumentDataModelResult;
-
-

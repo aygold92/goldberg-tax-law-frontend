@@ -27,7 +27,9 @@ import SelectionBadge from './components/SelectionBadge';
 import AnalyzePageResult from '../DocumentClassificationEditor/components/AnalyzePageResult';
 import DocumentDataModelResult from './components/DocumentDataModelResult';
 import ConvertToStatementResult from './components/ConvertToStatementResult';
+import { DocumentDataModelEditor } from '../DocumentDataModelEditor';
 import styles from './AnalyzePagesSelector.module.css';
+import { ClassifiedPdfMetadata } from '../../types/bankStatement';
 
 interface AnalyzePagesSelectorProps {
   clientName: string;
@@ -101,6 +103,10 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
   // Local state to store accumulated convert results
   const [accumulatedConvertResults, setAccumulatedConvertResults] = useState<any[]>([]);
 
+  // State for the data model editor dialog
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorPdfMetadata, setEditorPdfMetadata] = useState<ClassifiedPdfMetadata | null>(null);
+
   // Handle analyzing selected classifications
   const handleAnalyze = async () => {
     if (selectedClassifications.length === 0) {
@@ -131,18 +137,21 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     clearSelection();
   };
 
-  // Handle fetching document data model for a classification
+  // Handle fetching document data model for a classification — opens the editor on success
   const handleFetchDataModel = async (classification: any) => {
     clearDataModelResults();
+    setEditorPdfMetadata({
+      filename,
+      pages: classification.pages,
+      classification: classification.classification,
+    });
     const success = await getDocumentDataModel(
       clientName,
       filename,
       classification.pages
     );
-    
-    if (success) {
-      showSnackbar('Document data model loaded successfully!', 'success');
-    } else {
+
+    if (!success) {
       showSnackbar('Failed to load document data model', 'error');
     }
   };
@@ -291,12 +300,29 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
         error={analyzeError}
       />
 
-      {/* Document Data Model result display */}
-      <DocumentDataModelResult
-        result={dataModelResult}
-        loading={dataModelLoading}
-        error={dataModelError}
-      />
+      {/* Document Data Model result display — hidden while editor is open */}
+      {!editorOpen && (
+        <DocumentDataModelResult
+          result={dataModelResult}
+          loading={dataModelLoading}
+          error={dataModelError}
+          onEdit={dataModelResult ? () => setEditorOpen(true) : undefined}
+        />
+      )}
+
+      {/* Inline data model editor — replaces the result display when open */}
+      {editorOpen && editorPdfMetadata && dataModelResult && (
+        <DocumentDataModelEditor
+          onCancel={() => setEditorOpen(false)}
+          onSaved={() => {
+            setEditorOpen(false);
+            getDocumentDataModel(clientName, filename, editorPdfMetadata.pages);
+          }}
+          clientName={clientName}
+          pdfMetadata={editorPdfMetadata}
+          initialModel={dataModelResult}
+        />
+      )}
 
       {/* Convert to Statement result display */}
       <ConvertToStatementResult
