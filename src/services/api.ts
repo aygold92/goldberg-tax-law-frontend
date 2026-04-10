@@ -105,6 +105,9 @@ class ApiService {
         // Enhance error messages for better user feedback
         if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
           error.userMessage = 'Unable to connect to the server. Please check if the backend is running.';
+        } else if (error.code === 'ECONNABORTED') {
+          // Axios timeout — surface the real message so the caller can see the actual duration
+          error.userMessage = error.message || 'Request timed out.';
         } else if (error.response?.status === 404) {
           error.userMessage = 'API endpoint not found. Please check the server configuration.';
         } else if (error.response?.status >= 500) {
@@ -254,7 +257,11 @@ class ApiService {
   }
 
   async classifyDocument(requestId: string, clientName: string, filename: string): Promise<ClassifyDocumentResponse> {
-    const response = await this.api.post<ClassifyDocumentResponse>('/api/ClassifyDocument', { requestId, clientName, filename });
+    const response = await this.api.post<ClassifyDocumentResponse>(
+      '/api/ClassifyDocument',
+      { requestId, clientName, filename },
+      { timeout: 300000 } // 5 minutes — classification is a slow backend operation
+    );
     return response.data;
   }
 }

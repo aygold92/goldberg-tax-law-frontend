@@ -136,12 +136,14 @@ function ReactGridTable<T extends CompatibleData>({
   // Handle cell changes
 
   const handleCellsChanged = useCallback((changes: CellChange[]) => {
-    const nonHeaderChanges = changes.filter(change => {
-      const { rowId } = change;
-      return rowId !== 'header';
-    });
-    reactGridProps.onCellsChanged?.(nonHeaderChanges);
-  }, []);
+    const customColumnIds = new Set(
+      columns.filter(isCustomColumn).map(col => String(col.columnId))
+    );
+    const filteredChanges = changes.filter(change =>
+      change.rowId !== 'header' && !customColumnIds.has(String(change.columnId))
+    );
+    reactGridProps.onCellsChanged?.(filteredChanges);
+  }, [columns]);
 
 
   const headerStyle = { 
