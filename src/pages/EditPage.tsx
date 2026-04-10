@@ -66,8 +66,7 @@ import PagesTable from '../components/PagesTable';
 import TransactionsTable from '../components/TransactionsTable';
 import NetIncomeCalculation from '../components/NetIncomeCalculation';
 import PdfDisplay from '../components/PdfDisplay';
-import { DocumentClassificationEditor } from '../components/DocumentClassificationEditor';
-import { AnalyzePagesSelector } from '../components/AnalyzePagesSelector';
+import { DocumentClassificationPanel } from '../components/DocumentClassificationPanel';
 import { FileMetadataEditor } from '../components/FileMetadataEditor';
 import ValidationConfirmationDialog from '../components/ValidationConfirmationDialog';
 
@@ -442,18 +441,9 @@ const EditPage: React.FC = () => {
           </Alert>
         </Snackbar>
 
-        {/* Document Classification Editor */}
+        {/* Document Classification Panel */}
         <Box sx={{ mt: 4 }}>
-          <DocumentClassificationEditor
-            clientName={clientName}
-            filename={statement.pageMetadata.filename}
-            defaultClassification={statement.pageMetadata.classification}
-          />
-        </Box>
-
-        {/* Analyze Pages Selector */}
-        <Box sx={{ mt: 4 }}>
-          <AnalyzePagesSelector
+          <DocumentClassificationPanel
             clientName={clientName}
             filename={statement.pageMetadata.filename}
           />

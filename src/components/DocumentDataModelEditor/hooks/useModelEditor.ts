@@ -34,7 +34,7 @@ export function validateModel(json: string, classification: string): string | nu
 
   if (classification.startsWith('Checks')) {
     // All CheckDataModel fields are optional — only check for unknown keys
-    const allowed = new Set(['accountNumber', 'checkNumber', 'to', 'description', 'date', 'amount', 'batesStamp', 'pageMetadata']);
+    const allowed = new Set(['accountNumber', 'checkNumber', 'to', 'description', 'date', 'amount', 'batesStamp', 'pageMetadata', 'checkEntries']);
     const unknown = Object.keys(parsed).filter(k => !allowed.has(k));
     if (unknown.length > 0) {
       return `CheckDataModel contains unknown fields: ${unknown.join(', ')}`;

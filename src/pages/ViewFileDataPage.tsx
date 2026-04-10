@@ -5,8 +5,7 @@ import { useAppSelector } from '../redux/hooks';
 import { selectSelectedClient } from '../redux/features/client/clientSelectors';
 import { usePageTitle } from '../hooks/usePageTitle';
 import PdfDisplay from '../components/PdfDisplay';
-import { DocumentClassificationEditor } from '../components/DocumentClassificationEditor';
-import { AnalyzePagesSelector } from '../components/AnalyzePagesSelector';
+import { DocumentClassificationPanel } from '../components/DocumentClassificationPanel';
 import { FileMetadataEditor } from '../components/FileMetadataEditor';
 import ClassifyDocumentButton from '../components/ClassifyDocumentButton';
 
@@ -49,13 +48,8 @@ const ViewFileDataPage: React.FC = () => {
           filename={decodedFilename}
           onClassified={() => setRefreshKey(k => k + 1)}
         />
-        <DocumentClassificationEditor
-          key={`classification-${refreshKey}`}
-          clientName={clientName}
-          filename={decodedFilename}
-        />
-        <AnalyzePagesSelector
-          key={`analyze-${refreshKey}`}
+        <DocumentClassificationPanel
+          key={`panel-${refreshKey}`}
           clientName={clientName}
           filename={decodedFilename}
         />
