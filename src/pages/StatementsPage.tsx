@@ -162,10 +162,13 @@ const StatementsPage: React.FC = () => {
       cellClassName: 'status-cell',
       disableColumnMenu: true,
       renderCell: (params) => {
-        const { suspicious, missingChecks, manuallyVerified } = params.row;
-        const needsAttention = suspicious; // Only show red if suspicious is true
-        const hasMissingChecks = missingChecks;
-        
+        const { suspicious, missingChecks, manuallyVerified, numTransactions } = params.row;
+        const needsAttention = suspicious;
+
+        const warnings: string[] = [];
+        if (missingChecks) warnings.push('Missing checks detected');
+        if (numTransactions === 0) warnings.push('No transactions');
+
         return (
           <Box className={styles.statusCell}>
             {needsAttention ? (
@@ -182,8 +185,16 @@ const StatementsPage: React.FC = () => {
                 <CheckCircle color="success" fontSize="small" />
               </Tooltip>
             )}
-            {hasMissingChecks && (
-              <Tooltip title="Missing checks detected">
+            {warnings.length > 0 && (
+              <Tooltip title={
+                warnings.length === 1
+                  ? warnings[0]
+                  : (
+                    <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                      {warnings.map(w => <li key={w}>{w}</li>)}
+                    </Box>
+                  )
+              }>
                 <Warning color="warning" fontSize="small" />
               </Tooltip>
             )}

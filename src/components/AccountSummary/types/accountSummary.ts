@@ -14,6 +14,7 @@ export interface AccountGroup {
   totalStatements: number;
   suspiciousCount: number;
   missingChecksCount: number;
+  noTransactionsCount: number;
   dateRange: string;
   missingMonthsCount: number;
   yearlyTimeline: YearlyTimeline;
@@ -26,6 +27,7 @@ export interface NullAccountGroup {
   totalStatements: number;
   suspiciousCount: number;
   missingChecksCount: number;
+  noTransactionsCount: number;
   yearlyTimeline: YearlyTimeline;
   invalidDateStatements: BankStatementMetadata[];
 }
@@ -43,6 +45,7 @@ export interface MonthBlock {
   statement?: BankStatementMetadata;
   isSuspicious: boolean;
   hasMissingChecks: boolean;
+  hasNoTransactions: boolean;
   isMissing: boolean;
   statementDate?: string;
 }

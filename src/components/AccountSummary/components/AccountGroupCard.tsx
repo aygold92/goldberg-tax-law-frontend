@@ -86,8 +86,16 @@ const AccountGroupCard: React.FC<AccountGroupCardProps> = ({
                 />
               )}
               {group.missingChecksCount > 0 && (
-                <Chip 
+                <Chip
                   label={`${group.missingChecksCount} missing checks`}
+                  size="small"
+                  color="warning"
+                  icon={<Warning />}
+                />
+              )}
+              {group.noTransactionsCount > 0 && (
+                <Chip
+                  label={`${group.noTransactionsCount} no transactions`}
                   size="small"
                   color="warning"
                   icon={<Warning />}

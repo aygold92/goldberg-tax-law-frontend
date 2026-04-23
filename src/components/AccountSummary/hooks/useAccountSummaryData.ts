@@ -80,6 +80,7 @@ function createYearlyTimeline(statements: BankStatementMetadata[]): YearlyTimeli
         statement: statementForMonth,
         isSuspicious: statementForMonth?.metadata.suspicious || false,
         hasMissingChecks: statementForMonth?.metadata.missingChecks || false,
+        hasNoTransactions: statementForMonth ? statementForMonth.metadata.numTransactions === 0 : false,
         isMissing: false, // Will be calculated later
         statementDate: statementForMonth ? formatStatementDate(statementForMonth.key.date) : undefined
       });
@@ -158,6 +159,7 @@ export function useAccountSummaryData(statements: BankStatementMetadata[]) {
             totalStatements: 0,
             suspiciousCount: 0,
             missingChecksCount: 0,
+            noTransactionsCount: 0,
             dateRange: '',
             missingMonthsCount: 0,
             yearlyTimeline: {},
@@ -178,6 +180,7 @@ export function useAccountSummaryData(statements: BankStatementMetadata[]) {
             totalStatements: 0,
             suspiciousCount: 0,
             missingChecksCount: 0,
+            noTransactionsCount: 0,
             yearlyTimeline: {},
             invalidDateStatements: []
           });
@@ -215,6 +218,7 @@ export function useAccountSummaryData(statements: BankStatementMetadata[]) {
       group.totalStatements = group.statements.length;
       group.suspiciousCount = group.statements.filter(s => s.metadata.suspicious).length;
       group.missingChecksCount = group.statements.filter(s => s.metadata.missingChecks).length;
+      group.noTransactionsCount = group.statements.filter(s => s.metadata.numTransactions === 0).length;
 
       // Calculate date range from valid date statements
       if (validDateStatements.length > 0) {
@@ -255,6 +259,7 @@ export function useAccountSummaryData(statements: BankStatementMetadata[]) {
       nullGroup.totalStatements = nullGroup.statements.length;
       nullGroup.suspiciousCount = nullGroup.statements.filter(s => s.metadata.suspicious).length;
       nullGroup.missingChecksCount = nullGroup.statements.filter(s => s.metadata.missingChecks).length;
+      nullGroup.noTransactionsCount = nullGroup.statements.filter(s => s.metadata.numTransactions === 0).length;
 
       // Create yearly timeline from valid date statements
       nullGroup.yearlyTimeline = createYearlyTimeline(validDateStatements);

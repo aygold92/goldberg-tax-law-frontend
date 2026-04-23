@@ -100,7 +100,7 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
           </Typography>
         </Box>
         
-        {(statement.metadata.suspicious || statement.metadata.missingChecks) && (
+        {(statement.metadata.suspicious || statement.metadata.missingChecks || transactions === 0) && (
           <Box className={styles.tooltipIssues}>
             {statement.metadata.suspicious && (
               <Box className={styles.tooltipRow}>
@@ -115,6 +115,14 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
                 <Warning color="warning" fontSize="small" />
                 <Typography variant="caption" className={styles.tooltipIssue}>
                   Missing checks
+                </Typography>
+              </Box>
+            )}
+            {transactions === 0 && (
+              <Box className={styles.tooltipRow}>
+                <Warning color="warning" fontSize="small" />
+                <Typography variant="caption" className={styles.tooltipIssue}>
+                  No transactions
                 </Typography>
               </Box>
             )}
