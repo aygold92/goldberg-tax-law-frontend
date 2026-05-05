@@ -1,50 +1,27 @@
 import { useState, useCallback } from 'react';
+import { TransactionCheckMatch } from '../../../types/api';
 import apiService from '../../../services/api';
-import { MatchStatementsWithChecksRequest, MatchStatementsWithChecksResponse, DocumentClassification } from '../../../types/api';
 
 export const useConvertToStatement = () => {
-  const [convertResult, setConvertResult] = useState<MatchStatementsWithChecksResponse | null>(null);
+  const [convertResult, setConvertResult] = useState<TransactionCheckMatch[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const convertToStatement = useCallback(async (
-    clientName: string,
-    classifications: DocumentClassification[]
-  ): Promise<MatchStatementsWithChecksResponse> => {
+  // Auto-match: pass empty transactionCheckMatches so the server discovers matches automatically
+  const convertToStatement = useCallback(async (clientId: string): Promise<TransactionCheckMatch[]> => {
     setLoading(true);
     setError(null);
 
     try {
-      // Separate classifications into statements and checks
-      const statements: Array<{ filename: string; pages: number[] }> = [];
-      const checks: Array<{ filename: string; pages: number[] }> = [];
-
-      classifications.forEach(classification => {
-        const pdfMetadata = {
-          filename: classification.filename,
-          pages: classification.pages,
-        };
-
-        // Check if it's a check (classification === "Checks") or a statement (anything else)
-        if (classification.classification === 'Checks') {
-          checks.push(pdfMetadata);
-        } else {
-          statements.push(pdfMetadata);
-        }
+      const response = await apiService.matchStatementsWithChecks({
+        clientId,
+        transactionCheckMatches: [],
       });
-
-      const request: MatchStatementsWithChecksRequest = {
-        clientName,
-        statements,
-        checks,
-      };
-
-      const response = await apiService.matchStatementsWithChecks(request);
       setConvertResult(response);
       return response;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to match statements with checks';
-      setError(errorMessage);
+      const msg = err instanceof Error ? err.message : 'Failed to match statements with checks';
+      setError(msg);
       throw err;
     } finally {
       setLoading(false);
@@ -57,14 +34,10 @@ export const useConvertToStatement = () => {
   }, []);
 
   return {
-    // State
     convertResult,
     loading,
     error,
-    
-    // Actions
     convertToStatement,
     clearResults,
   };
 };
-

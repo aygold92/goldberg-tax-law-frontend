@@ -1,16 +1,11 @@
-/**
- * Type definitions for the AccountSummary component and its sub-components.
- * Defines interfaces for account grouping, timeline data, and component props.
- */
-
-import { BankStatementMetadata } from '../../../types/api';
+import { StatementSummary } from '../../../types/api';
 
 export interface AccountGroup {
   accountKey: string;
   accountNumber: string;
   classification: string;
   bankType: string;
-  statements: BankStatementMetadata[];
+  statements: StatementSummary[];
   totalStatements: number;
   suspiciousCount: number;
   missingChecksCount: number;
@@ -18,18 +13,18 @@ export interface AccountGroup {
   dateRange: string;
   missingMonthsCount: number;
   yearlyTimeline: YearlyTimeline;
-  invalidDateStatements: BankStatementMetadata[];
+  invalidDateStatements: StatementSummary[];
 }
 
 export interface NullAccountGroup {
   classification: string;
-  statements: BankStatementMetadata[];
+  statements: StatementSummary[];
   totalStatements: number;
   suspiciousCount: number;
   missingChecksCount: number;
   noTransactionsCount: number;
   yearlyTimeline: YearlyTimeline;
-  invalidDateStatements: BankStatementMetadata[];
+  invalidDateStatements: StatementSummary[];
 }
 
 export interface YearlyTimeline {
@@ -39,10 +34,10 @@ export interface YearlyTimeline {
 }
 
 export interface MonthBlock {
-  month: number; // 0-11 (January = 0)
+  month: number;
   monthName: string;
   hasStatement: boolean;
-  statement?: BankStatementMetadata;
+  statement?: StatementSummary;
   isSuspicious: boolean;
   hasMissingChecks: boolean;
   hasNoTransactions: boolean;
@@ -51,37 +46,37 @@ export interface MonthBlock {
 }
 
 export interface AccountSummaryProps {
-  statements: BankStatementMetadata[];
-  selectedClient?: string;
+  statements: StatementSummary[];
+  selectedClientId?: string;
 }
 
 export interface AccountGroupCardProps {
   group: AccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 export interface NullAccountGroupCardProps {
   group: NullAccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 export interface YearlyTimelineProps {
   yearlyTimeline: YearlyTimeline;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 export interface InvalidDateStatementsProps {
-  invalidDateStatements: BankStatementMetadata[];
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  invalidDateStatements: StatementSummary[];
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 export interface MonthBlockProps {
   monthBlock: MonthBlock;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 export interface StatementTooltipProps {

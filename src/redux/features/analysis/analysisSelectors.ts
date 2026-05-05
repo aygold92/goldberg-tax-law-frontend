@@ -45,13 +45,13 @@ export const selectTotalAnalysisResults = (state: RootState) =>
   state.analysis.results.length;
 
 // Status-specific selectors
-export const selectAnalysisRuntimeStatus = (state: RootState) => 
+export const selectAnalysisRuntimeStatus = (state: RootState) =>
   state.analysis.currentStatus?.runtimeStatus;
 
-export const selectAnalysisCustomStatus = (state: RootState) => 
+export const selectAnalysisCustomStatus = (state: RootState) =>
   state.analysis.currentStatus?.customStatus;
 
-export const selectAnalysisOutput = (state: RootState) => 
+export const selectAnalysisOutput = (state: RootState) =>
   state.analysis.currentStatus?.output;
 
 export const selectIsAnalysisComplete = (state: RootState) => {
@@ -59,12 +59,14 @@ export const selectIsAnalysisComplete = (state: RootState) => {
   return status === 'Completed' || status === 'Failed';
 };
 
-export const selectIsAnalysisSuccessful = (state: RootState) => 
+export const selectIsAnalysisSuccessful = (state: RootState) =>
   state.analysis.currentStatus?.runtimeStatus === 'Completed';
 
 export const selectAnalysisProgress = (state: RootState) => {
   const customStatus = state.analysis.currentStatus?.customStatus;
   if (!customStatus) return 0;
-  const { totalStatements, statementsCompleted } = customStatus;
-  return totalStatements > 0 ? (statementsCompleted / totalStatements) * 100 : 0;
+  const total = customStatus.totalDocuments;
+  const completed = customStatus.docsCompleted;
+  if (!total || total === 0) return 0;
+  return ((completed ?? 0) / total) * 100;
 }; 

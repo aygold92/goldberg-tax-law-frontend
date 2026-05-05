@@ -186,7 +186,7 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
             </Typography>
             <Box className={styles.progressRow}>
               <Typography variant="body2">
-                Progress: {customStatus.statementsCompleted} / {customStatus.totalStatements} statements
+                Progress: {customStatus.docsCompleted ?? 0} / {customStatus.totalDocuments ?? 0} documents
               </Typography>
               <LinearProgress
                 variant="determinate"
@@ -199,37 +199,28 @@ const AnalysisStatus: React.FC<AnalysisStatusProps> = ({ statusQueryUrl, onAnaly
             </Box>
           </Box>
         )}
-
-        <Typography variant="body2" color="text.secondary">
-          Started: {new Date(currentStatus.createdTime).toLocaleString()}
-        </Typography>
-        {currentStatus.lastUpdatedTime && (
-          <Typography variant="body2" color="text.secondary">
-            Last Updated: {new Date(currentStatus.lastUpdatedTime).toLocaleString()}
-          </Typography>
-        )}
       </Paper>
 
       {/* Document Details */}
-      {customStatus && Object.keys(customStatus.documents).length > 0 && (
+      {customStatus && Object.keys(customStatus.docs).length > 0 && (
         <Paper className={styles.detailsPaper}>
           <Typography variant="h6" gutterBottom>
             Document Details
           </Typography>
           <Grid container spacing={2}>
-            {Object.entries(customStatus.documents).map(([filename, docStatus]) => (
-              <Grid item xs={12} md={6} key={filename}>
+            {Object.entries(customStatus.docs).map(([fileId, docStatus]) => (
+              <Grid item xs={12} md={6} key={fileId}>
                 <Card variant="outlined">
                   <CardContent>
                     <Box className={styles.documentHeader}>
                       <CloudUpload />
                       <Typography variant="subtitle2" noWrap>
-                        {filename}
+                        {fileId}
                       </Typography>
                     </Box>
                     <Box className={styles.documentFooter}>
                       <Typography variant="body2" color="text.secondary">
-                        Statements: {docStatus.statementsCompleted} / {docStatus.numStatements}
+                        Analyzed: {docStatus.docsAnalyzed ?? 0} / {docStatus.numStatementPages ?? 0} pages
                       </Typography>
                       <Chip
                         label={docStatus.classified ? 'Classified' : 'Pending'}

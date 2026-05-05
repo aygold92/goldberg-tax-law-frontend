@@ -2,29 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Box, Alert } from '@mui/material';
 import { useAppSelector } from '../redux/hooks';
-import { selectSelectedClient } from '../redux/features/client/clientSelectors';
+import { selectSelectedClientId } from '../redux/features/client/clientSelectors';
 import { usePageTitle } from '../hooks/usePageTitle';
 import PdfDisplay from '../components/PdfDisplay';
 import { DocumentClassificationPanel } from '../components/DocumentClassificationPanel';
-import { FileMetadataEditor } from '../components/FileMetadataEditor';
 import ClassifyDocumentButton from '../components/ClassifyDocumentButton';
 
 const ViewFileDataPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const clientName = useAppSelector(selectSelectedClient);
+  const clientId = useAppSelector(selectSelectedClientId);
   const { setPageTitle } = usePageTitle();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const rawFilename = searchParams.get('filename');
-  const decodedFilename = rawFilename ? decodeURIComponent(rawFilename) : null;
+  const fileId = searchParams.get('fileId');
 
   useEffect(() => {
-    if (decodedFilename) {
-      setPageTitle(`View File: ${decodedFilename}`);
+    if (fileId) {
+      setPageTitle(`View File: ${fileId}`);
     }
-  }, [decodedFilename, setPageTitle]);
+  }, [fileId, setPageTitle]);
 
-  if (!clientName || !decodedFilename) {
+  if (!clientId || !fileId) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">
@@ -38,25 +36,19 @@ const ViewFileDataPage: React.FC = () => {
     <Box sx={{ display: 'flex', flexDirection: 'row', gap: 3, alignItems: 'flex-start', p: 3 }}>
       {/* Left column — PDF viewer */}
       <Box sx={{ flex: 1.2, minWidth: 0 }}>
-        <PdfDisplay clientName={clientName} filename={decodedFilename} />
+        <PdfDisplay fileId={fileId} />
       </Box>
 
       {/* Right column — editors */}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <ClassifyDocumentButton
-          clientName={clientName}
-          filename={decodedFilename}
+          fileId={fileId}
           onClassified={() => setRefreshKey(k => k + 1)}
         />
         <DocumentClassificationPanel
           key={`panel-${refreshKey}`}
-          clientName={clientName}
-          filename={decodedFilename}
-        />
-        <FileMetadataEditor
-          key={`metadata-${refreshKey}`}
-          clientName={clientName}
-          filename={decodedFilename}
+          fileId={fileId}
+          clientId={clientId}
         />
       </Box>
     </Box>

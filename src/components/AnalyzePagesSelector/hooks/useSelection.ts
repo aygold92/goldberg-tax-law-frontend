@@ -1,54 +1,37 @@
 import { useState, useCallback } from 'react';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 
 export const useSelection = () => {
-  const [selectedClassifications, setSelectedClassifications] = useState<DocumentClassification[]>([]);
+  const [selectedClassifications, setSelectedClassifications] = useState<ClassificationInfo[]>([]);
 
-  // Helper function to compare classifications
-  const classificationsEqual = (a: DocumentClassification, b: DocumentClassification): boolean => {
-    return JSON.stringify(a.pages.sort()) === JSON.stringify(b.pages.sort()) && 
-           a.classification === b.classification;
+  const classificationsEqual = (a: ClassificationInfo, b: ClassificationInfo): boolean => {
+    if (a.classificationId && b.classificationId) return a.classificationId === b.classificationId;
+    return JSON.stringify([...a.pages].sort()) === JSON.stringify([...b.pages].sort()) &&
+      a.classificationType === b.classificationType;
   };
 
-  // Check if a classification is selected
-  const isSelected = useCallback((classification: DocumentClassification): boolean => {
-    return selectedClassifications.some(selected => classificationsEqual(selected, classification));
-  }, [selectedClassifications]);
+  const isSelected = useCallback((c: ClassificationInfo): boolean =>
+    selectedClassifications.some(s => classificationsEqual(s, c)),
+    [selectedClassifications]);
 
-  // Toggle selection of a classification
-  const toggleSelection = useCallback((classification: DocumentClassification) => {
+  const toggleSelection = useCallback((c: ClassificationInfo) => {
     setSelectedClassifications(prev => {
-      const isCurrentlySelected = prev.some(selected => classificationsEqual(selected, classification));
-      
-      if (isCurrentlySelected) {
-        // Remove from selection
-        return prev.filter(selected => !classificationsEqual(selected, classification));
-      } else {
-        // Add to selection
-        return [...prev, classification];
-      }
+      const found = prev.some(s => classificationsEqual(s, c));
+      return found ? prev.filter(s => !classificationsEqual(s, c)) : [...prev, c];
     });
   }, []);
 
-  // Select all classifications
-  const selectAll = useCallback((allClassifications: DocumentClassification[]) => {
-    setSelectedClassifications([...allClassifications]);
+  const selectAll = useCallback((all: ClassificationInfo[]) => {
+    setSelectedClassifications([...all]);
   }, []);
 
-  // Clear all selections
   const clearSelection = useCallback(() => {
     setSelectedClassifications([]);
   }, []);
 
-  // Get selection count
-  const selectionCount = selectedClassifications.length;
-
   return {
-    // State
     selectedClassifications,
-    selectionCount,
-    
-    // Actions
+    selectionCount: selectedClassifications.length,
     isSelected,
     toggleSelection,
     selectAll,

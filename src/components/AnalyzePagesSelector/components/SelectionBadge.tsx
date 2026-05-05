@@ -1,12 +1,13 @@
 import React from 'react';
 import { Chip, Box, Tooltip } from '@mui/material';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
+
 
 interface SelectionBadgeProps {
-  classification: DocumentClassification;
+  classification: ClassificationInfo;
   isSelected: boolean;
   onToggle: () => void;
-  onFetchDataModel: (classification: DocumentClassification) => void;
+  onFetchDataModel: (classification: ClassificationInfo) => void;
 }
 
 const SelectionBadge: React.FC<SelectionBadgeProps> = ({
@@ -67,7 +68,7 @@ const SelectionBadge: React.FC<SelectionBadgeProps> = ({
               [{pagesText}]
             </Box>
             <Box component="span" sx={{ fontSize: '0.8rem', opacity: 0.8 }}>
-              {classification.classification}
+              {classification.classificationType}
             </Box>
           </Box>
         }

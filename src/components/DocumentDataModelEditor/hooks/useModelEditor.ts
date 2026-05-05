@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ClassifiedPdfMetadata } from '../../../types/bankStatement';
 import apiService from '../../../services/api';
 
 interface UseModelEditorProps {
-  clientName: string;
-  pdfMetadata: ClassifiedPdfMetadata;
+  classificationId: string;
+  classification: string; // for validation logic
   initialModel: any;
 }
 
@@ -33,15 +32,13 @@ export function validateModel(json: string, classification: string): string | nu
   }
 
   if (classification.startsWith('Checks')) {
-    // All CheckDataModel fields are optional — only check for unknown keys
     const allowed = new Set(['accountNumber', 'checkNumber', 'to', 'description', 'date', 'amount', 'batesStamp', 'pageMetadata', 'checkEntries']);
     const unknown = Object.keys(parsed).filter(k => !allowed.has(k));
     if (unknown.length > 0) {
       return `CheckDataModel contains unknown fields: ${unknown.join(', ')}`;
     }
   } else if (classification.startsWith('Extra Pages')) {
-    const keys = Object.keys(parsed);
-    const extra = keys.filter(k => k !== 'pageMetadata');
+    const extra = Object.keys(parsed).filter(k => k !== 'pageMetadata');
     if (extra.length > 0) {
       return `Extra Pages model must only contain pageMetadata, but found: ${extra.join(', ')}`;
     }
@@ -50,7 +47,7 @@ export function validateModel(json: string, classification: string): string | nu
   return null;
 }
 
-export const useModelEditor = ({ clientName, pdfMetadata, initialModel }: UseModelEditorProps) => {
+export const useModelEditor = ({ classificationId, classification, initialModel }: UseModelEditorProps) => {
   const [editedJson, setEditedJson] = useState<string>(() => JSON.stringify(initialModel, null, 2));
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState<boolean>(false);
@@ -59,17 +56,14 @@ export const useModelEditor = ({ clientName, pdfMetadata, initialModel }: UseMod
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
 
-  // Real-time validation on every change
   useEffect(() => {
-    const error = validateModel(editedJson, pdfMetadata.classification);
-    setValidationError(error);
-    setIsValid(error === null);
-  }, [editedJson, pdfMetadata.classification]);
+    const err = validateModel(editedJson, classification);
+    setValidationError(err);
+    setIsValid(err === null);
+  }, [editedJson, classification]);
 
   const handleShowDiff = useCallback(() => {
-    if (isValid) {
-      setShowDiff(true);
-    }
+    if (isValid) setShowDiff(true);
   }, [isValid]);
 
   const handleBackToEditor = useCallback(() => {
@@ -82,21 +76,20 @@ export const useModelEditor = ({ clientName, pdfMetadata, initialModel }: UseMod
     setSubmitError(null);
     try {
       const parsed = JSON.parse(editedJson);
-      const { classification } = pdfMetadata;
       const model = classification.startsWith('Checks')
         ? { checkDataModel: parsed }
         : classification.startsWith('Extra Pages')
         ? { extraPageDataModel: parsed }
         : { statementDataModel: parsed };
 
-      await apiService.putDocumentDataModel({ clientName, model });
+      await apiService.putDocumentDataModel({ classificationId, model });
       setSubmitSuccess(true);
     } catch (e: any) {
       setSubmitError(e.userMessage || e.message || 'Failed to save data model');
     } finally {
       setSubmitLoading(false);
     }
-  }, [editedJson, clientName, pdfMetadata]);
+  }, [editedJson, classificationId, classification]);
 
   return {
     editedJson,

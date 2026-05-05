@@ -1,29 +1,25 @@
 import React, { useState } from 'react';
 import { Box, Button, Card, CardContent, CardHeader, Alert, CircularProgress } from '@mui/material';
-import { ClassifyDocumentResponse } from '../types/api';
 import apiService from '../services/api';
 
 interface ClassifyDocumentButtonProps {
-  clientName: string;
-  filename: string;
+  fileId: string;
   onClassified: () => void;
 }
 
 const ClassifyDocumentButton: React.FC<ClassifyDocumentButtonProps> = ({
-  clientName,
-  filename,
+  fileId,
   onClassified,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ClassifyDocumentResponse | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleClassify = async () => {
     setLoading(true);
     setError(null);
     try {
-      const requestId = crypto.randomUUID();
-      const res = await apiService.classifyDocument(requestId, clientName, filename);
+      const res = await apiService.classifyDocument(fileId);
       setResult(res);
       onClassified();
     } catch (e: any) {

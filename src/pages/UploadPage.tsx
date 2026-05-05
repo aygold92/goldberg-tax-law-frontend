@@ -24,7 +24,7 @@ import ClientSelector from '../components/ClientSelector';
 import DocumentUpload from '../components/DocumentUpload';
 import AnalysisStatus from '../components/AnalysisStatus';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { selectSelectedClient } from '../redux/features/client/clientSelectors';
+import { selectSelectedClient, selectSelectedClientId, selectSelectedClientName } from '../redux/features/client/clientSelectors';
 import { clearAnalysisResults } from '../redux/features/analysis/analysisSlice';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { COLORS } from '../styles/constants';
@@ -33,6 +33,8 @@ import styles from '../styles/components/UploadPage.module.css';
 const UploadPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const selectedClient = useAppSelector(selectSelectedClient);
+  const selectedClientId = useAppSelector(selectSelectedClientId);
+  const selectedClientName = useAppSelector(selectSelectedClientName);
   const [statusQueryUrl, setStatusQueryUrl] = useState<string>('');
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const { setPageTitle } = usePageTitle();
@@ -67,9 +69,10 @@ const UploadPage: React.FC = () => {
           Please select a client to continue with document upload and analysis.
         </Alert>
       )}
-      {selectedClient && !statusQueryUrl && (
+      {selectedClient && selectedClientId && selectedClientName && !statusQueryUrl && (
         <DocumentUpload
-          selectedClient={selectedClient as string}
+          clientId={selectedClientId}
+          clientName={selectedClientName}
           onAnalysisStarted={handleAnalysisStarted}
         />
       )}

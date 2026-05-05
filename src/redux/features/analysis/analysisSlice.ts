@@ -1,18 +1,5 @@
-/**
- * Analysis slice for Redux state management.
- * 
- * This slice manages analysis workflow state including:
- * - Analysis status tracking for uploaded files
- * - Analysis results and metadata
- * - Analysis progress and completion status
- * - Error handling for analysis failures
- * - Status polling from backend API
- * 
- * Provides centralized state management for document analysis workflows.
- */
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { PollForStatusResponse } from '../../../types/api';
+import { ExternalOrchestrationStatus, PollForStatusResponse } from '../../../types/api';
 import apiService from '../../../services/api';
 
 export interface AnalysisResult {
@@ -46,25 +33,23 @@ const initialState: AnalysisState = {
   pollingError: null,
 };
 
-// Async thunk for starting analysis
 export const startAnalysis = createAsyncThunk(
   'analysis/startAnalysis',
-  async ({ clientName, documentFilenames }: { clientName: string; documentFilenames: string[] }, { rejectWithValue }) => {
+  async ({ clientId, files }: { clientId: string; files: Array<{ fileId: string; fileName: string }> }, { rejectWithValue }) => {
     try {
       const response = await apiService.initAnalyzeDocuments({
-        clientName,
-        documents: documentFilenames,
-        overwrite: true,
+        clientId,
+        fileIds: files.map(f => f.fileId),
       });
-      
-      const results = documentFilenames.map(fileName => ({
-        fileId: `file-${Date.now()}-${Math.random()}`,
+
+      const results = files.map(({ fileId, fileName }) => ({
+        fileId,
         fileName,
         status: 'pending' as const,
         progress: 0,
         startedAt: new Date().toISOString(),
       }));
-      
+
       return {
         results,
         statusQueryUrl: response.statusQueryGetUri,
@@ -75,26 +60,22 @@ export const startAnalysis = createAsyncThunk(
   }
 );
 
-// Async thunk for checking analysis status
 export const checkAnalysisStatus = createAsyncThunk(
   'analysis/checkStatus',
   async (statusQueryUrl: string, { rejectWithValue }) => {
     try {
-      const response = await apiService.pollForStatus(statusQueryUrl);
-      return response;
+      return await apiService.pollForStatus(statusQueryUrl);
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to check analysis status');
     }
   }
 );
 
-// Async thunk for polling analysis status
 export const pollAnalysisStatus = createAsyncThunk(
   'analysis/pollStatus',
   async (statusQueryUrl: string, { rejectWithValue }) => {
     try {
-      const response = await apiService.pollForStatus(statusQueryUrl);
-      return response;
+      return await apiService.pollForStatus(statusQueryUrl);
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to poll analysis status');
     }
@@ -110,10 +91,8 @@ const analysisSlice = createSlice({
     },
     updateAnalysisResult: (state, action: PayloadAction<{ fileId: string; updates: Partial<AnalysisResult> }>) => {
       const { fileId, updates } = action.payload;
-      const resultIndex = state.results.findIndex(result => result.fileId === fileId);
-      if (resultIndex !== -1) {
-        state.results[resultIndex] = { ...state.results[resultIndex], ...updates };
-      }
+      const idx = state.results.findIndex(r => r.fileId === fileId);
+      if (idx !== -1) state.results[idx] = { ...state.results[idx], ...updates };
     },
     clearAnalysisResults: (state) => {
       state.results = [];
@@ -130,11 +109,15 @@ const analysisSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Start analysis
     builder
       .addCase(startAnalysis.pending, (state) => {
         state.isAnalyzing = true;
         state.error = null;
+        // Clear previous analysis state so stale results don't show while the new one starts
+        state.currentStatus = null;
+        state.statusQueryUrl = null;
+        state.results = [];
+        state.pollingError = null;
       })
       .addCase(startAnalysis.fulfilled, (state, action) => {
         state.isAnalyzing = false;
@@ -146,12 +129,8 @@ const analysisSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Check analysis status
     builder
-      .addCase(checkAnalysisStatus.pending, (state) => {
-        // Don't set isAnalyzing to true for status checks
-      })
-      .addCase(checkAnalysisStatus.fulfilled, (state, action) => {
+      .addCase(checkAnalysisStatus.fulfilled, (state, action: PayloadAction<PollForStatusResponse>) => {
         state.currentStatus = action.payload;
         state.pollingError = null;
       })
@@ -159,13 +138,12 @@ const analysisSlice = createSlice({
         state.pollingError = action.payload as string;
       });
 
-    // Poll analysis status
     builder
       .addCase(pollAnalysisStatus.pending, (state) => {
         state.isPolling = true;
         state.pollingError = null;
       })
-      .addCase(pollAnalysisStatus.fulfilled, (state, action) => {
+      .addCase(pollAnalysisStatus.fulfilled, (state, action: PayloadAction<PollForStatusResponse>) => {
         state.isPolling = false;
         state.currentStatus = action.payload;
         state.pollingError = null;
@@ -185,4 +163,4 @@ export const {
   setPolling,
 } = analysisSlice.actions;
 
-export default analysisSlice.reducer; 
+export default analysisSlice.reducer;

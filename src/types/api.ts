@@ -1,55 +1,144 @@
-/**
- * TypeScript interfaces and types for API communication in the Bank Statement Frontend.
- *
- * This file defines all the TypeScript interfaces used for:
- * - API request/response structures
- * - Client management operations
- * - Document analysis and processing workflows
- * - Azure Blob Storage operations
- * - Statement and transaction data models
- *
- * These types ensure type safety when communicating with the backend API
- * and provide clear contracts for data structures used throughout the application.
- */
+import { CheckDataModel } from './bankStatement';
 
-import { ClassifiedPdfMetadata, CheckDataModel } from './bankStatement';
-
-// API Types based on the JSON spec
 export interface ApiResponse<T = any> {
   status?: string;
   result?: T;
   errorMessage?: string;
 }
 
-// Client Management
-export interface ListClientsResponse {
-  clients: string[];
+// --- Common types ---
+
+export interface StorageLocation {
+  containerName: string;
+  filePath: string;
+  extension: 'pdf' | 'json';
 }
 
-export interface NewClientRequest {
+export interface Client {
+  clientId: string;
   clientName: string;
+  createdAt: number;
 }
 
-// SAS Token
-export interface RequestSASTokenResponse {
-  token: string;
+export interface InputFileInfo {
+  fileId: string;
+  fileName: string;
+  storageLocation: StorageLocation;
+  numPages: number;
+  contentHash: string;
+  uploadedAt: number;
 }
 
-// Document Analysis
-export interface InitAnalyzeDocumentsRequest {
-  clientName: string;
-  documents: string[];
-  overwrite: boolean;
+export interface InputFile {
+  client: Client;
+  info: InputFileInfo;
 }
 
-export interface InitAnalyzeDocumentsResponse {
-  statusQueryGetUri: string;
+export interface ClassificationInfo {
+  classificationId: string;
+  pages: number[];
+  classificationType: string;
+  modelLocation: StorageLocation | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
-// Status Polling
+export interface Classification {
+  inputFile: InputFile;
+  info: ClassificationInfo;
+}
+
+export interface StatementDetails {
+  statementId: string;
+  date: string | null;
+  accountNumber: string | null;
+  beginningBalance: number | null;
+  endingBalance: number | null;
+  interestCharged: number | null;
+  feesCharged: number | null;
+  batesStamps: Record<string, string>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TransactionDetails {
+  transactionId: string;
+  date: string | null;
+  description: string | null;
+  amount: number | null;
+  checkNumber: number | null;
+  filePageNumber: number;
+  checkId: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Statement {
+  classification: Classification;
+  statementDetails: StatementDetails;
+  suspiciousReasons: string[];
+  transactions: TransactionDetails[];
+}
+
+export interface StatementSummary {
+  classification: Classification;
+  statementDetails: StatementDetails;
+  suspiciousReasons: string[];
+  missingChecks: string[];
+  manuallyVerified: boolean;
+  totalSpending: number;
+  totalIncomeCredits: number;
+  numTransactions: number;
+}
+
+export interface InputFileSummary {
+  inputFile: InputFile;
+  numChecks: number | null;
+  numStatements: number | null;
+  numTransactions: number | null;
+  numAnalyzed: number | null;
+  numDocuments: number | null;
+}
+
+export interface CheckDetails {
+  checkId: string;
+  checkNumber: number | null;
+  accountNumber: string | null;
+  description: string | null;
+  date: string | null;
+  amount: number | null;
+  to: string | null;
+  batesStamp: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TransactionCheckMatch {
+  transactionId: string;
+  checkId: string;
+}
+
+// --- Orchestration status (Durable Functions polling) ---
+
+export interface ExternalOrchestrationStatus {
+  stage: 'Verifying Documents' | 'Classifying Documents' | 'Extracting Data' | 'Matching Checks';
+  docs: Record<string, DocumentOrchestrationStatus>;
+  docsCompleted: number | null;
+  totalDocuments: number | null;
+}
+
+export interface DocumentOrchestrationStatus {
+  fileId: string;
+  numStatementPages: number | null;
+  numCheckPages: number | null;
+  docsAnalyzed: number | null;
+  classified: boolean;
+}
+
+// Keep wrapper for the Durable Functions poll response envelope
 export interface PollForStatusResponse {
   runtimeStatus: string;
-  customStatus: AnalyzeDocumentCustomStatus;
+  customStatus: ExternalOrchestrationStatus;
   createdTime: string;
   lastUpdatedTime: string;
   instanceId: string;
@@ -60,48 +149,153 @@ export interface PollForStatusResponse {
   };
 }
 
-export type AnalyzeDocumentCustomStatus = {
-  stage: string;
-  documents: {
-    [key: string]: DocumentStatus;
+// --- Client endpoints ---
+
+export interface ListClientsResponse {
+  clients: Client[];
+}
+
+export interface NewClientRequest {
+  clientName: string;
+  requestToken: string;
+}
+
+export interface NewClientResponse {
+  clientId: string;
+  clientName: string;
+}
+
+// --- File endpoints ---
+
+export interface FetchWriteSASTokensRequest {
+  clientId: string;
+  filenames: string[];
+}
+
+export interface SASTokenEntry {
+  token: string;
+  storageLocation: StorageLocation;
+}
+
+export interface FetchWriteSASTokensResponse {
+  tokens: Record<string, SASTokenEntry>;
+  alreadyExist: string[];
+}
+
+export interface FetchReadSASTokenRequest {
+  fileId: string;
+}
+
+export interface FetchReadSASTokenResponse {
+  token: string;
+  storageLocation: StorageLocation;
+}
+
+export interface PutFileInfoRequest {
+  filename: string;
+  clientId: string;
+  requestToken: string;
+}
+
+export interface PutFileInfoResponse {
+  fileId: string;
+}
+
+export interface GetInputFileSummaryResponse {
+  summary: InputFileSummary;
+}
+
+export interface DeleteInputDocumentRequest {
+  fileId: string;
+}
+
+export interface DeleteInputDocumentResponse {
+  clientId: string;
+  fileId: string;
+}
+
+// --- Document Analysis (Durable Functions — unchanged) ---
+
+export interface InitAnalyzeDocumentsRequest {
+  clientId: string;
+  fileIds: string[];
+}
+
+export interface InitAnalyzeDocumentsResponse {
+  statusQueryGetUri: string;
+}
+
+// --- Classification endpoints ---
+
+export interface PutDocumentClassificationRequest {
+  file: {
+    fileId: string;
+    classifications: Array<{ pages: number[]; classificationType: string }>;
   };
-  totalStatements: number;
-  statementsCompleted: number;
-};
-
-export type DocumentStatus = {
-  filename: string;
-  numStatements: number;
-  statementsCompleted: number;
-  classified: boolean;
-};
-
-// Statement Key and Metadata
-export interface BankStatementKey {
-  accountNumber: string;
-  classification: string;
-  date: string; // format mm/dd/yyyy
+  classificationsToRemove: string[];
 }
 
-export interface StatementMetadata {
-  md5: string;
-  suspicious: boolean;
-  missingChecks: boolean;
-  manuallyVerified: boolean;
-  bankType?: string;
-  totalSpending: number;
-  totalIncomeCredits: number;
-  numTransactions: number;
-  filename: string;
-  pageRange: { first: number; second: number };
+export interface PutDocumentClassificationResponse {
+  classificationData: ClassificationInfo[];
 }
 
-export interface BankStatementMetadata {
-  key: BankStatementKey;
-  metadata: StatementMetadata;
+export interface ClassifyDocumentRequest {
+  fileId: string;
 }
 
-// CSV Operations
+// --- Data model endpoints ---
+
+export interface PutDocumentDataModelRequest {
+  classificationId: string;
+  model: any;
+}
+
+export interface PutDocumentDataModelResponse {
+  classificationId: string;
+  model: any;
+}
+
+// --- Page analysis ---
+
+export interface AnalyzePagesRequest {
+  pageRequests: string[];
+}
+
+export interface AnalyzePagesResponse extends ApiResponse {
+  result?: Record<string, any>;
+}
+
+// --- Statement endpoints ---
+
+export interface UpdateStatementModelsRequest {
+  classificationId: string;
+  classification: {
+    pages: number[];
+    classification: string;
+  };
+  statementDetails: StatementDetails;
+  upserts: TransactionDetails[];
+  deletes: string[];
+}
+
+export interface LoadTransactionsFromModelRequest {
+  requestId: string;
+  classificationId: string;
+}
+
+export interface DeleteStatementRequest {
+  statementId: string;
+}
+
+// --- Check matching ---
+
+export interface MatchStatementsWithChecksRequest {
+  clientId: string;
+  transactionCheckMatches: TransactionCheckMatch[];
+}
+
+// --- CSV (kept for backwards compat if still used elsewhere) ---
+
 export interface StatementRequest {
   accountNumber: string | null;
   classification: string;
@@ -124,7 +318,6 @@ export interface WriteCsvSummaryResponse {
   checkSummaryFile?: string;
 }
 
-// Retrieve Output File
 export interface RetrieveOutputFileRequest {
   clientName: string;
   fileName: string;
@@ -135,149 +328,4 @@ export interface RetrieveOutputFileResponse {
   fileName?: string;
   content?: string;
   errorMessage?: string;
-}
-
-// Document Data Model
-export interface GetDocumentDataModelRequest {
-  clientName: string;
-  pdfMetadata: {
-    filename: string;
-    pages: number[];
-  };
-}
-
-export interface GetDocumentDataModelResponse extends ApiResponse {
-  data: any;
-}
-
-export interface PutDocumentDataModelRequest {
-  clientName: string;
-  model: {
-    statementDataModel?: any,
-    checkDataModel?: CheckDataModel,
-    extraPageDataModel?: ClassifiedPdfMetadata
-  };
-}
-
-export interface PutDocumentDataModelResponse extends ApiResponse {}
-
-// Document Classification
-export interface DocumentClassification {
-  filename: string;
-  pages: number[];
-  classification: string;
-}
-
-export interface GetDocumentClassificationRequest {
-  clientName: string;
-  filename: string;
-}
-
-export interface GetDocumentClassificationResponse extends Array<DocumentClassification> {}
-
-export interface PutDocumentClassificationRequest {
-  clientName: string;
-  classification: DocumentClassification[];
-  overwriteAll: boolean;
-}
-
-export interface PutDocumentClassificationResponse extends ApiResponse {}
-
-// Page Analysis
-export interface ProcessDataModelActivityInput {
-  requestId: string;
-  clientName: string;
-  classifiedPdfMetadata: {
-    filename: string;
-    pages: number[];
-    classification: string;
-  };
-  useOriginalFile: boolean;
-}
-
-export interface AnalyzePagesRequest {
-  pageRequests: ProcessDataModelActivityInput[];
-}
-
-export interface AnalyzePagesResponse extends ApiResponse {}
-
-// Statement Models
-export interface UpdateStatementModelsRequest {
-  clientName: string;
-  stmtFilename: string;
-  modelDetails: any;
-}
-
-export interface UpdateStatementModelsResponse extends ApiResponse {}
-
-// Transaction Loading
-export interface LoadTransactionsFromModelRequest {
-  requestId: string;
-  clientName: string;
-  pdfMetadata: {
-    filename: string;
-    pages: number[];
-  };
-  statementDate: string;
-}
-
-export interface Transaction {
-  date: string;
-  amount: number;
-  vendor: string;
-}
-
-export interface LoadTransactionsFromModelResponse extends Array<Transaction> {}
-
-// Match Statements with Checks
-export interface MatchStatementsWithChecksRequest {
-  clientName: string;
-  statements: Array<{
-    filename: string;
-    pages: number[];
-  }>;
-  checks: Array<{
-    filename: string;
-    pages: number[];
-  }>;
-}
-
-export interface MatchStatementsWithChecksResponse {
-  filenameStatementMap: Record<string, string[]>;
-}
-
-// File Metadata Operations
-export interface InputFileMetadata {
-  numstatements?: number;
-  classified: boolean;
-  analyzed: boolean;
-  statements?: string[];
-}
-
-export interface GetInputFileMetadataRequest {
-  clientName: string;
-  filename: string;
-}
-
-export interface GetInputFileMetadataResponse {
-  status: string;
-  message: string;
-  metadata: InputFileMetadata | null;
-}
-
-export interface UpdateInputFileMetadataRequest {
-  clientName: string;
-  filename: string;
-  metadata: InputFileMetadata;
-}
-
-export interface UpdateInputFileMetadataResponse {
-  status: string;
-  message: string;
-  updatedMetadata: InputFileMetadata | null;
-}
-
-export interface ClassifyDocumentResponse {
-  filename: string;
-  classifiedDocuments: ClassifiedPdfMetadata[];
 }

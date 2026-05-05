@@ -32,8 +32,8 @@ import styles from './AnalyzePagesSelector.module.css';
 import { ClassifiedPdfMetadata } from '../../types/bankStatement';
 
 interface AnalyzePagesSelectorProps {
-  clientName: string;
-  filename: string;
+  fileId: string;
+  clientId: string;
   onAnalysisComplete?: (result: any) => void;
 }
 
@@ -48,8 +48,8 @@ interface AnalyzePagesSelectorProps {
  * - Snackbar notifications for user feedback
  */
 const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
-  clientName,
-  filename,
+  fileId,
+  clientId,
   onAnalysisComplete,
 }) => {
   // Custom hooks
@@ -57,7 +57,7 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     classifications,
     loading,
     error,
-  } = useDocumentClassifications(clientName, filename);
+  } = useDocumentClassifications(fileId);
 
   const {
     selectedClassifications,
@@ -115,7 +115,7 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     }
 
     clearResults();
-    const success = await analyzePages(selectedClassifications, clientName);
+    const success = await analyzePages(selectedClassifications);
     
     if (success) {
       showSnackbar('Page analysis completed successfully!', 'success');
@@ -141,15 +141,11 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
   const handleFetchDataModel = async (classification: any) => {
     clearDataModelResults();
     setEditorPdfMetadata({
-      filename,
+      filename: fileId,
       pages: classification.pages,
-      classification: classification.classification,
+      classification: classification.classificationType,
     });
-    const success = await getDocumentDataModel(
-      clientName,
-      filename,
-      classification.pages
-    );
+    const success = await getDocumentDataModel(classification.classificationId);
 
     if (!success) {
       showSnackbar('Failed to load document data model', 'error');
@@ -167,28 +163,13 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     setAccumulatedConvertResults([]);
 
     try {
-      // Call the new API with all selected classifications at once
-      const result = await convertToStatementHook(
-        clientName,
-        selectedClassifications
-      );
-      
-      // Store the result (filenameStatementMap)
+      const result = await convertToStatementHook(clientId);
       setAccumulatedConvertResults([result]);
-      
-      // Count statements created from the filenameStatementMap
-      const statementCount = Object.values(result.filenameStatementMap).reduce(
-        (sum, statements) => sum + statements.length,
-        0
-      );
-      
-      if (statementCount > 0) {
-        showSnackbar(
-          `Successfully processed ${selectedClassifications.length} classification${selectedClassifications.length !== 1 ? 's' : ''} and created ${statementCount} statement${statementCount !== 1 ? 's' : ''}!`,
-          'success'
-        );
+      const matchCount = Array.isArray(result) ? result.length : 0;
+      if (matchCount > 0) {
+        showSnackbar(`Successfully matched ${matchCount} transaction${matchCount !== 1 ? 's' : ''} to checks!`, 'success');
       } else {
-        showSnackbar('Processed classifications but no statements were created', 'error');
+        showSnackbar('No matches found', 'error');
       }
     } catch (err) {
       console.error('Error matching statements with checks:', err);
@@ -208,7 +189,7 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
     <Card className={styles.card}>
       <CardHeader
         title="Analyze Pages Selector"
-        subheader={`File: ${filename}`}
+        subheader={`File ID: ${fileId}`}
         action={
           <Box className={styles.headerActions}>
             <Button
@@ -316,10 +297,10 @@ const AnalyzePagesSelector: React.FC<AnalyzePagesSelectorProps> = ({
           onCancel={() => setEditorOpen(false)}
           onSaved={() => {
             setEditorOpen(false);
-            getDocumentDataModel(clientName, filename, editorPdfMetadata.pages);
+            getDocumentDataModel(editorPdfMetadata.classification);
           }}
-          clientName={clientName}
-          pdfMetadata={editorPdfMetadata}
+          classificationId={editorPdfMetadata.classification}
+          classification={editorPdfMetadata.classification}
           initialModel={dataModelResult}
         />
       )}

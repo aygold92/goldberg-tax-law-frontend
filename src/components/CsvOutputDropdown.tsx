@@ -52,11 +52,11 @@ import {
   clearGoogleSheetsResult,
   clearDownloadResult
 } from '../redux/features/csvOutput/csvOutputSlice';
-import { BankStatementKey } from '../types/api';
+import { StatementRequest } from '../types/api';
 
 interface CsvOutputDropdownProps {
   clientName: string;
-  selectedStatements: BankStatementKey[];
+  selectedStatements: StatementRequest[];
   disabled?: boolean;
 }
 

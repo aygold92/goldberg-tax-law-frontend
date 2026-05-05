@@ -67,7 +67,6 @@ import TransactionsTable from '../components/TransactionsTable';
 import NetIncomeCalculation from '../components/NetIncomeCalculation';
 import PdfDisplay from '../components/PdfDisplay';
 import { DocumentClassificationPanel } from '../components/DocumentClassificationPanel';
-import { FileMetadataEditor } from '../components/FileMetadataEditor';
 import ValidationConfirmationDialog from '../components/ValidationConfirmationDialog';
 
 // Helper to parse query params
@@ -78,11 +77,8 @@ function useQuery() {
 const EditPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const query = useQuery();
-  const clientName = query.get('clientName') || '';
-  const accountNumber = query.get('accountNumber') || '';
-  const classification = query.get('classification') || '';
-  const date = query.get('date') || '';
-  const filenameWithPages = query.get('filenameWithPages') || undefined;
+  const statementId = query.get('statementId') || '';
+  const clientId = query.get('clientId') || '';
 
   const statement = useAppSelector(selectCurrentStatement);
   const loading = useAppSelector(selectCurrentStatementLoading);
@@ -97,12 +93,12 @@ const EditPage: React.FC = () => {
     if (statement) {
       const title = `Edit ${statement.pageMetadata.classification}-${statement.accountNumber}: ${statement.date}`;
       setPageTitle(title);
-    } else if (clientName && accountNumber && classification && date) {
-      setPageTitle(`Edit ${classification}-${accountNumber}: ${date}`);
+    } else if (statementId) {
+      setPageTitle('Loading Statement...');
     } else {
       setPageTitle('Edit Statement');
     }
-  }, [statement, clientName, accountNumber, classification, date, setPageTitle]);
+  }, [statement, statementId, setPageTitle]);
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -114,11 +110,10 @@ const EditPage: React.FC = () => {
 
   // Load statement data
   useEffect(() => {
-    if (clientName && accountNumber && classification && date) {
-      console.log('Loading statement with params:', { clientName, accountNumber, classification, date, filenameWithPages });
-      dispatch(loadBankStatement({ clientName, accountNumber, classification, date, filenameWithPages }));
+    if (statementId) {
+      dispatch(loadBankStatement({ statementId }));
     }
-  }, [clientName, accountNumber, classification, date, filenameWithPages, dispatch]);
+  }, [statementId, dispatch]);
 
   // Clear validation errors when statement is initially loaded
   useEffect(() => {
@@ -163,12 +158,7 @@ const EditPage: React.FC = () => {
     if (!statement) return;
 
     try {
-      await dispatch(saveStatementChanges({ 
-        clientName, 
-        accountNumber, 
-        classification, 
-        date 
-      })).unwrap();
+      await dispatch(saveStatementChanges()).unwrap();
       setValidationErrors([]);
       setShowValidationAlert(false);
       setShowValidationDialog(false);
@@ -363,8 +353,7 @@ const EditPage: React.FC = () => {
                 />
                 <CardContent className={styles.pdfCardContent}>
                   <PdfDisplay
-                    clientName={clientName}
-                    filename={statement?.pageMetadata.filename ?? ''}
+                    fileId={statement.fileId}
                     pages={statement?.pageMetadata.pages}
                   />
                 </CardContent>
@@ -397,8 +386,7 @@ const EditPage: React.FC = () => {
                 />
                 <CardContent className={styles.stackedCardContent}>
                   <PdfDisplay
-                    clientName={clientName}
-                    filename={statement?.pageMetadata.filename ?? ''}
+                    fileId={statement.fileId}
                     pages={statement?.pageMetadata.pages}
                   />
                 </CardContent>
@@ -444,16 +432,8 @@ const EditPage: React.FC = () => {
         {/* Document Classification Panel */}
         <Box sx={{ mt: 4 }}>
           <DocumentClassificationPanel
-            clientName={clientName}
-            filename={statement.pageMetadata.filename}
-          />
-        </Box>
-
-        {/* File Metadata Editor */}
-        <Box sx={{ mt: 4 }}>
-          <FileMetadataEditor
-            clientName={clientName}
-            filename={statement.pageMetadata.filename}
+            fileId={statement.fileId}
+            clientId={clientId}
           />
         </Box>
       </Box>

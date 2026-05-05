@@ -15,7 +15,7 @@ import {
   Stack
 } from '@mui/material';
 import { ExpandMore, AccountBalance, CreditCard, Error, Warning } from '@mui/icons-material';
-import { BankStatementMetadata } from '../../../types/api';
+import { StatementSummary } from '../../../types/api';
 import { AccountGroup } from '../types/accountSummary';
 import YearlyTimeline from './YearlyTimeline';
 import InvalidDateStatements from './InvalidDateStatements';
@@ -25,7 +25,7 @@ interface AccountGroupCardProps {
   group: AccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 /**

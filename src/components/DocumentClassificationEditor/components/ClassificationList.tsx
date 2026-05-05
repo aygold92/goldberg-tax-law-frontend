@@ -1,14 +1,14 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 import ClassificationBadge from './ClassificationBadge';
 
 interface ClassificationListProps {
-  activeClassifications: DocumentClassification[];
-  deletedClassifications: DocumentClassification[];
-  addedClassifications: DocumentClassification[];
+  activeClassifications: ClassificationInfo[];
+  deletedClassifications: ClassificationInfo[];
+  addedClassifications: ClassificationInfo[];
   onRemoveClassification: (index: number) => void;
-  onRestoreClassification: (classification: DocumentClassification) => void;
+  onRestoreClassification: (classification: ClassificationInfo) => void;
   readOnly?: boolean;
 }
 
@@ -21,10 +21,10 @@ const ClassificationList: React.FC<ClassificationListProps> = ({
   readOnly = false,
 }) => {
   // Helper function to check if a classification is added (new)
-  const isAddedClassification = (classification: DocumentClassification): boolean => {
+  const isAddedClassification = (classification: ClassificationInfo): boolean => {
     return addedClassifications.some(added => 
       JSON.stringify(added.pages.sort()) === JSON.stringify(classification.pages.sort()) && 
-      added.classification === classification.classification
+      added.classificationType === classification.classificationType
     );
   };
 

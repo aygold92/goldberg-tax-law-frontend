@@ -1,26 +1,3 @@
-/**
- * Document Upload component for managing PDF document uploads and analysis.
- * 
- * This component provides comprehensive document management functionality:
- * - Drag-and-drop file upload with PDF validation
- * - Azure Blob Storage integration for file storage
- * - Duplicate file handling with user choice (overwrite/rename/cancel)
- * - File status tracking (pending, uploading, uploaded, error, azure)
- * - Document analysis initiation and progress tracking
- * - File metadata display and management
- * 
- * Features include:
- * - Integration with Azure Storage using SAS tokens
- * - Real-time upload progress tracking
- * - File selection and batch operations
- * - Error handling and retry mechanisms
- * - Support for both local uploads and existing Azure files
- * - DataGrid for file management with sorting and filtering
- * 
- * Handles the complete workflow from file upload to analysis initiation.
- * Uses Redux for centralized state management.
- */
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
@@ -39,76 +16,57 @@ import {
   DialogActions,
   Tooltip,
 } from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridValueGetter } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { CloudUpload, Delete, CheckCircle, Error as ErrorIcon, Refresh, Refresh as RefreshIcon, Visibility } from '@mui/icons-material';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/DocumentUpload.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { 
-  selectFiles, 
-  selectIsUploading, 
-  selectIsAnalyzing, 
-  selectLoadingAzureFiles, 
+import {
+  selectFiles,
+  selectIsUploading,
+  selectIsAnalyzing,
+  selectLoadingAzureFiles,
   selectFilesError,
   selectHasPendingFiles,
-  selectHasSelectedFiles
 } from '../redux/features/files/filesSelectors';
-import { 
-  addFiles, 
-  addAzureFiles,
-  updateFile, 
-  removeFile, 
-  setFileSelection, 
-  setAllFilesSelection, 
+import {
+  addFiles,
+  updateFile,
+  removeFile,
+  setFileSelection,
   clearError,
-  uploadFilesToAzure,
+  uploadAndRegisterFiles,
   deleteInputDocument,
-  loadAzureFiles,
+  loadInputDocuments,
   convertFileToUploadedFile,
-  convertObjectUrlToFile,
   resetErrorStatus
 } from '../redux/features/files/filesSlice';
 import { startAnalysis } from '../redux/features/analysis/analysisSlice';
-
-interface InputFileMetadata {
-  numstatements?: string;
-  classified: string;
-  analyzed: string;
-  statements?: string;
-}
-
-interface ParsedFileMetadata {
-  numstatements?: number;
-  classified: boolean;
-  analyzed: boolean;
-  statements?: string[];
-}
+import { selectAnalysisError } from '../redux/features/analysis/analysisSelectors';
 
 interface DocumentUploadProps {
-  selectedClient: string;
+  clientId: string;
+  clientName: string;
   onAnalysisStarted: (statusQueryUrl: string) => void;
 }
 
-const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnalysisStarted }) => {
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, onAnalysisStarted }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  // Redux state
   const files = useAppSelector(selectFiles);
   const isUploading = useAppSelector(selectIsUploading);
   const isAnalyzing = useAppSelector(selectIsAnalyzing);
   const loadingAzureFiles = useAppSelector(selectLoadingAzureFiles);
   const error = useAppSelector(selectFilesError);
+  const analysisError = useAppSelector(selectAnalysisError);
   const hasPendingFiles = useAppSelector(selectHasPendingFiles);
-  const hasSelectedFiles = useAppSelector(selectHasSelectedFiles);
-  
-  // Local state for UI interactions
+
   const [selectionModel, setSelectionModel] = useState<string[]>([]);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateFile, setDuplicateFile] = useState<File | null>(null);
   const [pendingFilesQueue, setPendingFilesQueue] = useState<File[]>([]);
 
-  // Helper to generate a new filename if needed
   const getUniqueFilename = (base: string, existingNames: Set<string>) => {
     if (!existingNames.has(base)) return base;
     const extIdx = base.lastIndexOf('.');
@@ -116,56 +74,37 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     const ext = extIdx !== -1 ? base.slice(extIdx) : '';
     let i = 1;
     let newName = `${name} (${i})${ext}`;
-    while (existingNames.has(newName)) {
-      i++;
-      newName = `${name} (${i})${ext}`;
-    }
+    while (existingNames.has(newName)) { i++; newName = `${name} (${i})${ext}`; }
     return newName;
   };
 
-  // Fetch previously uploaded files from Azure on client change
   useEffect(() => {
-    if (!selectedClient) return;
-    
+    if (!clientId) return;
     dispatch(clearError());
-    
-    // Load Azure files using async thunk
-    dispatch(loadAzureFiles(selectedClient));
-  }, [selectedClient, dispatch]);
+    dispatch(loadInputDocuments(clientId));
+  }, [clientId, dispatch]);
 
-  // Sync selectionModel with Redux state when files change
   useEffect(() => {
-    const selectedFileNames = files
-      .filter(file => file.selected)
-      .map(file => file.name);
-    
-    // Only update if there's a difference to avoid infinite loops
+    const selectedFileNames = files.filter(file => file.selected).map(file => file.name);
     if (JSON.stringify(selectedFileNames.sort()) !== JSON.stringify(selectionModel.sort())) {
       setSelectionModel(selectedFileNames);
     }
   }, [files, selectionModel]);
 
-  // Modified onDrop to handle duplicates
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const existingNames = new Set(files.map(f => f.name));
     const nonDuplicates: File[] = [];
     const duplicates: File[] = [];
-    
+
     for (const file of acceptedFiles) {
-      if (existingNames.has(file.name)) {
-        duplicates.push(file);
-      } else {
-        nonDuplicates.push(file);
-      }
+      if (existingNames.has(file.name)) duplicates.push(file);
+      else nonDuplicates.push(file);
     }
-    
-    // Add all non-duplicate files immediately
+
     if (nonDuplicates.length > 0) {
-      const uploadedFiles = nonDuplicates.map(convertFileToUploadedFile);
-      dispatch(addFiles(uploadedFiles));
+      dispatch(addFiles(nonDuplicates.map(convertFileToUploadedFile)));
     }
-    
-    // If there are duplicates, prompt for the first one
+
     if (duplicates.length > 0) {
       setDuplicateFile(duplicates[0]);
       setPendingFilesQueue(duplicates.slice(1));
@@ -175,44 +114,34 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-    },
+    accept: { 'application/pdf': ['.pdf'] },
     multiple: true,
   });
 
-  // Handle upload using Redux async thunk
   const handleUpload = async () => {
     try {
-      await dispatch(uploadFilesToAzure({ selectedClient })).unwrap();
+      await dispatch(uploadAndRegisterFiles({ clientId })).unwrap();
     } catch (error) {
       console.error('Upload error:', error);
     }
   };
 
-  // Handle duplicate dialog actions
   const handleDuplicateAction = (action: 'overwrite' | 'rename' | 'cancel') => {
     if (!duplicateFile) return;
-    
     const existingNames = new Set(files.map(f => f.name));
-    
+
     if (action === 'overwrite') {
-      // Remove existing file and add new one
       dispatch(removeFile(duplicateFile.name));
-      const uploadedFile = convertFileToUploadedFile(duplicateFile);
-      dispatch(addFiles([uploadedFile]));
+      dispatch(addFiles([convertFileToUploadedFile(duplicateFile)]));
     } else if (action === 'rename') {
       const uniqueName = getUniqueFilename(duplicateFile.name, existingNames);
       const renamedFile = new File([duplicateFile], uniqueName, { type: duplicateFile.type });
-      const uploadedFile = convertFileToUploadedFile(renamedFile);
-      dispatch(addFiles([uploadedFile]));
+      dispatch(addFiles([convertFileToUploadedFile(renamedFile)]));
     }
-    // If cancel, do nothing
-    
+
     setDuplicateDialogOpen(false);
     setDuplicateFile(null);
-    
-    // If there are more files in the queue, process them
+
     if (pendingFilesQueue.length > 0) {
       onDrop(pendingFilesQueue);
       setPendingFilesQueue([]);
@@ -222,32 +151,23 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
   const handleStartAnalysis = async () => {
     const selectedFiles = files.filter(file => file.selected && (file.status === 'uploaded' || file.status === 'azure'));
     if (selectedFiles.length === 0) return;
-    
+
     try {
-      const documentFilenames = selectedFiles.map(file => file.name);
-      const result = await dispatch(startAnalysis({ 
-        clientName: selectedClient, 
-        documentFilenames 
-      })).unwrap();
-      
-      // Call the callback with the status query URL
+      const files = selectedFiles
+        .filter((f): f is typeof f & { fileId: string } => !!f.fileId)
+        .map(f => ({ fileId: f.fileId, fileName: f.name }));
+      const result = await dispatch(startAnalysis({ clientId, files })).unwrap();
       onAnalysisStarted(result.statusQueryUrl);
     } catch (error: any) {
       console.error('Analysis error:', error);
     }
   };
 
-  // Delete handler for files
   const handleDelete = async (file: any) => {
     try {
-      // For uploaded/azure files, call the API to delete from Azure
-      if (file.status === 'uploaded' || file.status === 'azure') {
-        await dispatch(deleteInputDocument({ 
-          clientName: selectedClient, 
-          fileName: file.name 
-        })).unwrap();
+      if ((file.status === 'uploaded' || file.status === 'azure') && file.fileId) {
+        await dispatch(deleteInputDocument({ fileId: file.fileId, fileName: file.name })).unwrap();
       } else {
-        // For local files, just remove from Redux state
         dispatch(removeFile(file.name));
       }
     } catch (error: any) {
@@ -255,30 +175,25 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
     }
   };
 
-  // Reset error status handler for failed files
   const handleResetErrorStatus = (file: any) => {
     dispatch(resetErrorStatus([file.name]));
   };
 
   const handleViewFile = (file: any) => {
-    navigate(`/view-file?filename=${encodeURIComponent(file.name)}`);
+    if (file.fileId) {
+      navigate(`/view-file?fileId=${encodeURIComponent(file.fileId)}`);
+    }
   };
 
-  // Refresh documents from Azure
   const handleRefresh = async () => {
-    if (!selectedClient) return;
-    
+    if (!clientId) return;
     try {
       dispatch(clearError());
-      await dispatch(loadAzureFiles(selectedClient)).unwrap();
+      await dispatch(loadInputDocuments(clientId)).unwrap();
     } catch (error) {
       console.error('Failed to refresh documents:', error);
     }
   };
-
-  // DataGrid columns
-  const numStatementsGetter: GridValueGetter<any> = (value, row) => row.metadata?.numstatements ?? '';
-  const statementsGetter: GridValueGetter<any> = (value, row) => (row.metadata?.statements ? row.metadata.statements.join(', ') : '');
 
   const columns: GridColDef[] = [
     {
@@ -286,14 +201,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
       headerName: 'Filename',
       flex: 2,
       renderCell: (params: GridRenderCellParams<any, any>) => (
-        <Tooltip
-          title={<span style={{ userSelect: 'text' }}>{params.value}</span>}
-          placement="top"
-          arrow
-        >
-          <span className={styles.filenameCell}>
-            {params.value}
-          </span>
+        <Tooltip title={<span style={{ userSelect: 'text' }}>{params.value}</span>} placement="top" arrow>
+          <span className={styles.filenameCell}>{params.value}</span>
         </Tooltip>
       ),
     },
@@ -307,9 +216,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
         if (status === 'uploading') return <Chip label="Uploading" color="info" size="small" icon={<CircularProgress size={16} />} />;
         if (status === 'uploaded') return <Chip label="Uploaded" color="success" size="small" icon={<CheckCircle />} />;
         if (status === 'error') {
-          const errorMessage = params.row.error || 'Upload failed';
           return (
-            <Tooltip title={errorMessage} placement="top" arrow>
+            <Tooltip title={params.row.error || 'Upload failed'} placement="top" arrow>
               <Chip label="Error" color="error" size="small" icon={<ErrorIcon />} />
             </Tooltip>
           );
@@ -317,41 +225,52 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
         return null;
       },
     },
-    { field: 'classified', headerName: 'Classified', flex: 1, renderCell: (params: GridRenderCellParams<any, any>) => {
-      const classified = params.row.metadata?.classified;
-      return classified ? <Chip label="Classified" color="success" size="small" /> : <Chip label="Not Classified" color="warning" size="small" />;
-    } },
-    { field: 'numstatements', headerName: '# Statements', flex: 1, valueGetter: numStatementsGetter },
-    { field: 'statements', headerName: 'Statements', flex: 2, valueGetter: statementsGetter },
-    { field: 'actions', headerName: '', flex: 0.5, sortable: false, filterable: false, renderCell: (params: GridRenderCellParams<any, any>) => (
-      <Box sx={{ display: 'flex', gap: 0.5 }}>
-        {params.row.status === 'error' && (
-          <Tooltip title="Reset to pending" placement="top" arrow>
-            <IconButton onClick={() => handleResetErrorStatus(params.row)} size="small">
-              <Refresh />
+    {
+      field: 'numStatements',
+      headerName: '# Statements',
+      flex: 1,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numStatements ?? '',
+    },
+    {
+      field: 'numAnalyzed',
+      headerName: '# Analyzed',
+      flex: 1,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numAnalyzed ?? '',
+    },
+    {
+      field: 'actions',
+      headerName: '',
+      flex: 0.5,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<any, any>) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          {params.row.status === 'error' && (
+            <Tooltip title="Reset to pending" placement="top" arrow>
+              <IconButton onClick={() => handleResetErrorStatus(params.row)} size="small">
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+          )}
+          {(params.row.status === 'azure' || params.row.status === 'uploaded') && params.row.fileId && (
+            <Tooltip title="View file data" placement="top" arrow>
+              <IconButton onClick={() => handleViewFile(params.row)} size="small">
+                <Visibility />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Delete file" placement="top" arrow>
+            <IconButton onClick={() => handleDelete(params.row)} size="small">
+              <Delete />
             </IconButton>
           </Tooltip>
-        )}
-        {(params.row.status === 'azure' || params.row.status === 'uploaded') && (
-          <Tooltip title="View file data" placement="top" arrow>
-            <IconButton onClick={() => handleViewFile(params.row)} size="small">
-              <Visibility />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Tooltip title="Delete file" placement="top" arrow>
-          <IconButton onClick={() => handleDelete(params.row)} size="small">
-            <Delete />
-          </IconButton>
-        </Tooltip>
-      </Box>
-    ) },
+        </Box>
+      ),
+    },
   ];
 
-  // DataGrid rows
   const rows = files.map((file) => ({ id: file.name, ...file }));
 
-  // Only allow analysis for selected files that are uploaded or in Azure
   const canAnalyze = selectionModel.length > 0 && selectionModel.every(id => {
     const file = files.find(f => f.name === id);
     return file && (file.status === 'uploaded' || file.status === 'azure');
@@ -359,8 +278,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
 
   const handleSelectionModelChange = (newSelection: any) => {
     setSelectionModel(newSelection);
-    
-    // Update file selection in Redux
     files.forEach(file => {
       const isSelected = newSelection.includes(file.name);
       if (file.selected !== isSelected) {
@@ -389,8 +306,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
             Only PDF files are supported
           </Typography>
         </Paper>
-        
-        {/* Duplicate file dialog */}
+
         <Dialog open={duplicateDialogOpen} onClose={() => handleDuplicateAction('cancel')}>
           <DialogTitle>Duplicate File Detected</DialogTitle>
           <DialogContent>
@@ -404,7 +320,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
             <Button onClick={() => handleDuplicateAction('cancel')} variant="outlined">Cancel</Button>
           </DialogActions>
         </Dialog>
-        
+
         <Box className={styles.dataGridContainer}>
           <DataGrid
             autoHeight
@@ -418,14 +334,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
             className={styles.dataGrid}
           />
         </Box>
-        
+
         <Box className={styles.actionsContainer}>
           <Button
             variant="outlined"
             size="large"
             className={styles.actionButton}
             onClick={handleRefresh}
-            disabled={!selectedClient || loadingAzureFiles || isUploading || isAnalyzing}
+            disabled={!clientId || loadingAzureFiles || isUploading || isAnalyzing}
             startIcon={<RefreshIcon />}
           >
             {loadingAzureFiles ? 'Refreshing...' : 'Refresh Documents'}
@@ -451,10 +367,15 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
             {isAnalyzing ? 'Starting Analysis...' : 'Start Analysis'}
           </Button>
         </Box>
-        
+
         {error && (
           <Alert severity="error" sx={{ mt: 2 }}>
             {error}
+          </Alert>
+        )}
+        {analysisError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            Failed to start analysis: {analysisError}
           </Alert>
         )}
       </Paper>
@@ -462,4 +383,4 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedClient, onAnaly
   );
 };
 
-export default DocumentUpload; 
+export default DocumentUpload;

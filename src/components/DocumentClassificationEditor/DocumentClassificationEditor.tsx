@@ -30,8 +30,7 @@ import ReloadConfirmationDialog from './components/ReloadConfirmationDialog';
 import styles from './DocumentClassificationEditor.module.css';
 
 interface DocumentClassificationEditorProps {
-  clientName: string;
-  filename: string;
+  fileId: string;
   defaultClassification?: string;
   readOnly?: boolean;
 }
@@ -50,8 +49,7 @@ interface DocumentClassificationEditorProps {
  * - Automatic conflict resolution (removes overlapping classifications)
  */
 const DocumentClassificationEditor: React.FC<DocumentClassificationEditorProps> = ({
-  clientName,
-  filename,
+  fileId,
   defaultClassification = ClassificationType.AMEX_CC,
   readOnly = false,
 }) => {
@@ -76,7 +74,7 @@ const DocumentClassificationEditor: React.FC<DocumentClassificationEditorProps> 
     reloadClassifications,
     setError,
     setSuccess,
-  } = useDocumentClassifications(clientName, filename);
+  } = useDocumentClassifications(fileId);
 
   const {
     analyzePageResult,
@@ -128,7 +126,7 @@ const DocumentClassificationEditor: React.FC<DocumentClassificationEditorProps> 
 
         // Step 2: Run AnalyzePage if checkbox is checked
         if (runAnalyzePage && addedClassifications.length > 0) {
-          const analyzeSuccess = await analyzePages(addedClassifications, clientName);
+          const analyzeSuccess = await analyzePages(addedClassifications);
           if (analyzeSuccess) {
             showSnackbar('Page analysis completed successfully!', 'success');
           } else {
@@ -178,7 +176,7 @@ const DocumentClassificationEditor: React.FC<DocumentClassificationEditorProps> 
     <Card className={styles.card}>
       <CardHeader
         title="Document Classification Editor"
-        subheader={`File: ${filename}`}
+        subheader={`File ID: ${fileId}`}
         action={
           <Box className={styles.headerActions}>
             {!readOnly && (

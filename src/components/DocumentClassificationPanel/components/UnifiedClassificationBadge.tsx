@@ -1,10 +1,10 @@
 import React from 'react';
 import { Chip, Box } from '@mui/material';
 import { Delete } from '@mui/icons-material';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 
 interface UnifiedClassificationBadgeProps {
-  classification: DocumentClassification;
+  classification: ClassificationInfo;
   // Selection state
   isSelected?: boolean;
   onToggle?: () => void;
@@ -14,7 +14,7 @@ interface UnifiedClassificationBadgeProps {
   onDelete?: () => void;
   onRestore?: () => void;
   // Data model
-  onFetchDataModel?: (classification: DocumentClassification) => void;
+  onFetchDataModel?: (classification: ClassificationInfo) => void;
   readOnly?: boolean;
 }
 
@@ -122,7 +122,7 @@ const UnifiedClassificationBadge: React.FC<UnifiedClassificationBadgeProps> = ({
             [{pagesText}]
           </Box>
           <Box component="span" sx={{ fontSize: '0.8rem', opacity: 0.8 }}>
-            {classification.classification}
+            {classification.classificationType}
           </Box>
         </Box>
       }

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Chip, Box } from '@mui/material';
 import { Delete } from '@mui/icons-material';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 
 interface ClassificationBadgeProps {
-  classification: DocumentClassification;
+  classification: ClassificationInfo;
   isDeleted?: boolean;
   isAdded?: boolean;
   onDelete?: () => void;
@@ -66,7 +66,7 @@ const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
             [{pagesText}]
           </Box>
           <Box component="span" sx={{ fontSize: '0.8rem', opacity: 0.8 }}>
-            {classification.classification}
+            {classification.classificationType}
           </Box>
         </Box>
       }

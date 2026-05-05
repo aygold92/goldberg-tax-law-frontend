@@ -6,14 +6,14 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { Timeline } from '@mui/icons-material';
-import { BankStatementMetadata } from '../../../types/api';
+import { StatementSummary } from '../../../types/api';
 import { YearlyTimeline as YearlyTimelineType } from '../types/accountSummary';
 import MonthBlock from './MonthBlock';
 import styles from '../AccountSummary.module.css';
 
 interface YearlyTimelineProps {
   yearlyTimeline: YearlyTimelineType;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 const YearlyTimeline: React.FC<YearlyTimelineProps> = ({ yearlyTimeline, onEditStatement }) => {

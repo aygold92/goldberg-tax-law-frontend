@@ -1,37 +1,32 @@
-/**
- * Redux slice for client management in the Bank Statement Frontend application.
- *
- * This slice manages:
- * - The list of clients (loaded from the backend)
- * - The currently selected client
- * - Loading and error states for client operations
- *
- * Uses Redux Toolkit's createSlice and createAsyncThunk.
- *
- * External dependencies:
- * - Redux Toolkit: https://redux-toolkit.js.org/
- * - Axios (via apiService): https://axios-http.com/
- */
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { Client } from '../../../types/api';
 import apiService from '../../../services/api';
 
 export interface ClientState {
-  clients: string[];
-  selectedClient: string;
+  clients: Client[];
+  selectedClient: Client | null;
   loading: boolean;
   error: string | null;
 }
 
+const parseStoredClient = (): Client | null => {
+  try {
+    const stored = localStorage.getItem('selectedClient');
+    if (stored) return JSON.parse(stored);
+  } catch {
+    // ignore malformed JSON from old format (was plain string)
+  }
+  return null;
+};
+
 const initialState: ClientState = {
   clients: [],
-  selectedClient: localStorage.getItem('selectedClient') || '',
+  selectedClient: parseStoredClient(),
   loading: false,
   error: null,
 };
 
-// Async thunk to load clients from the backend
-export const loadClients = createAsyncThunk<string[], void, { rejectValue: string }>(
+export const loadClients = createAsyncThunk<Client[], void, { rejectValue: string }>(
   'client/loadClients',
   async (_, { rejectWithValue }) => {
     try {
@@ -43,15 +38,21 @@ export const loadClients = createAsyncThunk<string[], void, { rejectValue: strin
   }
 );
 
-// Async thunk to create a new client
-export const createClient = createAsyncThunk<string, string, { rejectValue: string }>(
+export const createClient = createAsyncThunk<Client, string, { rejectValue: string }>(
   'client/createClient',
   async (clientName, { rejectWithValue, dispatch }) => {
     try {
-      await apiService.newClient({ clientName });
-      // After creating, reload the client list
+      const response = await apiService.newClient({
+        clientName,
+        requestToken: crypto.randomUUID(),
+      });
+      const newClient: Client = {
+        clientId: response.clientId,
+        clientName: response.clientName,
+        createdAt: Date.now(),
+      };
       await dispatch(loadClients());
-      return clientName;
+      return newClient;
     } catch (error: any) {
       return rejectWithValue(error.userMessage || 'Failed to create client');
     }
@@ -62,9 +63,13 @@ const clientSlice = createSlice({
   name: 'client',
   initialState,
   reducers: {
-    setSelectedClient: (state, action: PayloadAction<string>) => {
+    setSelectedClient: (state, action: PayloadAction<Client | null>) => {
       state.selectedClient = action.payload;
-      localStorage.setItem('selectedClient', action.payload);
+      if (action.payload) {
+        localStorage.setItem('selectedClient', JSON.stringify(action.payload));
+      } else {
+        localStorage.removeItem('selectedClient');
+      }
     },
   },
   extraReducers: (builder) => {
@@ -76,9 +81,10 @@ const clientSlice = createSlice({
       .addCase(loadClients.fulfilled, (state, action) => {
         state.loading = false;
         state.clients = action.payload;
-        // If no client is selected, select the first one
+        // Auto-select first client if none selected
         if (!state.selectedClient && action.payload.length > 0) {
           state.selectedClient = action.payload[0];
+          localStorage.setItem('selectedClient', JSON.stringify(action.payload[0]));
         }
       })
       .addCase(loadClients.rejected, (state, action) => {
@@ -89,9 +95,8 @@ const clientSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(createClient.fulfilled, (state, action) => {
+      .addCase(createClient.fulfilled, (state) => {
         state.loading = false;
-        // selectedClient will be set by the component after creation
       })
       .addCase(createClient.rejected, (state, action) => {
         state.loading = false;
@@ -101,4 +106,4 @@ const clientSlice = createSlice({
 });
 
 export const { setSelectedClient } = clientSlice.actions;
-export default clientSlice.reducer; 
+export default clientSlice.reducer;

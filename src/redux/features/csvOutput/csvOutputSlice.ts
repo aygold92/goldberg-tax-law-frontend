@@ -18,7 +18,7 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { BankStatementKey, WriteCsvSummaryResponse, RetrieveOutputFileResponse, StatementRequest } from '../../../types/api';
+import { WriteCsvSummaryResponse, RetrieveOutputFileResponse, StatementRequest } from '../../../types/api';
 import apiService from '../../../services/api';
 import googleSheetsService from '../../../services/googleSheets';
 import JSZip from 'jszip';
@@ -69,12 +69,12 @@ const initialState: CsvOutputState = {
 // Generate CSV files
 export const generateCsvFiles = createAsyncThunk<
   WriteCsvSummaryResponse,
-  { clientName: string; keys: BankStatementKey[]; outputDirectory: string }
+  { clientName: string; keys: StatementRequest[]; outputDirectory: string }
 >(
   'csvOutput/generateCsvFiles',
   async ({ clientName, keys, outputDirectory }, { rejectWithValue }) => {
     try {
-      // Convert BankStatementKey objects to StatementRequest objects
+      // Convert StatementRequest objects to StatementRequest objects
       const statementRequests: StatementRequest[] = keys.map(key => ({
         accountNumber: key.accountNumber,
         classification: key.classification,
@@ -151,7 +151,7 @@ export const retrieveCsvFileContents = createAsyncThunk<
 // Create Google Sheets
 export const createGoogleSheets = createAsyncThunk<
   string,
-  { clientName: string; keys: BankStatementKey[]; outputDirectory: string }
+  { clientName: string; keys: StatementRequest[]; outputDirectory: string }
 >(
   'csvOutput/createGoogleSheets',
   async ({ clientName, keys, outputDirectory }, { rejectWithValue, dispatch }) => {
@@ -203,7 +203,7 @@ export const createGoogleSheets = createAsyncThunk<
 // Download CSV files
 export const downloadCsvFiles = createAsyncThunk<
   void,
-  { clientName: string; keys: BankStatementKey[]; outputDirectory: string }
+  { clientName: string; keys: StatementRequest[]; outputDirectory: string }
 >(
   'csvOutput/downloadCsvFiles',
   async ({ clientName, keys, outputDirectory }, { rejectWithValue, dispatch }) => {

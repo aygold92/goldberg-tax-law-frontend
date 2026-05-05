@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DocumentClassification, AnalyzePagesRequest, ProcessDataModelActivityInput } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 import apiService from '../../../services/api';
 
 export const useAnalyzePage = () => {
@@ -7,38 +7,20 @@ export const useAnalyzePage = () => {
   const [analyzePageLoading, setAnalyzePageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  // Build the analyze page request
-  const buildAnalyzePageRequest = (classifications: DocumentClassification[], clientName: string): AnalyzePagesRequest => {
-    const pageRequests: ProcessDataModelActivityInput[] = classifications.map(classification => ({
-      requestId: `webclient-${crypto.randomUUID()}`,
-      clientName,
-      classifiedPdfMetadata: {
-        filename: classification.filename,
-        pages: classification.pages,
-        classification: classification.classification,
-      },
-      useOriginalFile: true,
-    }));
+  // Accept either ClassificationInfo[] or classificationId string[] directly
+  const analyzePages = async (classifications: ClassificationInfo[]): Promise<boolean> => {
+    const classificationIds = classifications
+      .map(c => c.classificationId)
+      .filter(id => !!id); // skip unsaved (empty id)
 
-    return {
-      pageRequests,
-    };
-  };
-
-  // Analyze pages
-  const analyzePages = async (classifications: DocumentClassification[], clientName: string): Promise<boolean> => {
-    if (classifications.length === 0) {
-      return true; // Nothing to analyze
-    }
+    if (classificationIds.length === 0) return true;
 
     try {
       setAnalyzePageLoading(true);
       setError('');
       setAnalyzePageResult(null);
 
-      const request = buildAnalyzePageRequest(classifications, clientName);
-      const result = await apiService.analyzePages(request);
-      
+      const result = await apiService.analyzePages({ pageRequests: classificationIds });
       setAnalyzePageResult(result);
       return true;
     } catch (err: any) {
@@ -49,23 +31,17 @@ export const useAnalyzePage = () => {
     }
   };
 
-  // Clear results
   const clearResults = () => {
     setAnalyzePageResult(null);
     setError('');
   };
 
   return {
-    // State
     analyzePageResult,
     analyzePageLoading,
     error,
-    
-    // Actions
     analyzePages,
     clearResults,
-    
-    // Setters for external control
     setError,
   };
 };

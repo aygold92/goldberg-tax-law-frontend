@@ -1,41 +1,66 @@
-/**
- * Redux slice for managing bank statement editing in the Bank Statement Frontend application.
- *
- * This slice handles:
- * - Loading a single BankStatement object from the backend
- * - Editing statement data and transactions
- * - Saving changes to the backend
- * - Tracking changes and providing reset functionality
- *
- * Uses Redux Toolkit for state management and async thunks for API calls.
- *
- * Depends on:
- * - @reduxjs/toolkit: https://redux-toolkit.js.org/
- * - src/types/api.ts for type definitions
- * - src/services/api.ts for API calls
- */
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { UpdateStatementModelsRequest, UpdateStatementModelsResponse } from '../../../types/api';
+import { Statement, StatementDetails, UpdateStatementModelsRequest } from '../../../types/api';
+import { BankStatement, TransactionHistoryRecord, mapTransaction, unmapTransaction } from '../../../types/bankStatement';
 import apiService from '../../../services/api';
 
-// Add BankStatement type import
-import { BankStatement, LoadBankStatementResponse, TransactionHistoryRecord } from '../../../types/bankStatement';
-
-// Helper function to create hash for change detection
 const createHash = (obj: any): string => {
-  if (obj === null || obj === undefined) {
-    return 'null';
-  }
+  if (obj === null || obj === undefined) return 'null';
   const str = JSON.stringify(obj);
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash;
   }
   return hash.toString();
 };
+
+// Derive spending/income totals from transactions
+function computeAggregates(transactions: TransactionHistoryRecord[]) {
+  let totalSpending = 0;
+  let totalIncomeCredits = 0;
+  for (const t of transactions) {
+    const amt = t.amount ?? 0;
+    if (amt < 0) totalSpending += amt;
+    else totalIncomeCredits += amt;
+  }
+  return { totalSpending, totalIncomeCredits, netTransactions: totalSpending + totalIncomeCredits };
+}
+
+// Map Statement API response → UI BankStatement
+function mapStatement(s: Statement): BankStatement {
+  const transactions = s.transactions.map(mapTransaction);
+  const aggregates = computeAggregates(transactions);
+  return {
+    statementId: s.statementDetails.statementId,
+    classificationId: s.classification.info.classificationId,
+    fileId: s.classification.inputFile.info.fileId,
+    pageMetadata: {
+      filename: s.classification.inputFile.info.fileName,
+      pages: s.classification.info.pages,
+      classification: s.classification.info.classificationType,
+    },
+    date: s.statementDetails.date,
+    accountNumber: s.statementDetails.accountNumber,
+    beginningBalance: s.statementDetails.beginningBalance,
+    endingBalance: s.statementDetails.endingBalance,
+    interestCharged: s.statementDetails.interestCharged,
+    feesCharged: s.statementDetails.feesCharged,
+    batesStamps: Object.fromEntries(
+      Object.entries(s.statementDetails.batesStamps).map(([k, v]) => [Number(k), v])
+    ),
+    transactions,
+    suspiciousReasons: s.suspiciousReasons,
+    ...aggregates,
+  };
+}
+
+// Unmap batesStamps from number keys → string keys for API
+function batesStampsToApi(batesStamps: Record<number, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(batesStamps).map(([k, v]) => [String(k), v])
+  );
+}
 
 interface StatementEditorState {
   currentStatement: BankStatement | null;
@@ -60,75 +85,69 @@ const initialState: StatementEditorState = {
   saveLoading: false,
   saveError: null,
   originalStatement: null,
-  originalHashes: {
-    transactions: {},
-    pages: {},
-    statementFields: {},
-  },
+  originalHashes: { transactions: {}, pages: {}, statementFields: {} },
 };
 
-// Add thunk for loading a single BankStatement
-export const loadBankStatement = createAsyncThunk<LoadBankStatementResponse, { clientName: string; accountNumber: string; classification: string; date: string; filenameWithPages?: string }>(
+export const loadBankStatement = createAsyncThunk<BankStatement, { statementId: string }>(
   'statementEditor/loadBankStatement',
-  async (params, { rejectWithValue }) => {
+  async ({ statementId }, { rejectWithValue }) => {
     try {
-      return await apiService.loadBankStatement(params);
+      const response = await apiService.loadBankStatement(statementId);
+      return mapStatement(response);
     } catch (error: any) {
       return rejectWithValue(error.userMessage || error.message || 'Failed to load bank statement');
     }
   }
 );
 
-// Add thunk for saving statement changes
-export const saveStatementChanges = createAsyncThunk<UpdateStatementModelsResponse, { clientName: string; accountNumber: string; classification: string; date: string }>(
+export const saveStatementChanges = createAsyncThunk<void, void>(
   'statementEditor/saveStatementChanges',
-  async (params, { getState, rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as { statementEditor: StatementEditorState };
       const statement = state.statementEditor.currentStatement;
-      
-      if (!statement) {
-        throw new Error('No statement to save');
-      }
+      const original = state.statementEditor.originalStatement;
+      const hashes = state.statementEditor.originalHashes;
 
-      // Create the filename in the required format
-      const stmtFilename = `${params.accountNumber}:${params.classification}:${params.date.replace("/", "_")}.json`;
+      if (!statement) throw new Error('No statement to save');
 
-      const request: UpdateStatementModelsRequest = {
-        clientName: params.clientName,
-        stmtFilename,
-        modelDetails: {
-          transactions: statement.transactions.map(txn => ({
-            id: txn.id,
-            date: txn.date,
-            description: txn.description,
-            amount: txn.amount,
-            checkNumber: txn.checkNumber || null,
-            checkPdfMetadata: txn.checkDataModel ? {
-              filename: txn.checkDataModel.pageMetadata.filename,
-              pages: txn.checkDataModel.pageMetadata.pages,
-              classification: 'CHECK'
-            } : null,
-            filePageNumber: txn.filePageNumber,
-          })),
-          pages: statement.pageMetadata.pages.map(page => ({
-            filePageNumber: page,
-            batesStamp: statement.batesStamps[page] || null,
-          })),
-          details: {
-            filename: statement.pageMetadata.filename,
-            classification: statement.pageMetadata.classification,
-            statementDate: statement.date || '',
-            accountNumber: statement.accountNumber || '',
-            beginningBalance: statement.beginningBalance || 0,
-            endingBalance: statement.endingBalance || 0,
-            interestCharged: statement.interestCharged || null,
-            feesCharged: statement.feesCharged || null,
-          },
-        },
+      // Identify dirty and new transactions
+      const originalIds = new Set(original?.transactions.map(t => t.id) ?? []);
+      const currentIds = new Set(statement.transactions.map(t => t.id));
+
+      const upserts = statement.transactions
+        .filter(t => !originalIds.has(t.id) || createHash(t) !== hashes.transactions[t.id])
+        .map(unmapTransaction);
+
+      const deletes = (original?.transactions ?? [])
+        .filter(t => !currentIds.has(t.id))
+        .map(t => t.id);
+
+      const statementDetails: StatementDetails = {
+        statementId: statement.statementId,
+        date: statement.date,
+        accountNumber: statement.accountNumber,
+        beginningBalance: statement.beginningBalance,
+        endingBalance: statement.endingBalance,
+        interestCharged: statement.interestCharged,
+        feesCharged: statement.feesCharged,
+        batesStamps: batesStampsToApi(statement.batesStamps),
+        createdAt: 0,
+        updatedAt: 0,
       };
 
-      return await apiService.updateStatementModels(request);
+      const request: UpdateStatementModelsRequest = {
+        classificationId: statement.classificationId,
+        classification: {
+          pages: statement.pageMetadata.pages,
+          classification: statement.pageMetadata.classification,
+        },
+        statementDetails,
+        upserts,
+        deletes,
+      };
+
+      await apiService.updateStatementModels(request);
     } catch (error: any) {
       return rejectWithValue(error.userMessage || error.message || 'Failed to save statement changes');
     }
@@ -147,14 +166,11 @@ const statementEditorSlice = createSlice({
     updateStatementField(state, action: PayloadAction<{ field: string; value: any }>) {
       if (state.currentStatement) {
         const { field, value } = action.payload;
-        
-        // Handle special case for classification which is nested in pageMetadata
         if (field === 'classification') {
           state.currentStatement.pageMetadata.classification = value;
         } else {
           (state.currentStatement as any)[field] = value;
         }
-        
         state.hasUnsavedChanges = true;
       }
     },
@@ -168,19 +184,17 @@ const statementEditorSlice = createSlice({
         }
       }
     },
-    batchUpdateTransaction(state, action: PayloadAction<{ transactionId: string; changes: Array<{field: string, value: any}> }>) {
+    batchUpdateTransaction(state, action: PayloadAction<{ transactionId: string; changes: Array<{ field: string; value: any }> }>) {
       if (state.currentStatement) {
         const { transactionId, changes } = action.payload;
         const transaction = state.currentStatement.transactions.find(t => t.id === transactionId);
         if (transaction) {
-          changes.forEach(({ field, value }) => {
-            (transaction as any)[field] = value;
-          });
+          changes.forEach(({ field, value }) => { (transaction as any)[field] = value; });
           state.hasUnsavedChanges = true;
         }
       }
     },
-    batchUpdateMultipleTransactions(state, action: PayloadAction<Array<{ transactionId: string; changes: Array<{field: string, value: any}> }>>) {
+    batchUpdateMultipleTransactions(state, action: PayloadAction<Array<{ transactionId: string; changes: Array<{ field: string; value: any }> }>>) {
       if (state.currentStatement) {
         action.payload.forEach(({ transactionId, changes }) => {
           const transaction = state.currentStatement!.transactions.find(t => t.id === transactionId);
@@ -189,18 +203,12 @@ const statementEditorSlice = createSlice({
               if (field === 'checkFilename') {
                 (transaction as any).checkDataModel = {
                   ...transaction.checkDataModel,
-                  pageMetadata: {
-                    ...transaction.checkDataModel?.pageMetadata,
-                    filename: value,
-                  },
+                  pageMetadata: { ...transaction.checkDataModel?.pageMetadata, filename: value },
                 };
               } else if (field === 'checkFilePage') {
                 (transaction as any).checkDataModel = {
                   ...transaction.checkDataModel,
-                  pageMetadata: {
-                    ...transaction.checkDataModel?.pageMetadata,
-                    pages: [value],
-                  },
+                  pageMetadata: { ...transaction.checkDataModel?.pageMetadata, pages: [value] },
                 };
               } else {
                 (transaction as any)[field] = value;
@@ -211,27 +219,23 @@ const statementEditorSlice = createSlice({
         state.hasUnsavedChanges = true;
       }
     },
-    batchUpdatePages(state, action: PayloadAction<Array<{ pageNumber: number; changes: Array<{field: string, value: any}> }>>) {
+    batchUpdatePages(state, action: PayloadAction<Array<{ pageNumber: number; changes: Array<{ field: string; value: any }> }>>) {
       if (state.currentStatement) {
         action.payload.forEach(({ pageNumber, changes }) => {
           changes.forEach(({ field, value }) => {
             if (field === 'pageNumber') {
-              // Handle page number changes
-              const updatedPages = [...state.currentStatement!.pageMetadata.pages];
-              const pageIndex = updatedPages.indexOf(pageNumber);
-              if (pageIndex !== -1) {
-                updatedPages[pageIndex] = value;
-                state.currentStatement!.pageMetadata.pages = updatedPages;
-                
-                // Update bates stamps mapping
-                const oldBatesStamp = state.currentStatement!.batesStamps[pageNumber];
-                if (oldBatesStamp !== undefined) {
-                  state.currentStatement!.batesStamps[value] = oldBatesStamp;
+              const pages = [...state.currentStatement!.pageMetadata.pages];
+              const idx = pages.indexOf(pageNumber);
+              if (idx !== -1) {
+                pages[idx] = value;
+                state.currentStatement!.pageMetadata.pages = pages;
+                const stamp = state.currentStatement!.batesStamps[pageNumber];
+                if (stamp !== undefined) {
+                  state.currentStatement!.batesStamps[value] = stamp;
                   delete state.currentStatement!.batesStamps[pageNumber];
                 }
               }
             } else if (field === 'batesStamp') {
-              // Handle bates stamp changes
               state.currentStatement!.batesStamps[pageNumber] = value;
             }
           });
@@ -241,9 +245,9 @@ const statementEditorSlice = createSlice({
     },
     addPage(state, action: PayloadAction<number>) {
       if (state.currentStatement) {
-        const newPageNumber = action.payload;
-        if (!state.currentStatement.pageMetadata.pages.includes(newPageNumber)) {
-          state.currentStatement.pageMetadata.pages.push(newPageNumber);
+        const p = action.payload;
+        if (!state.currentStatement.pageMetadata.pages.includes(p)) {
+          state.currentStatement.pageMetadata.pages.push(p);
           state.currentStatement.pageMetadata.pages.sort((a, b) => a - b);
           state.hasUnsavedChanges = true;
         }
@@ -251,9 +255,9 @@ const statementEditorSlice = createSlice({
     },
     deletePage(state, action: PayloadAction<number>) {
       if (state.currentStatement) {
-        const pageNumber = action.payload;
-        state.currentStatement.pageMetadata.pages = state.currentStatement.pageMetadata.pages.filter(p => p !== pageNumber);
-        delete state.currentStatement.batesStamps[pageNumber];
+        const p = action.payload;
+        state.currentStatement.pageMetadata.pages = state.currentStatement.pageMetadata.pages.filter(x => x !== p);
+        delete state.currentStatement.batesStamps[p];
         state.hasUnsavedChanges = true;
       }
     },
@@ -265,30 +269,24 @@ const statementEditorSlice = createSlice({
     },
     deleteTransaction(state, action: PayloadAction<string>) {
       if (state.currentStatement) {
-        state.currentStatement.transactions = state.currentStatement.transactions.filter(
-          t => t.id !== action.payload
-        );
+        state.currentStatement.transactions = state.currentStatement.transactions.filter(t => t.id !== action.payload);
         state.hasUnsavedChanges = true;
       }
     },
     duplicateTransaction(state, action: PayloadAction<string>) {
       if (state.currentStatement) {
-        const transaction = state.currentStatement.transactions.find(t => t.id === action.payload);
-        if (transaction) {
-          const newTransaction: TransactionHistoryRecord = {
-            ...transaction,
-            id: crypto.randomUUID(),
-          };
-          state.currentStatement.transactions.push(newTransaction);
+        const t = state.currentStatement.transactions.find(x => x.id === action.payload);
+        if (t) {
+          state.currentStatement.transactions.push({ ...t, id: crypto.randomUUID() });
           state.hasUnsavedChanges = true;
         }
       }
     },
     invertTransactionAmount(state, action: PayloadAction<string>) {
       if (state.currentStatement) {
-        const transaction = state.currentStatement.transactions.find(t => t.id === action.payload);
-        if (transaction && transaction.amount) {
-          transaction.amount = -transaction.amount;
+        const t = state.currentStatement.transactions.find(x => x.id === action.payload);
+        if (t && t.amount) {
+          t.amount = -t.amount;
           state.hasUnsavedChanges = true;
         }
       }
@@ -298,23 +296,19 @@ const statementEditorSlice = createSlice({
     },
     resetTransaction(state, action: PayloadAction<string>) {
       if (state.currentStatement && state.originalStatement) {
-        const transactionId = action.payload;
-        const originalTransaction = state.originalStatement.transactions.find(t => t.id === transactionId);
-        if (originalTransaction) {
-          const currentTransaction = state.currentStatement.transactions.find(t => t.id === transactionId);
-          if (currentTransaction) {
-            Object.assign(currentTransaction, originalTransaction);
-            state.hasUnsavedChanges = true;
-          }
+        const orig = state.originalStatement.transactions.find(t => t.id === action.payload);
+        const curr = state.currentStatement.transactions.find(t => t.id === action.payload);
+        if (orig && curr) {
+          Object.assign(curr, orig);
+          state.hasUnsavedChanges = true;
         }
       }
     },
     resetPage(state, action: PayloadAction<number>) {
       if (state.currentStatement && state.originalStatement) {
-        const pageNumber = action.payload;
-        const originalBatesStamp = state.originalStatement.batesStamps[pageNumber];
-        if (originalBatesStamp !== undefined) {
-          state.currentStatement.batesStamps[pageNumber] = originalBatesStamp;
+        const stamp = state.originalStatement.batesStamps[action.payload];
+        if (stamp !== undefined) {
+          state.currentStatement.batesStamps[action.payload] = stamp;
           state.hasUnsavedChanges = true;
         }
       }
@@ -331,7 +325,6 @@ const statementEditorSlice = createSlice({
       }
     },
     restoreState(state, action: PayloadAction<StatementEditorState>) {
-      // Restore the entire statement editor state
       Object.assign(state, action.payload);
       state.hasUnsavedChanges = true;
     },
@@ -342,46 +335,30 @@ const statementEditorSlice = createSlice({
         state.currentStatementLoading = true;
         state.currentStatementError = null;
       })
-      .addCase(loadBankStatement.fulfilled, (state, action: PayloadAction<LoadBankStatementResponse>) => {
+      .addCase(loadBankStatement.fulfilled, (state, action: PayloadAction<BankStatement>) => {
         state.currentStatementLoading = false;
-        const statementWithSuspicious: BankStatement = {
-          ...action.payload.statement,
-          suspiciousReasons: action.payload.suspiciousReasons,
-        };
-        state.currentStatement = statementWithSuspicious;
+        state.currentStatement = action.payload;
         state.hasUnsavedChanges = false;
-        
-        // Store original state and hashes
-        state.originalStatement = JSON.parse(JSON.stringify(statementWithSuspicious));
-        state.originalHashes = {
-          transactions: {},
-          pages: {},
-          statementFields: {},
-        };
-        
-        // Create transaction hashes
-        statementWithSuspicious.transactions.forEach(tx => {
+        state.originalStatement = JSON.parse(JSON.stringify(action.payload));
+        state.originalHashes = { transactions: {}, pages: {}, statementFields: {} };
+
+        action.payload.transactions.forEach(tx => {
           state.originalHashes.transactions[tx.id] = createHash(tx);
         });
-        
-        // Create page hashes
-        statementWithSuspicious.pageMetadata.pages.forEach(pageNum => {
-          const pageData = { pageNumber: pageNum, batesStamp: statementWithSuspicious.batesStamps[pageNum] };
-          state.originalHashes.pages[pageNum] = createHash(pageData);
+        action.payload.pageMetadata.pages.forEach(p => {
+          state.originalHashes.pages[p] = createHash({ pageNumber: p, batesStamp: action.payload.batesStamps[p] });
         });
-        
-        // Create statement field hashes
-        const statementFields = {
-          date: statementWithSuspicious.date,
-          accountNumber: statementWithSuspicious.accountNumber,
-          beginningBalance: statementWithSuspicious.beginningBalance,
-          endingBalance: statementWithSuspicious.endingBalance,
-          interestCharged: statementWithSuspicious.interestCharged,
-          feesCharged: statementWithSuspicious.feesCharged,
-          classification: statementWithSuspicious.pageMetadata.classification,
+        const fields = {
+          date: action.payload.date,
+          accountNumber: action.payload.accountNumber,
+          beginningBalance: action.payload.beginningBalance,
+          endingBalance: action.payload.endingBalance,
+          interestCharged: action.payload.interestCharged,
+          feesCharged: action.payload.feesCharged,
+          classification: action.payload.pageMetadata.classification,
         };
-        Object.entries(statementFields).forEach(([key, value]) => {
-          state.originalHashes.statementFields[key] = createHash(value);
+        Object.entries(fields).forEach(([k, v]) => {
+          state.originalHashes.statementFields[k] = createHash(v);
         });
       })
       .addCase(loadBankStatement.rejected, (state, action) => {
@@ -403,7 +380,7 @@ const statementEditorSlice = createSlice({
   },
 });
 
-export const { 
+export const {
   clearCurrentStatement,
   updateStatementField,
   updateTransaction,
@@ -422,4 +399,5 @@ export const {
   resetStatementField,
   restoreState,
 } = statementEditorSlice.actions;
-export default statementEditorSlice.reducer; 
+
+export default statementEditorSlice.reducer;

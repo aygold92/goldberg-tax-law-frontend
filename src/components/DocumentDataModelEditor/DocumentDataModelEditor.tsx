@@ -13,22 +13,21 @@ import {
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import Editor from '@monaco-editor/react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
-import { ClassifiedPdfMetadata } from '../../types/bankStatement';
 import { useModelEditor } from './hooks/useModelEditor';
 
 interface DocumentDataModelEditorProps {
   onCancel: () => void;
   onSaved?: () => void;
-  clientName: string;
-  pdfMetadata: ClassifiedPdfMetadata;
+  classificationId: string;
+  classification: string;
   initialModel: any;
 }
 
 const DocumentDataModelEditor: React.FC<DocumentDataModelEditorProps> = ({
   onCancel,
   onSaved,
-  clientName,
-  pdfMetadata,
+  classificationId,
+  classification,
   initialModel,
 }) => {
   const {
@@ -43,16 +42,12 @@ const DocumentDataModelEditor: React.FC<DocumentDataModelEditorProps> = ({
     handleShowDiff,
     handleBackToEditor,
     handleAccept,
-  } = useModelEditor({ clientName, pdfMetadata, initialModel });
+  } = useModelEditor({ classificationId, classification, initialModel });
 
-  // Return to read-only display on successful save
   useEffect(() => {
     if (submitSuccess) {
-      if (onSaved) {
-        onSaved();
-      } else {
-        onCancel();
-      }
+      if (onSaved) onSaved();
+      else onCancel();
     }
   }, [submitSuccess, onCancel, onSaved]);
 
@@ -62,8 +57,8 @@ const DocumentDataModelEditor: React.FC<DocumentDataModelEditorProps> = ({
     <Card variant="outlined" sx={{ mt: 2 }}>
       <CardHeader
         title={!showDiff
-          ? `Edit Data Model — ${pdfMetadata.classification}`
-          : `Review Changes — ${pdfMetadata.classification}`
+          ? `Edit Data Model — ${classification}`
+          : `Review Changes — ${classification}`
         }
         titleTypographyProps={{ variant: 'subtitle2', fontWeight: 'bold' }}
       />
@@ -83,7 +78,6 @@ const DocumentDataModelEditor: React.FC<DocumentDataModelEditorProps> = ({
                 fontSize: 13,
               }}
             />
-            {/* Real-time validation status */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
               {isValid ? (
                 <>

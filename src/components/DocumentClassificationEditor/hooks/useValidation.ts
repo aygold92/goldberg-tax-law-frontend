@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 
 interface ValidationError {
   field: string;
@@ -10,7 +10,7 @@ export const useValidation = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   // Validate page range input
-  const validatePageRange = (input: string, existingClassifications: DocumentClassification[]): ValidationError[] => {
+  const validatePageRange = (input: string, existingClassifications: ClassificationInfo[]): ValidationError[] => {
     const errors: ValidationError[] = [];
 
     if (!input.trim()) {
@@ -78,7 +78,7 @@ export const useValidation = () => {
   };
 
   // Validate input and set errors
-  const validateInput = (pageInput: string, existingClassifications: DocumentClassification[]): boolean => {
+  const validateInput = (pageInput: string, existingClassifications: ClassificationInfo[]): boolean => {
     const errors = validatePageRange(pageInput, existingClassifications);
     setValidationErrors(errors);
     return errors.length === 0;

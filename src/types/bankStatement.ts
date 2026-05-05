@@ -1,14 +1,6 @@
-// File: src/types/bankStatement.ts
-// Purpose: TypeScript type for a full BankStatement object as returned by the /api/LoadBankStatement endpoint.
-// See: docs/edit_page/BankStatement_API_Response_Spec.md
+import { TransactionDetails, StatementDetails, Classification } from './api';
 
-export interface ClassifiedPdfMetadata {
-  filename: string;
-  pages: number[];
-  classification: string;
-  // ...other fields as needed
-}
-
+// CheckDataModel is used in the data model editor for check pages
 export interface CheckDataModel {
   accountNumber?: string;
   checkNumber?: number;
@@ -18,44 +10,88 @@ export interface CheckDataModel {
   amount?: number;
   batesStamp?: string;
   pageMetadata: ClassifiedPdfMetadata;
-  // ...other fields as needed
 }
 
+// ClassifiedPdfMetadata is used by the data model editor (validation, shape)
+export interface ClassifiedPdfMetadata {
+  filename: string;
+  pages: number[];
+  classification: string;
+}
+
+// UI-friendly transaction record used in the statement editor slice.
+// Mapped from TransactionDetails with transactionId used as the local id.
 export interface TransactionHistoryRecord {
-  id: string;
+  id: string; // = transactionId
   date?: string | null;
   checkNumber?: number | null;
   description?: string | null;
   amount?: number | null | undefined;
   filePageNumber?: number | null;
+  checkId?: string | null;
   checkDataModel?: CheckDataModel | null;
-  suspiciousReasons?: string[]; // always empty for now, but required for UI
-  // ...other fields as needed
+  suspiciousReasons?: string[];
 }
 
+// UI-friendly bank statement used in the statement editor slice.
+// Mapped from Statement API response.
 export interface BankStatement {
+  // Identification — stored so save/load can use IDs
+  statementId: string;
+  classificationId: string;
+  fileId: string;
+
+  // Displayed metadata (flattened from classification.info + inputFile.info)
   pageMetadata: ClassifiedPdfMetadata;
+
+  // Statement fields
   date: string | null;
   accountNumber: string | null;
   beginningBalance: number | null;
   endingBalance: number | null;
   interestCharged: number | null;
   feesCharged: number | null;
-  transactions: TransactionHistoryRecord[];
   batesStamps: Record<number, string>;
-  checks: Record<number, ClassifiedPdfMetadata>;
+
+  transactions: TransactionHistoryRecord[];
+  suspiciousReasons?: string[];
+
+  // Aggregates (not editable, derived)
   netTransactions: number;
   totalSpending: number;
   totalIncomeCredits: number;
-  suspiciousReasons?: string[];
-} 
-
-export interface LoadBankStatementResponse {
-  statement: BankStatement;
-  suspiciousReasons: string[];
 }
 
-// Classification types as per BankStatement_API_Response_Spec.md
+// Maps a TransactionDetails (API) → TransactionHistoryRecord (UI)
+export function mapTransaction(t: TransactionDetails): TransactionHistoryRecord {
+  return {
+    id: t.transactionId,
+    date: t.date,
+    checkNumber: t.checkNumber,
+    description: t.description,
+    amount: t.amount,
+    filePageNumber: t.filePageNumber,
+    checkId: t.checkId,
+    suspiciousReasons: [],
+  };
+}
+
+// Maps a TransactionHistoryRecord (UI) → TransactionDetails (API)
+export function unmapTransaction(t: TransactionHistoryRecord): TransactionDetails {
+  return {
+    transactionId: t.id,
+    date: t.date ?? null,
+    description: t.description ?? null,
+    amount: t.amount ?? null,
+    checkNumber: t.checkNumber ?? null,
+    filePageNumber: t.filePageNumber ?? 0,
+    checkId: t.checkId ?? null,
+    createdAt: 0,
+    updatedAt: 0,
+  };
+}
+
+// Classification types supported by the app
 export enum ClassificationType {
   AMEX_CC = "AMEX CC",
   C1_CC = "C1 CC",

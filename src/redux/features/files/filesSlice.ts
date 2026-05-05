@@ -1,41 +1,15 @@
-/**
- * Files slice for Redux state management.
- * 
- * This slice manages file upload and management state including:
- * - List of uploaded files with their metadata
- * - File upload progress and status tracking
- * - File selection state for batch operations
- * - Error handling for upload failures
- * 
- * Replaces local state management in DocumentUpload component
- * with centralized Redux state for better scalability.
- */
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-
-interface InputFileMetadata {
-  numstatements?: string;
-  classified: string;
-  analyzed: string;
-  statements?: string;
-}
-
-interface ParsedFileMetadata {
-  numstatements?: number;
-  classified: boolean;
-  analyzed: boolean;
-  statements?: string[];
-}
+import { InputFileSummary } from '../../../types/api';
 
 export interface UploadedFile {
-  fileObjectUrl: string | null; // Object URL as string for serialization
-  name: string;
+  fileObjectUrl: string | null;
+  name: string;         // display name (original filename)
+  fileId?: string;      // populated after PutFileInfo
   status: 'pending' | 'uploading' | 'uploaded' | 'error' | 'azure';
   progress: number;
   error?: string;
-  azureUrl?: string;
-  metadata?: ParsedFileMetadata;
   selected: boolean;
+  inputFileSummary?: InputFileSummary;
 }
 
 interface FilesState {
@@ -54,163 +28,147 @@ const initialState: FilesState = {
   error: null,
 };
 
-// Helper function to create object URL from File
-const createFileUrl = (file: File): string => {
-  return URL.createObjectURL(file);
-};
-
-// Helper function to revoke object URL
 export const revokeFileUrl = (fileUrl: string): void => {
   URL.revokeObjectURL(fileUrl);
 };
 
-// Helper function to convert File to UploadedFile
-export const convertFileToUploadedFile = (file: File): UploadedFile => {
-  return {
-    fileObjectUrl: createFileUrl(file),
-    name: file.name,
-    status: 'pending',
-    progress: 0,
-    selected: true,
-  };
-};
+export const convertFileToUploadedFile = (file: File): UploadedFile => ({
+  fileObjectUrl: URL.createObjectURL(file),
+  name: file.name,
+  status: 'pending',
+  progress: 0,
+  selected: true,
+});
 
-// Helper function to convert object URL back to File object
 export const convertObjectUrlToFile = async (fileObjectUrl: string, fileName: string): Promise<File> => {
   const response = await fetch(fileObjectUrl);
   const blob = await response.blob();
   return new File([blob], fileName, { type: 'application/pdf' });
 };
 
-// Async thunk for loading Azure files
-export const loadAzureFiles = createAsyncThunk(
-  'files/loadAzureFiles',
-  async (clientName: string, { rejectWithValue }) => {
+// Load files for a client from the API (replaces loadAzureFiles)
+export const loadInputDocuments = createAsyncThunk(
+  'files/loadInputDocuments',
+  async (clientId: string, { rejectWithValue }) => {
     try {
-      // Import the API service dynamically to avoid circular dependencies
-      const { default: apiService, listBlobsWithMetadata } = await import('../../../services/api');
-      
-      const action = 'input';
-      const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT || '';
-      const sasResponse = await apiService.requestSASToken(clientName, action);
-      const containerName = `${clientName}-${action}`;
-      const blobs = await listBlobsWithMetadata(containerName, sasResponse.token, storageAccountName);
-      
-      const azureFiles = blobs.map(({ name, metadata }) => {
-        const parsed: ParsedFileMetadata = {
-          numstatements: metadata.numstatements ? Number(metadata.numstatements) : undefined,
-          classified: metadata.classified === 'true',
-          analyzed: metadata.analyzed === 'true',
-          statements: metadata.statements ? metadata.statements.split(',') : undefined,
-        };
-        return {
-          fileObjectUrl: null,
-          name,
-          status: 'azure' as const,
-          progress: 100,
-          metadata: parsed,
-          selected: false,
-        };
-      });
-      
-      return azureFiles;
+      const { default: apiService } = await import('../../../services/api');
+      const summaries = await apiService.listInputDocuments(clientId);
+      return summaries;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load files');
     }
   }
 );
 
-// Async thunk for uploading files to Azure
-export const uploadFilesToAzure = createAsyncThunk(
-  'files/uploadFilesToAzure',
-  async ({ selectedClient }: { selectedClient: string }, { getState, rejectWithValue, dispatch }) => {
+// Upload selected pending files then register each with PutFileInfo
+export const uploadAndRegisterFiles = createAsyncThunk(
+  'files/uploadAndRegisterFiles',
+  async ({ clientId }: { clientId: string }, { getState, rejectWithValue, dispatch }) => {
     const state = getState() as { files: FilesState };
     const pendingFiles = state.files.files.filter(
-      file => file.status === 'pending' && file.selected
+      f => f.status === 'pending' && f.selected
     );
-    
-    if (pendingFiles.length === 0) {
-      return [];
-    }
+
+    if (pendingFiles.length === 0) return [];
 
     try {
-      // Update files to uploading status now that we have them captured
-      dispatch(updateMultipleFiles({ 
-        names: pendingFiles.map(f => f.name), 
-        updates: { status: 'uploading', progress: 0 } 
+      const { default: apiService } = await import('../../../services/api');
+
+      dispatch(updateMultipleFiles({
+        names: pendingFiles.map(f => f.name),
+        updates: { status: 'uploading', progress: 0 },
       }));
 
-      // Import the API service dynamically to avoid circular dependencies
-      const { default: apiService } = await import('../../../services/api');
-      
-      const uploadPromises = pendingFiles.map(async (uploadedFile) => {
-        try {
-          if (!uploadedFile.fileObjectUrl) {
-            throw new Error('No file object URL available');
-          }
-          
-          const fileObj = await convertObjectUrlToFile(uploadedFile.fileObjectUrl, uploadedFile.name);
-          
-          // Upload to Azure
-          const action = 'input';
-          const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT;
-          const sasResponse = await apiService.requestSASToken(selectedClient, action);
-          const containerName = `${selectedClient}-${action}`;
-          const uploadUrl = `https://${storageAccountName}.blob.core.windows.net/${containerName}/${encodeURIComponent(fileObj.name)}?${sasResponse.token}`;
-          
-          const response = await fetch(uploadUrl, {
-            method: 'PUT',
-            body: fileObj,
-            headers: {
-              'x-ms-blob-type': 'BlockBlob',
-              'Content-Type': fileObj.type,
-            },
-          });
-          
-          if (!response.ok) {
-            const errorMessage = `Upload failed: ${response.statusText || 'Unknown error'}`;
-            throw new Error(errorMessage);
-          }
-          
-          const blobUrl = uploadUrl.split('?')[0];
-          
-          return {
-            ...uploadedFile,
-            status: 'uploaded' as const,
-            progress: 100,
-            azureUrl: blobUrl,
-          };
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-          return {
-            ...uploadedFile,
-            status: 'error' as const,
-            progress: 0,
-            error: errorMessage,
-          };
-        }
+      const storageAccountName = process.env.REACT_APP_AZURE_STORAGE_ACCOUNT || '';
+
+      // 1. Get per-file write SAS tokens
+      const sasResponse = await apiService.fetchWriteSASTokens({
+        clientId,
+        filenames: pendingFiles.map(f => f.name),
       });
-      
-      return await Promise.all(uploadPromises);
+
+      // Mark already-existing files
+      if (sasResponse.alreadyExist.length > 0) {
+        dispatch(updateMultipleFiles({
+          names: sasResponse.alreadyExist.map(name => `${name}.pdf`),
+          updates: { status: 'azure', progress: 100 },
+        }));
+      }
+
+      // 2. Upload each file that received a token, then register it
+      const results = await Promise.all(
+        pendingFiles
+          .filter(f => {
+            const key = f.name.replace(/\.pdf$/i, '');
+            return sasResponse.tokens[key] !== undefined;
+          })
+          .map(async (uploadedFile) => {
+            try {
+              if (!uploadedFile.fileObjectUrl) throw new Error('No file object URL');
+
+              const key = uploadedFile.name.replace(/\.pdf$/i, '');
+              const { token, storageLocation } = sasResponse.tokens[key];
+
+              const fileObj = await convertObjectUrlToFile(uploadedFile.fileObjectUrl, uploadedFile.name);
+
+              // Build the upload URL from storageLocation
+              const uploadUrl = `https://${storageAccountName}.blob.core.windows.net/${storageLocation.containerName}/${storageLocation.filePath}.${storageLocation.extension.toLowerCase()}?${token}`;
+
+              const putResponse = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: fileObj,
+                headers: {
+                  'x-ms-blob-type': 'BlockBlob',
+                  'Content-Type': 'application/pdf',
+                },
+              });
+
+              if (!putResponse.ok) {
+                throw new Error(`Upload failed: ${putResponse.statusText || 'Unknown error'}`);
+              }
+
+              // 3. Register with backend
+              const fileInfo = await apiService.putFileInfo({
+                filename: uploadedFile.name,
+                clientId,
+                requestToken: crypto.randomUUID(),
+              });
+
+              return {
+                name: uploadedFile.name,
+                status: 'uploaded' as const,
+                progress: 100,
+                fileId: fileInfo.fileId,
+                error: undefined,
+              };
+            } catch (error) {
+              return {
+                name: uploadedFile.name,
+                status: 'error' as const,
+                progress: 0,
+                error: error instanceof Error ? error.message : 'Upload failed',
+              };
+            }
+          })
+      );
+
+      return results;
     } catch (error) {
-      // Return the pending files so the rejected reducer can set them to error status
       return rejectWithValue({
         error: error instanceof Error ? error.message : 'Upload failed',
-        pendingFiles: pendingFiles.map((f: UploadedFile) => f.name)
+        pendingFiles: pendingFiles.map(f => f.name),
       });
     }
   }
 );
 
-// Async thunk for deleting input documents
+// Delete a file (just needs fileId)
 export const deleteInputDocument = createAsyncThunk(
   'files/deleteInputDocument',
-  async ({ clientName, fileName }: { clientName: string; fileName: string }, { rejectWithValue }) => {
+  async ({ fileId, fileName }: { fileId: string; fileName: string }, { rejectWithValue }) => {
     try {
-      // Import the API service dynamically to avoid circular dependencies
       const { default: apiService } = await import('../../../services/api');
-      
-      await apiService.deleteInputDocument(clientName, fileName);
+      await apiService.deleteInputDocument(fileId);
       return fileName;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete document');
@@ -225,144 +183,112 @@ const filesSlice = createSlice({
     addFiles: (state, action: PayloadAction<UploadedFile[]>) => {
       state.files.push(...action.payload);
     },
-    addAzureFiles: (state, action: PayloadAction<UploadedFile[]>) => {
-      // Add Azure files without duplicates
-      action.payload.forEach(azureFile => {
-        const existingIndex = state.files.findIndex(file => file.name === azureFile.name);
-        if (existingIndex === -1) {
-          state.files.push(azureFile);
-        }
-      });
-    },
     updateFile: (state, action: PayloadAction<{ name: string; updates: Partial<UploadedFile> }>) => {
       const { name, updates } = action.payload;
-      const fileIndex = state.files.findIndex(file => file.name === name);
-      if (fileIndex !== -1) {
-        state.files[fileIndex] = { ...state.files[fileIndex], ...updates };
-      }
+      const idx = state.files.findIndex(f => f.name === name);
+      if (idx !== -1) state.files[idx] = { ...state.files[idx], ...updates };
     },
     updateMultipleFiles: (state, action: PayloadAction<{ names: string[]; updates: Partial<UploadedFile> }>) => {
       const { names, updates } = action.payload;
       names.forEach(name => {
-        const fileIndex = state.files.findIndex(file => file.name === name);
-        if (fileIndex !== -1) {
-          state.files[fileIndex] = { ...state.files[fileIndex], ...updates };
-        }
+        const idx = state.files.findIndex(f => f.name === name);
+        if (idx !== -1) state.files[idx] = { ...state.files[idx], ...updates };
       });
     },
     removeFile: (state, action: PayloadAction<string>) => {
-      const fileToRemove = state.files.find(file => file.name === action.payload);
-      if (fileToRemove?.fileObjectUrl) {
-        revokeFileUrl(fileToRemove.fileObjectUrl);
-      }
-      state.files = state.files.filter(file => file.name !== action.payload);
+      const file = state.files.find(f => f.name === action.payload);
+      if (file?.fileObjectUrl) revokeFileUrl(file.fileObjectUrl);
+      state.files = state.files.filter(f => f.name !== action.payload);
     },
     setFileSelection: (state, action: PayloadAction<{ name: string; selected: boolean }>) => {
-      const { name, selected } = action.payload;
-      const file = state.files.find(f => f.name === name);
-      if (file) {
-        file.selected = selected;
-      }
+      const file = state.files.find(f => f.name === action.payload.name);
+      if (file) file.selected = action.payload.selected;
     },
     setAllFilesSelection: (state, action: PayloadAction<boolean>) => {
-      state.files.forEach(file => {
-        file.selected = action.payload;
-      });
+      state.files.forEach(f => { f.selected = action.payload; });
     },
-    clearError: (state) => {
-      state.error = null;
-    },
+    clearError: (state) => { state.error = null; },
     clearFiles: (state) => {
-      // Revoke all object URLs before clearing
-      state.files.forEach(file => {
-        if (file.fileObjectUrl) {
-          revokeFileUrl(file.fileObjectUrl);
-        }
-      });
+      state.files.forEach(f => { if (f.fileObjectUrl) revokeFileUrl(f.fileObjectUrl); });
       state.files = [];
       state.error = null;
     },
     resetErrorStatus: (state, action: PayloadAction<string[]>) => {
-      // Reset specified files from error status back to pending
-      action.payload.forEach(fileName => {
-        const fileIndex = state.files.findIndex(f => f.name === fileName);
-        if (fileIndex !== -1 && state.files[fileIndex].status === 'error') {
-          state.files[fileIndex].status = 'pending';
-          state.files[fileIndex].progress = 0;
-          state.files[fileIndex].error = undefined;
+      action.payload.forEach(name => {
+        const idx = state.files.findIndex(f => f.name === name);
+        if (idx !== -1 && state.files[idx].status === 'error') {
+          state.files[idx].status = 'pending';
+          state.files[idx].progress = 0;
+          state.files[idx].error = undefined;
         }
       });
     },
   },
   extraReducers: (builder) => {
-    // Load Azure files
+    // Load input documents
     builder
-      .addCase(loadAzureFiles.pending, (state) => {
+      .addCase(loadInputDocuments.pending, (state) => {
         state.loadingAzureFiles = true;
         state.error = null;
       })
-      .addCase(loadAzureFiles.fulfilled, (state, action) => {
+      .addCase(loadInputDocuments.fulfilled, (state, action) => {
         state.loadingAzureFiles = false;
-        state.files = action.payload;
+        state.files = action.payload.map((summary): UploadedFile => ({
+          fileObjectUrl: null,
+          name: summary.inputFile.info.fileName,
+          fileId: summary.inputFile.info.fileId,
+          status: 'azure',
+          progress: 100,
+          selected: false,
+          inputFileSummary: summary,
+        }));
       })
-      .addCase(loadAzureFiles.rejected, (state, action) => {
+      .addCase(loadInputDocuments.rejected, (state, action) => {
         state.loadingAzureFiles = false;
         state.error = action.payload as string;
       });
 
-    // Upload files to Azure
+    // Upload and register files
     builder
-      .addCase(uploadFilesToAzure.pending, (state) => {
+      .addCase(uploadAndRegisterFiles.pending, (state) => {
         state.isUploading = true;
         state.error = null;
-        // File status updates are now handled in the thunk itself
       })
-      .addCase(uploadFilesToAzure.fulfilled, (state, action) => {
+      .addCase(uploadAndRegisterFiles.fulfilled, (state, action) => {
         state.isUploading = false;
-        // Update files with upload results
-        action.payload.forEach(updatedFile => {
-          const fileIndex = state.files.findIndex(f => f.name === updatedFile.name);
-          if (fileIndex !== -1) {
-            state.files[fileIndex] = updatedFile;
+        action.payload.forEach(result => {
+          const idx = state.files.findIndex(f => f.name === result.name);
+          if (idx !== -1) {
+            state.files[idx] = { ...state.files[idx], ...result };
           }
         });
       })
-      .addCase(uploadFilesToAzure.rejected, (state, action) => {
+      .addCase(uploadAndRegisterFiles.rejected, (state, action) => {
         state.isUploading = false;
-        
-        // Handle the new payload structure
         if (action.payload && typeof action.payload === 'object' && 'error' in action.payload) {
           const payload = action.payload as { error: string; pendingFiles: string[] };
           state.error = payload.error;
-          
-          // Set uploading files back to error status
-          payload.pendingFiles.forEach(fileName => {
-            const fileIndex = state.files.findIndex(f => f.name === fileName);
-            if (fileIndex !== -1) {
-              state.files[fileIndex].status = 'error';
-              state.files[fileIndex].progress = 0;
-              state.files[fileIndex].error = payload.error;
+          payload.pendingFiles.forEach(name => {
+            const idx = state.files.findIndex(f => f.name === name);
+            if (idx !== -1) {
+              state.files[idx].status = 'error';
+              state.files[idx].progress = 0;
+              state.files[idx].error = payload.error;
             }
           });
         } else {
-          // Fallback for old payload format
           state.error = action.payload as string;
         }
       });
 
     // Delete input document
     builder
-      .addCase(deleteInputDocument.pending, (state) => {
-        // No loading state needed for delete operations
-      })
+      .addCase(deleteInputDocument.pending, () => {})
       .addCase(deleteInputDocument.fulfilled, (state, action) => {
-        // Remove the file from state after successful deletion
-        const fileName = action.payload;
-        const fileToRemove = state.files.find(file => file.name === fileName);
-        if (fileToRemove?.fileObjectUrl) {
-          revokeFileUrl(fileToRemove.fileObjectUrl);
-        }
-        state.files = state.files.filter(file => file.name !== fileName);
+        const name = action.payload;
+        const file = state.files.find(f => f.name === name);
+        if (file?.fileObjectUrl) revokeFileUrl(file.fileObjectUrl);
+        state.files = state.files.filter(f => f.name !== name);
       })
       .addCase(deleteInputDocument.rejected, (state, action) => {
         state.error = action.payload as string;
@@ -372,7 +298,6 @@ const filesSlice = createSlice({
 
 export const {
   addFiles,
-  addAzureFiles,
   updateFile,
   updateMultipleFiles,
   removeFile,
@@ -383,4 +308,4 @@ export const {
   resetErrorStatus,
 } = filesSlice.actions;
 
-export default filesSlice.reducer; 
+export default filesSlice.reducer;

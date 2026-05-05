@@ -1,26 +1,9 @@
-/**
- * Redux slice for managing bank statement list in the Bank Statement Frontend application.
- *
- * This slice handles:
- * - Fetching all statements for a client (metadata only)
- * - Deleting selected statements
- * - Creating a spreadsheet from selected statements
- *
- * Uses Redux Toolkit for state management and async thunks for API calls.
- *
- * Depends on:
- * - @reduxjs/toolkit: https://redux-toolkit.js.org/
- * - src/types/api.ts for type definitions
- * - src/services/api.ts for API calls
- */
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { BankStatementMetadata, BankStatementKey } from '../../../types/api';
+import { StatementSummary } from '../../../types/api';
 import apiService from '../../../services/api';
-import { constructFilenameWithPages } from '../../../utils/filenameUtils';
 
 interface StatementsListState {
-  statements: BankStatementMetadata[];
+  statements: StatementSummary[];
   loading: boolean;
   error: string | null;
 }
@@ -31,42 +14,30 @@ const initialState: StatementsListState = {
   error: null,
 };
 
-export const fetchStatements = createAsyncThunk<BankStatementMetadata[], { clientName: string }>(
+export const fetchStatements = createAsyncThunk<StatementSummary[], { clientId: string }>(
   'statementsList/fetchStatements',
-  async ({ clientName }, { rejectWithValue }) => {
+  async ({ clientId }, { rejectWithValue }) => {
     try {
-      return await apiService.listStatements({ clientName });
+      return await apiService.listStatements(clientId);
     } catch (error: any) {
       return rejectWithValue(error.userMessage || error.message || 'Failed to fetch statements');
     }
   }
 );
 
-export const deleteStatements = createAsyncThunk<BankStatementKey[], { clientName: string; statements: BankStatementMetadata[] }>(
+export const deleteStatements = createAsyncThunk<string[], { statementIds: string[] }>(
   'statementsList/deleteStatements',
-  async ({ clientName, statements }, { rejectWithValue }) => {
+  async ({ statementIds }, { rejectWithValue }) => {
     try {
-      for (const statement of statements) {
-        const key = statement.key;
-        const filenameWithPages = (key.accountNumber === 'null' || key.date === 'null') 
-          ? constructFilenameWithPages(statement.metadata.filename, statement.metadata.pageRange)
-          : undefined;
-        
-        await apiService.deleteStatement({
-          clientName,
-          accountNumber: key.accountNumber,
-          classification: key.classification,
-          date: key.date,
-          filenameWithPages,
-        });
+      for (const id of statementIds) {
+        await apiService.deleteStatement(id);
       }
-      return statements.map(s => s.key);
+      return statementIds;
     } catch (error: any) {
       return rejectWithValue(error.userMessage || error.message || 'Failed to delete statements');
     }
   }
 );
-
 
 const statementsListSlice = createSlice({
   name: 'statementsList',
@@ -78,7 +49,7 @@ const statementsListSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchStatements.fulfilled, (state, action: PayloadAction<BankStatementMetadata[]>) => {
+      .addCase(fetchStatements.fulfilled, (state, action: PayloadAction<StatementSummary[]>) => {
         state.loading = false;
         state.statements = action.payload;
       })
@@ -90,15 +61,11 @@ const statementsListSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(deleteStatements.fulfilled, (state, action: PayloadAction<BankStatementKey[]>) => {
+      .addCase(deleteStatements.fulfilled, (state, action: PayloadAction<string[]>) => {
         state.loading = false;
+        const deleted = new Set(action.payload);
         state.statements = state.statements.filter(
-          (stmt) => !action.payload.some(
-            (key) =>
-              stmt.key.accountNumber === key.accountNumber &&
-              stmt.key.classification === key.classification &&
-              stmt.key.date === key.date
-          )
+          s => !deleted.has(s.statementDetails.statementId)
         );
       })
       .addCase(deleteStatements.rejected, (state, action) => {
@@ -108,4 +75,4 @@ const statementsListSlice = createSlice({
   },
 });
 
-export default statementsListSlice.reducer; 
+export default statementsListSlice.reducer;

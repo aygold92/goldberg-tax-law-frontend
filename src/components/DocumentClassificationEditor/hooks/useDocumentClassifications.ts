@@ -1,43 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
-import { DocumentClassification } from '../../../types/api';
+import { ClassificationInfo } from '../../../types/api';
 import apiService from '../../../services/api';
 
-export const useDocumentClassifications = (clientName: string, filename: string) => {
-  const [classifications, setClassifications] = useState<DocumentClassification[]>([]);
-  const [originalClassifications, setOriginalClassifications] = useState<DocumentClassification[]>([]);
+export const useDocumentClassifications = (fileId: string) => {
+  const [classifications, setClassifications] = useState<ClassificationInfo[]>([]);
+  const [originalClassifications, setOriginalClassifications] = useState<ClassificationInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
-  // Helper function to compare classifications
-  const classificationsEqual = (a: DocumentClassification, b: DocumentClassification): boolean => {
-    return JSON.stringify(a.pages.sort()) === JSON.stringify(b.pages.sort()) && 
-           a.classification === b.classification;
-  };
+  const classificationsEqual = (a: ClassificationInfo, b: ClassificationInfo): boolean =>
+    a.classificationId === b.classificationId;
 
-  // Calculate added and deleted classifications dynamically
   const calculateAddedDeleted = () => {
-    const added = classifications.filter(current => 
-      !originalClassifications.some(original => classificationsEqual(current, original))
+    // "Added" = in current but not in original (by classificationId)
+    // For newly added (not yet saved), they have no classificationId yet — we store them as
+    // temporary objects with classificationId = '' so the badge shows them as new.
+    const added = classifications.filter(
+      c => !c.classificationId || !originalClassifications.some(o => o.classificationId === c.classificationId)
     );
-    const deleted = originalClassifications.filter(original => 
-      !classifications.some(current => classificationsEqual(current, original))
+    const deleted = originalClassifications.filter(
+      o => !classifications.some(c => c.classificationId === o.classificationId)
     );
     return { added, deleted };
   };
 
   const { added: addedClassifications, deleted: deletedClassifications } = calculateAddedDeleted();
-
-  // Check if there are unsaved changes
   const hasUnsavedChanges = addedClassifications.length > 0 || deletedClassifications.length > 0;
 
-  // Load classifications from API
   const loadClassifications = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const data = await apiService.getDocumentClassification({ clientName, filename });
+      const data = await apiService.getDocumentClassification(fileId);
       setClassifications(data);
       setOriginalClassifications(data);
     } catch (err: any) {
@@ -45,19 +41,25 @@ export const useDocumentClassifications = (clientName: string, filename: string)
     } finally {
       setLoading(false);
     }
-  }, [clientName, filename]);
+  }, [fileId]);
 
-  // Save classifications to API
   const saveClassifications = useCallback(async () => {
     try {
       setSaving(true);
       setError('');
       setSuccess('');
 
+      const { added, deleted } = calculateAddedDeleted();
+
       await apiService.putDocumentClassification({
-        clientName,
-        classification: classifications,
-        overwriteAll: true,
+        file: {
+          fileId,
+          classifications: added.map(c => ({
+            pages: c.pages,
+            classificationType: c.classificationType,
+          })),
+        },
+        classificationsToRemove: deleted.map(c => c.classificationId),
       });
 
       setSuccess('Classifications saved successfully!');
@@ -68,54 +70,49 @@ export const useDocumentClassifications = (clientName: string, filename: string)
     } finally {
       setSaving(false);
     }
-  }, [clientName, classifications]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileId, classifications, originalClassifications]);
 
-  // Add a new classification
+  // Add a new classification (not yet persisted — classificationId is empty)
   const addClassification = useCallback((pages: number[], classification: string) => {
-    const newClassification: DocumentClassification = {
-      filename,
+    const newClassification: ClassificationInfo = {
+      classificationId: '',
       pages: [...pages].sort((a, b) => a - b),
-      classification,
+      classificationType: classification,
+      modelLocation: null,
+      createdAt: 0,
+      updatedAt: 0,
     };
 
     // Remove any existing classifications that overlap with the new pages
-    const filteredClassifications = classifications.filter(existing => {
-      const hasOverlap = existing.pages.some(page => pages.includes(page));
-      return !hasOverlap;
-    });
+    const filtered = classifications.filter(
+      existing => !existing.pages.some(p => pages.includes(p))
+    );
 
-    // Add the new classification
-    const updatedClassifications = [...filteredClassifications, newClassification];
-    
-    // Sort by first page
-    updatedClassifications.sort((a, b) => a.pages[0] - b.pages[0]);
-    
-    setClassifications(updatedClassifications);
-  }, [classifications, filename]);
-
-  // Remove a classification by index
-  const removeClassification = useCallback((index: number) => {
-    const updatedClassifications = classifications.filter((_, i) => i !== index);
-    setClassifications(updatedClassifications);
+    const updated = [...filtered, newClassification].sort((a, b) => a.pages[0] - b.pages[0]);
+    setClassifications(updated);
   }, [classifications]);
 
-  // Restore a deleted classification
-  const restoreClassification = useCallback((deletedClassification: DocumentClassification) => {
-    addClassification(deletedClassification.pages, deletedClassification.classification);
-  }, [addClassification]);
+  const removeClassification = useCallback((index: number) => {
+    setClassifications(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
-  // Reload from server (discard changes)
+  const restoreClassification = useCallback((deleted: ClassificationInfo) => {
+    setClassifications(prev => {
+      const filtered = prev.filter(c => !c.pages.some(p => deleted.pages.includes(p)));
+      return [...filtered, deleted].sort((a, b) => a.pages[0] - b.pages[0]);
+    });
+  }, []);
+
   const reloadClassifications = useCallback(async () => {
     await loadClassifications();
   }, [loadClassifications]);
 
-  // Load classifications on mount
   useEffect(() => {
     loadClassifications();
   }, [loadClassifications]);
 
   return {
-    // State
     classifications,
     originalClassifications,
     addedClassifications,
@@ -125,16 +122,12 @@ export const useDocumentClassifications = (clientName: string, filename: string)
     error,
     success,
     hasUnsavedChanges,
-    
-    // Actions
     loadClassifications,
     saveClassifications,
     addClassification,
     removeClassification,
     restoreClassification,
     reloadClassifications,
-    
-    // Setters for external control
     setError,
     setSuccess,
   };

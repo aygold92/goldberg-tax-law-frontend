@@ -1,23 +1,3 @@
-/**
- * Client Selector component for managing client selection and creation.
- * 
- * This component provides functionality for:
- * - Displaying a dropdown of available clients
- * - Creating new clients through a dialog
- * - Loading client list from the backend API
- * - Handling client selection changes
- * - Error handling and retry functionality
- * 
- * Features include:
- * - Automatic selection of first client when list loads
- * - Loading states during API calls
- * - Error display with retry option
- * - Dialog for creating new clients
- * - Form validation for client names
- * 
- * Used across the application to manage client context for document operations.
- */
-
 import React, { useState, useEffect } from 'react';
 import {
   FormControl,
@@ -34,13 +14,14 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
-import { COLORS } from '../styles/constants';
 import styles from '../styles/components/ClientSelector.module.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectClients, selectSelectedClient, selectClientLoading, selectClientError } from '../redux/features/client/clientSelectors';
 import { loadClients, createClient, setSelectedClient } from '../redux/features/client/clientSlice';
+import { Client } from '../types/api';
 
 const ClientSelector: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -55,23 +36,26 @@ const ClientSelector: React.FC = () => {
     dispatch(loadClients());
   }, [dispatch]);
 
-  const handleClientChange = (client: string) => {
-    dispatch(setSelectedClient(client));
+  const handleClientChange = (clientId: string) => {
+    const client = clients.find(c => c.clientId === clientId) ?? null;
+    if (client) dispatch(setSelectedClient(client));
   };
 
   const handleCreateClient = async () => {
     if (!newClientName.trim()) return;
-    await dispatch(createClient(newClientName.trim()));
+    const result = await dispatch(createClient(newClientName.trim()));
     setNewClientName('');
     setOpenDialog(false);
-    dispatch(setSelectedClient(newClientName.trim()));
+    if (result.payload && typeof result.payload === 'object' && 'clientId' in result.payload) {
+      dispatch(setSelectedClient(result.payload as Client));
+    }
   };
 
   return (
     <Box className={styles.container}>
       {error && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           className={styles.errorAlert}
           action={
             <Button color="inherit" size="small" onClick={() => dispatch(loadClients())}>
@@ -87,14 +71,21 @@ const ClientSelector: React.FC = () => {
         <FormControl className={styles.formControl}>
           <InputLabel>Select Client</InputLabel>
           <Select
-            value={selectedClient}
+            value={selectedClient?.clientId ?? ''}
             label="Select Client"
             onChange={(e) => handleClientChange(e.target.value)}
             disabled={loading}
           >
             {clients.map((client) => (
-              <MenuItem key={client} value={client}>
-                {client}
+              <MenuItem key={client.clientId} value={client.clientId}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="body1">{client.clientName}</Typography>
+                  <Tooltip title={client.clientId} placement="right">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                      {client.clientId.slice(0, 8)}…
+                    </Typography>
+                  </Tooltip>
+                </Box>
               </MenuItem>
             ))}
           </Select>
@@ -134,4 +125,4 @@ const ClientSelector: React.FC = () => {
   );
 };
 
-export default ClientSelector; 
+export default ClientSelector;

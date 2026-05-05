@@ -6,14 +6,14 @@
 import React from 'react';
 import { Box, Typography, Tooltip } from '@mui/material';
 import { Error, Warning, CheckCircle } from '@mui/icons-material';
-import { BankStatementMetadata } from '../../../types/api';
+import { StatementSummary } from '../../../types/api';
 import { MonthBlock as MonthBlockType } from '../types/accountSummary';
 import StatementTooltip from './StatementTooltip';
 import styles from '../AccountSummary.module.css';
 
 interface MonthBlockProps {
   monthBlock: MonthBlockType;
-  onEditStatement: (statement: BankStatementMetadata) => void;
+  onEditStatement: (statement: StatementSummary) => void;
 }
 
 const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) => {
