@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib'; // If you see a type error, run: npm install pdf-lib
-import { Box, Button, Typography, TextField, Alert, List, ListItem, ListItemText, Paper, Chip, Stack } from '@mui/material';
+import { Box, Button, Typography, TextField, Alert, List, ListItem, ListItemText, Paper, Chip, Stack, IconButton, Popover, CircularProgress, LinearProgress } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // Helper to get file name without extension
@@ -14,6 +15,42 @@ function getFileNameWithoutExtension(filename: string) {
 function getFileExtension(filename: string) {
   const lastDot = filename.lastIndexOf('.');
   return lastDot === -1 ? '' : filename.slice(lastDot);
+}
+
+interface GroupEntry {
+  pages: number[];
+  label: string;
+}
+
+function formatPagesAsRanges(pages: number[]): string {
+  if (pages.length === 0) return '';
+  const sorted = [...pages].sort((a, b) => a - b);
+  const ranges: string[] = [];
+  let start = sorted[0];
+  let end = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === end + 1) {
+      end = sorted[i];
+    } else {
+      ranges.push(start === end ? `${start}` : `${start}-${end}`);
+      start = sorted[i];
+      end = sorted[i];
+    }
+  }
+  ranges.push(start === end ? `${start}` : `${start}-${end}`);
+  return ranges.join(',');
+}
+
+function readFileWithProgress(file: File, onProgress: (pct: number) => void): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 // Helper to map a page number in the aggregate to its original file and page
@@ -49,8 +86,24 @@ const PdfSplitterPage: React.FC = () => {
   const [individualInput, setIndividualInput] = useState<string>('');
   const [individualPages, setIndividualPages] = useState<number[]>([]); // Each is a page number (1-based in aggregate)
   const [groupInput, setGroupInput] = useState<string>('');
-  const [groups, setGroups] = useState<number[][]>([]); // Each group is an array of aggregate page numbers (1-based)
+  const [groups, setGroups] = useState<GroupEntry[]>([]); // Each group is an array of aggregate page numbers (1-based)
   const [groupValidationError, setGroupValidationError] = useState<string | null>(null);
+  const [popoverAnchorEl, setPopoverAnchorEl] = useState<HTMLElement | null>(null);
+  const [editingGroupIdx, setEditingGroupIdx] = useState<number | null>(null);
+  const [popoverInput, setPopoverInput] = useState<string>('');
+  const [loadingState, setLoadingState] = useState<{
+    fileIdx: number;
+    totalFiles: number;
+    filePct: number;
+    phase: 'reading' | 'parsing' | 'aggregating';
+  } | null>(null);
+  const [splitState, setSplitState] = useState<{
+    done: number;
+    total: number;
+    pagesDone: number;
+    pagesTotal: number;
+    label: string;
+  } | null>(null);
 
   // Output and splitting
   const [outputDirHandle, setOutputDirHandle] = useState<any>(null); // For File System Access API
@@ -128,7 +181,7 @@ const PdfSplitterPage: React.FC = () => {
         setGroupValidationError('A group cannot contain pages from multiple files.');
         return;
       }
-      setGroups(prev => [...prev, group]);
+      setGroups(prev => [...prev, { pages: group, label: '' }]);
       setGroupInput('');
     }
   };
@@ -139,12 +192,16 @@ const PdfSplitterPage: React.FC = () => {
   };
 
   // Validate that all pages in a group are from the same file
-  function validateGroupSingleFile(group: number[]): boolean {
+  function validateGroupSingleFile(pages: number[]): boolean {
     if (!filePageCounts.length) return true;
     const map = getFilePageMap(filePageCounts);
-    const fileIdxs = group.map(page => map[page - 1]?.fileIdx).filter(idx => idx !== undefined);
+    const fileIdxs = pages.map(page => map[page - 1]?.fileIdx).filter(idx => idx !== undefined);
     return new Set(fileIdxs).size <= 1;
   }
+
+  const handleUpdateGroupLabel = (idx: number, label: string) => {
+    setGroups(prev => prev.map((g, i) => i === idx ? { ...g, label } : g));
+  };
 
   // Handle PDF file selection (multi-file)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,8 +217,17 @@ const PdfSplitterPage: React.FC = () => {
       setFileNames(files.map(f => getFileNameWithoutExtension(f.name)));
       // Load and aggregate PDFs
       try {
-        const pdfDocs = await Promise.all(files.map(f => f.arrayBuffer().then(buf => PDFDocument.load(buf))));
+        const pdfDocs: PDFDocument[] = [];
+        for (let i = 0; i < files.length; i++) {
+          setLoadingState({ fileIdx: i, totalFiles: files.length, filePct: 0, phase: 'reading' });
+          const buf = await readFileWithProgress(files[i], pct =>
+            setLoadingState({ fileIdx: i, totalFiles: files.length, filePct: pct, phase: 'reading' })
+          );
+          setLoadingState({ fileIdx: i, totalFiles: files.length, filePct: 100, phase: 'parsing' });
+          pdfDocs.push(await PDFDocument.load(buf));
+        }
         setFilePageCounts(pdfDocs.map(doc => doc.getPageCount()));
+        setLoadingState({ fileIdx: files.length - 1, totalFiles: files.length, filePct: 100, phase: 'aggregating' });
         // Aggregate into one PDF for preview
         const aggPdf = await PDFDocument.create();
         for (const doc of pdfDocs) {
@@ -172,7 +238,9 @@ const PdfSplitterPage: React.FC = () => {
         const pdfBytes = await aggPdf.save();
         const url = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
         setAggregatePdfUrl(url);
+        setLoadingState(null);
       } catch (err: any) {
+        setLoadingState(null);
         setError('Failed to load and aggregate PDFs: ' + (err.message || err.toString()));
       }
     }
@@ -261,19 +329,18 @@ const PdfSplitterPage: React.FC = () => {
     const groupPages: Set<number> = new Set(); // Track pages that are part of groups
     
     // First, collect all pages that are part of groups
-    for (const group of groups) {
-      if (!validateGroupSingleFile(group)) {
+    for (const groupEntry of groups) {
+      if (!validateGroupSingleFile(groupEntry.pages)) {
         setGroupValidationError('A group cannot contain pages from multiple files.');
         return;
       }
-      for (const page of group) {
+      for (const page of groupEntry.pages) {
         groupPages.add(page);
       }
     }
-    
-    // Individual pages (only those not in groups)
+
+    // Individual pages
     for (const page of individualPages) {
-      if (groupPages.has(page)) continue; // Skip if page is part of a group
       const m = map[page - 1];
       if (!m) continue;
       if (!fileSplits[m.fileIdx]) fileSplits[m.fileIdx] = [];
@@ -284,17 +351,32 @@ const PdfSplitterPage: React.FC = () => {
     for (const idx in fileSplits) {
       fileSplits[idx] = Array.from(new Set(fileSplits[idx])).sort((a, b) => a - b);
     }
+    // Compute total create-phase work items
+    const individualTotal = Object.values(fileSplits).reduce((sum, pages) => sum + pages.length, 0);
+    const createTotal = individualTotal + groups.length;
+    const pagesTotal = individualTotal + groups.reduce((sum, g) => sum + g.pages.length, 0);
+    setSplitState({ done: 0, total: createTotal, pagesDone: 0, pagesTotal, label: 'Creating PDFs' });
+
+    // Cache loaded PDFDocuments per source file to avoid re-reading on each group
+    const pdfDocCache: { [fileIdx: number]: PDFDocument } = {};
+    const loadPdfDoc = async (fileIdx: number): Promise<PDFDocument> => {
+      if (!pdfDocCache[fileIdx]) {
+        const arrayBuffer = await pdfFiles[fileIdx].arrayBuffer();
+        pdfDocCache[fileIdx] = await PDFDocument.load(arrayBuffer);
+      }
+      return pdfDocCache[fileIdx];
+    };
+
     // Split each file accordingly
     const createdFiles: { name: string; blob: Blob }[] = [];
-    
+
     // Process individual pages
     for (const [fileIdxStr, pages] of Object.entries(fileSplits)) {
       const fileIdx = parseInt(fileIdxStr, 10);
       const file = pdfFiles[fileIdx];
       const fileName = getFileNameWithoutExtension(file.name);
       const ext = getFileExtension(file.name);
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const pdfDoc = await loadPdfDoc(fileIdx);
       for (const pageNum of pages) {
         if (pageNum < 1 || pageNum > pdfDoc.getPageCount()) continue;
         const newPdf = await PDFDocument.create();
@@ -303,43 +385,40 @@ const PdfSplitterPage: React.FC = () => {
         const pdfBytes = await newPdf.save();
         const outName = `${fileName}/${fileName}[${pageNum}]${ext}`;
         createdFiles.push({ name: outName, blob: new Blob([pdfBytes], { type: 'application/pdf' }) });
+        setSplitState(prev => prev ? { ...prev, done: prev.done + 1, pagesDone: prev.pagesDone + 1 } : null);
       }
     }
-    
+
     // Process groups (independent of individual pages)
-    console.log('Processing groups:', groups);
-    for (const group of groups) {
-      console.log('Processing group:', group);
-      if (!validateGroupSingleFile(group)) {
-        console.log('Group validation failed for:', group);
-        continue;
-      }
+    for (const groupEntry of groups) {
+      const { pages: group, label: customLabel } = groupEntry;
+      if (!validateGroupSingleFile(group)) continue;
       const m = map[group[0] - 1];
-      if (!m) {
-        console.log('No mapping found for group:', group);
-        continue;
-      }
+      if (!m) continue;
       const fileIdx = m.fileIdx;
       const file = pdfFiles[fileIdx];
       const fileName = getFileNameWithoutExtension(file.name);
       const ext = getFileExtension(file.name);
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const pdfDoc = await loadPdfDoc(fileIdx);
       const indices = group.map(p => map[p - 1].pageInFile - 1).filter(idx => idx >= 0 && idx < pdfDoc.getPageCount());
       const newPdf = await PDFDocument.create();
       const copiedPages = await newPdf.copyPages(pdfDoc, indices);
       copiedPages.forEach(page => newPdf.addPage(page));
       const min = Math.min(...group.map(p => map[p - 1].pageInFile));
       const max = Math.max(...group.map(p => map[p - 1].pageInFile));
-      const outName = group.length === 1
-        ? `${fileName}/${fileName}[${min}]${ext}`
-        : `${fileName}/${fileName}[${min}-${max}]${ext}`;
+      const autoLabel = min === max ? `${min}` : `${min}-${max}`;
+      const label = customLabel.trim() || autoLabel;
+      const outName = `${fileName}/${fileName}[${label}]${ext}`;
       const pdfBytes = await newPdf.save();
       createdFiles.push({ name: outName, blob: new Blob([pdfBytes], { type: 'application/pdf' }) });
+      setSplitState(prev => prev ? { ...prev, done: prev.done + 1, pagesDone: prev.pagesDone + group.length } : null);
     }
-    console.log('Created files:', createdFiles.length);
+
     setSplitFiles(createdFiles);
-    // Save files using File System Access API if available
+
+    // Phase 2: write files
+    setSplitState({ done: 0, total: createdFiles.length, pagesDone: pagesTotal, pagesTotal, label: 'Writing files' });
+
     if (dirHandle) {
       for (const file of createdFiles) {
         // Parse the path to create nested directories
@@ -354,6 +433,7 @@ const PdfSplitterPage: React.FC = () => {
         const writable = await fileHandle.createWritable();
         await writable.write(file.blob);
         await writable.close();
+        setSplitState(prev => prev ? { ...prev, done: prev.done + 1 } : null);
       }
       setSuccessFiles(createdFiles.map(f => f.name));
     } else {
@@ -366,11 +446,14 @@ const PdfSplitterPage: React.FC = () => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        setSplitState(prev => prev ? { ...prev, done: prev.done + 1 } : null);
       }
       setSuccessFiles(createdFiles.map(f => f.name));
     }
+    setSplitState(null);
     } catch (error: any) {
       console.error('Error in handleSplit:', error);
+      setSplitState(null);
       setError('An error occurred while splitting PDFs: ' + (error.message || error.toString()));
     }
   };
@@ -437,17 +520,78 @@ const PdfSplitterPage: React.FC = () => {
             sx={{ mb: 1 }}
             helperText="Type pages and/or ranges separated by commas, then press Enter to add group"
           />
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', mb: 2 }}>
-            {groups.map((group, idx) => (
-              <Chip
-                key={idx}
-                label={`[${group.join(',')}]`}
-                onDelete={() => handleRemoveGroup(idx)}
-                deleteIcon={<DeleteIcon />}
-                sx={{ mb: 1 }}
-              />
+          <Stack direction="column" spacing={1} sx={{ mb: 2 }}>
+            {groups.map((groupEntry, idx) => (
+              <Stack key={idx} direction="row" alignItems="center" spacing={0.5}>
+                <IconButton
+                  size="small"
+                  onClick={e => {
+                    setPopoverAnchorEl(e.currentTarget);
+                    setEditingGroupIdx(idx);
+                    setPopoverInput(groupEntry.label);
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <Box
+                  sx={{
+                    display: 'inline-flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    border: '1px solid rgba(0,0,0,0.23)',
+                    borderRadius: '16px',
+                    px: 1.5,
+                    py: 0.5,
+                    bgcolor: 'rgba(0,0,0,0.08)',
+                    minWidth: 0,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3, whiteSpace: 'nowrap' }}>
+                    [{formatPagesAsRanges(groupEntry.pages)}]
+                  </Typography>
+                  {groupEntry.label && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.2 }}>
+                      {groupEntry.label}
+                    </Typography>
+                  )}
+                </Box>
+                <IconButton size="small" onClick={() => handleRemoveGroup(idx)}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             ))}
           </Stack>
+          <Popover
+            open={Boolean(popoverAnchorEl)}
+            anchorEl={popoverAnchorEl}
+            onClose={() => { setPopoverAnchorEl(null); setEditingGroupIdx(null); }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <Box sx={{ p: 2 }}>
+              <TextField
+                size="small"
+                autoFocus
+                label="Custom label"
+                placeholder="e.g. 2.2024"
+                value={popoverInput}
+                onChange={e => setPopoverInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (editingGroupIdx !== null) handleUpdateGroupLabel(editingGroupIdx, popoverInput);
+                    setPopoverAnchorEl(null);
+                    setEditingGroupIdx(null);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setPopoverAnchorEl(null);
+                    setEditingGroupIdx(null);
+                  }
+                }}
+                sx={{ width: 200 }}
+              />
+            </Box>
+          </Popover>
           {groupValidationError && (
             <Alert severity="error" sx={{ mb: 2 }}>{groupValidationError}</Alert>
           )}
@@ -484,11 +628,38 @@ const PdfSplitterPage: React.FC = () => {
             variant="contained"
             color="primary"
             onClick={handleSplit}
-            disabled={!pdfFiles.length || (groups.length === 0 && individualPages.length === 0)}
+            disabled={!pdfFiles.length || (groups.length === 0 && individualPages.length === 0) || splitState !== null}
             sx={{ width: '100%' }}
           >
             Split PDF
           </Button>
+          {splitState && (
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  {splitState.label} — files: {splitState.done} / {splitState.total}
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={splitState.total > 0 ? Math.round((splitState.done / splitState.total) * 100) : 0}
+                  sx={{ mt: 0.25 }}
+                />
+              </Box>
+              {splitState.label === 'Creating PDFs' && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Pages processed: {splitState.pagesDone} / {splitState.pagesTotal}
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={splitState.pagesTotal > 0 ? Math.round((splitState.pagesDone / splitState.pagesTotal) * 100) : 0}
+                    sx={{ mt: 0.25 }}
+                    color="secondary"
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
         </Paper>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {successFiles.length > 0 && (
@@ -504,7 +675,34 @@ const PdfSplitterPage: React.FC = () => {
       </Box>
       {/* Right: PDF Preview */}
       <Box sx={{ width: '75%', height: '100%', p: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f6fa' }}>
-        {aggregatePdfUrl ? (
+        {loadingState !== null ? (() => {
+          const isIndeterminate = loadingState.phase !== 'reading';
+          const pct = Math.round((loadingState.fileIdx / loadingState.totalFiles) * 100 + (loadingState.filePct / loadingState.totalFiles));
+          const phaseLabel =
+            loadingState.phase === 'reading'
+              ? `Reading file ${loadingState.fileIdx + 1} of ${loadingState.totalFiles}…`
+              : loadingState.phase === 'parsing'
+              ? `Parsing file ${loadingState.fileIdx + 1} of ${loadingState.totalFiles}…`
+              : 'Building preview…';
+          return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                <CircularProgress variant={isIndeterminate ? 'indeterminate' : 'determinate'} value={isIndeterminate ? undefined : pct} size={80} />
+                {!isIndeterminate && (
+                  <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">{pct}%</Typography>
+                  </Box>
+                )}
+              </Box>
+              <Typography variant="body2" color="text.secondary">{phaseLabel}</Typography>
+              {loadingState.phase === 'parsing' && (
+                <Typography variant="caption" color="text.secondary">
+                  (pdf-lib parsing — no sub-progress available)
+                </Typography>
+              )}
+            </Box>
+          );
+        })() : aggregatePdfUrl ? (
           <iframe src={aggregatePdfUrl} width="95%" height="95%" title="PDF Preview" style={{ border: '1px solid #ccc', borderRadius: 8, background: 'white' }} />
         ) : (
           <Typography variant="h6" color="textSecondary">No PDF selected</Typography>
