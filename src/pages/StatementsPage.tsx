@@ -11,6 +11,7 @@ import ClientSelector from '../components/ClientSelector';
 import { AccountSummary } from '../components/AccountSummary';
 import { usePageTitle } from '../hooks/usePageTitle';
 import styles from '../styles/components/StatementsPage.module.css';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 const formatPages = (pages: number[]): string => {
   if (!pages || pages.length === 0) return '';
@@ -205,20 +206,12 @@ const StatementsPage: React.FC = () => {
       field: 'date',
       headerName: 'Date',
       width: columnWidths.date,
+      valueFormatter: (value: any) => formatDateForDisplay(value),
       sortComparator: (v1, v2) => {
         if (!v1 && !v2) return 0;
         if (!v1) return 1;
         if (!v2) return -1;
-        const parse = (d: string) => {
-          const p = d.split('/');
-          if (p.length !== 3) return null;
-          return new Date(parseInt(p[2]), parseInt(p[0]) - 1, parseInt(p[1]));
-        };
-        const d1 = parse(v1), d2 = parse(v2);
-        if (!d1 && !d2) return 0;
-        if (!d1) return 1;
-        if (!d2) return -1;
-        return d1.getTime() - d2.getTime();
+        return new Date(v1).getTime() - new Date(v2).getTime();
       },
     },
     {

@@ -34,6 +34,7 @@ import { BankStatement } from '../types/bankStatement';
 import { useUndoRedo } from '../redux/hooks/useUndoRedo';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/EditPageHeader.module.css';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 interface EditPageHeaderProps {
   statement: BankStatement | null;
@@ -54,7 +55,7 @@ const EditPageHeader: React.FC<EditPageHeaderProps> = ({
 
   // Generate heading and metadata
   const heading = statement
-    ? `Edit Statement ${statement.pageMetadata.classification}-${statement.accountNumber}: ${statement.date}`
+    ? `Edit Statement ${statement.pageMetadata.classification}-${statement.accountNumber}: ${formatDateForDisplay(statement.date)}`
     : 'Edit Statement';
   const filename = statement?.pageMetadata.filename;
 

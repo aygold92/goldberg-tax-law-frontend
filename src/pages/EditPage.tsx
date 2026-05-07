@@ -56,6 +56,7 @@ import {
   selectSaveError,
 } from '../redux/features/statementEditor/statementEditorSelectors';
 import { validateBankStatement, ValidationError } from '../utils/validation';
+import { formatDateForDisplay } from '../utils/dateUtils';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // Import the components
@@ -91,7 +92,7 @@ const EditPage: React.FC = () => {
   // Set dynamic page title based on statement data
   useEffect(() => {
     if (statement) {
-      const title = `Edit ${statement.pageMetadata.classification}-${statement.accountNumber}: ${statement.date}`;
+      const title = `Edit ${statement.pageMetadata.classification}-${statement.accountNumber}: ${formatDateForDisplay(statement.date)}`;
       setPageTitle(title);
     } else if (statementId) {
       setPageTitle('Loading Statement...');

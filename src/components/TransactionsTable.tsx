@@ -26,6 +26,7 @@ import { ReactGridTable, TableColumn } from './ReactGridTable';
 import { CustomFilterConfig } from './ReactGridTable/filter/FilterTypes';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/TransactionsTable.module.css';
+import { parseISODateLocal, dateToISO } from '../utils/dateUtils';
 
 // Interface for the transformed transaction data
 interface TransactionTableRow {
@@ -62,7 +63,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     
     return statement.transactions.map(transaction => ({
       id: transaction.id,
-      date: transaction.date ? new Date(transaction.date) : null,
+      date: transaction.date ? parseISODateLocal(transaction.date) : null,
       description: transaction.description,
       amount: transaction.amount,
       filePageNumber: transaction.filePageNumber,
@@ -356,7 +357,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         } else if (change.type === 'number') {
           changes.push({ field: String(change.columnId), value: (change.newCell as NumberCell).value });
         } else if (change.type === 'date') {
-          changes.push({ field: String(change.columnId), value: Number.isNaN((change.newCell as DateCell).date?.valueOf()) ? null : (change.newCell as DateCell).date?.toLocaleDateString() });
+          changes.push({ field: String(change.columnId), value: Number.isNaN((change.newCell as DateCell).date?.valueOf()) ? null : (change.newCell as DateCell).date ? dateToISO((change.newCell as DateCell).date!) : null });
         } else if (change.type === 'dropdown') {
           changes.push({ field: String(change.columnId), value: (change.newCell as DropdownCell).selectedValue });
         }

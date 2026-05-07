@@ -24,6 +24,7 @@ import { updateStatementField, resetStatementField } from '../redux/features/sta
 import { selectStatementFieldChanges } from '../redux/features/statementEditor/statementEditorSelectors';
 import { COLORS } from '../styles/constants';
 import styles from '../styles/components/StatementDetailsTable.module.css';
+import { parseISODateLocal, dateToISO } from '../utils/dateUtils';
 
 interface StatementDetailsTableProps {
   statement: BankStatement | null;
@@ -72,7 +73,7 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
         rowId: 'date', 
         cells: [ 
           { type: 'header' as const, text: `Statement Date`, nonEditable: true, style: headerStyle }, 
-          { type: 'date' as const, date: statement.date ? new Date(statement.date) : undefined, style: getRowStyle('date') },
+          { type: 'date' as const, date: statement.date ? parseISODateLocal(statement.date) : undefined, style: getRowStyle('date') },
           { type: 'text' as const, text: '', renderer: () => (
             modifiedFields.includes('date') ? (
               <Tooltip title='Reset Field'>
@@ -209,7 +210,7 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
         } else if (change.type === 'number') {
             dispatch(updateStatementField({ field: String(rowId), value: (newCell as NumberCell).value}))
         } else if (change.type === 'date') {
-            dispatch(updateStatementField({ field: String(rowId), value: (newCell as DateCell).date?.toLocaleDateString() || null}))
+            dispatch(updateStatementField({ field: String(rowId), value: (newCell as DateCell).date ? dateToISO((newCell as DateCell).date!) : null }))
         } else if (change.type === 'dropdown') {
             // for some reason, this is how reactgrid handles dropdowns
             if (change.previousCell.isOpen !== change.newCell.isOpen) {
