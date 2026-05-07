@@ -179,7 +179,23 @@ const StatementDetailsTable: React.FC<StatementDetailsTableProps> = ({
             ) : null
           ), nonEditable: true, style: getRowStyle('feesCharged') }
         ]
-      }
+      },
+      {
+        rowId: 'createdAt',
+        cells: [
+          { type: 'header' as const, text: 'Created', nonEditable: true, style: headerStyle },
+          { type: 'text' as const, text: statement.createdAt > 0 ? new Date(statement.createdAt).toLocaleString() : '', nonEditable: true },
+          { type: 'text' as const, text: '', nonEditable: true },
+        ]
+      },
+      {
+        rowId: 'updatedAt',
+        cells: [
+          { type: 'header' as const, text: 'Last Modified', nonEditable: true, style: headerStyle },
+          { type: 'text' as const, text: statement.updatedAt > 0 ? new Date(statement.updatedAt).toLocaleString() : '', nonEditable: true },
+          { type: 'text' as const, text: '', nonEditable: true },
+        ]
+      },
     ];
     return ret
   }, [statement, classificationDropdownOpen, modifiedFields]);

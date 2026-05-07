@@ -56,7 +56,7 @@ export const useDocumentClassifications = (fileId: string) => {
           fileId,
           classifications: added.map(c => ({
             pages: c.pages,
-            classificationType: c.classificationType,
+            classification: c.classificationType,
           })),
         },
         classificationsToRemove: deleted.map(c => c.classificationId),

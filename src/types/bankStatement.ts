@@ -51,6 +51,8 @@ export interface BankStatement {
   endingBalance: number | null;
   interestCharged: number | null;
   feesCharged: number | null;
+  createdAt: number;
+  updatedAt: number;
   batesStamps: Record<number, string>;
 
   transactions: TransactionHistoryRecord[];

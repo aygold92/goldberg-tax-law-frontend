@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackbar, Popover, Tooltip } from '@mui/material';
-import { TableChart, Delete, Edit, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh } from '@mui/icons-material';
+import { TableChart, Delete, Edit, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh, FactCheck } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectStatements, selectStatementsLoading, selectStatementsError } from '../redux/features/statementsList/statementsListSelectors';
@@ -46,7 +46,7 @@ const StatementsPage: React.FC = () => {
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
-    status: 50,
+    status: 90,
     actions: 50,
     accountNumber: 120,
     classification: 140,
@@ -55,6 +55,8 @@ const StatementsPage: React.FC = () => {
     numTransactions: 90,
     totalSpending: 120,
     totalIncomeCredits: 120,
+    createdAt: 160,
+    updatedAt: 160,
   });
 
   useEffect(() => {
@@ -133,7 +135,13 @@ const StatementsPage: React.FC = () => {
         return (
           <Box className={styles.statusCell}>
             {suspicious ? (
-              <Tooltip title="Needs verification">
+              <Tooltip title={
+                <Box>
+                  {(params.row.suspiciousReasons as string[]).map((r, i) => (
+                    <div key={i}>{r}</div>
+                  ))}
+                </Box>
+              }>
                 <Error color="error" fontSize="small" />
               </Tooltip>
             ) : (
@@ -144,6 +152,11 @@ const StatementsPage: React.FC = () => {
             {warnings.length > 0 && (
               <Tooltip title={warnings.join(', ')}>
                 <Warning color="warning" fontSize="small" />
+              </Tooltip>
+            )}
+            {params.row.manuallyChecked && (
+              <Tooltip title="Manually reviewed">
+                <FactCheck color="info" fontSize="small" />
               </Tooltip>
             )}
           </Box>
@@ -212,6 +225,8 @@ const StatementsPage: React.FC = () => {
       field: 'filename',
       headerName: 'Filename',
       width: columnWidths.filename,
+      valueGetter: (_value: any, row: any) => `${row.filename ?? ''}${formatPages(row.pages ?? [])}`,
+      sortComparator: (v1, v2) => String(v1).localeCompare(String(v2)),
       renderCell: (params) => (
         <Box className={styles.filenameCell} onDoubleClick={(e) => handleFilenameClick(e, params.row.filename)}>
           {params.row.filename} {formatPages(params.row.pages)}
@@ -223,13 +238,25 @@ const StatementsPage: React.FC = () => {
       field: 'totalSpending',
       headerName: 'Spending',
       width: columnWidths.totalSpending,
-      valueFormatter: (value: any) => value != null ? `$${Number(value).toLocaleString()}` : '$0.00',
+      valueFormatter: (value: any) => value != null ? `$${Math.abs(Number(value)).toLocaleString()}` : '$0.00',
     },
     {
       field: 'totalIncomeCredits',
       headerName: 'Income',
       width: columnWidths.totalIncomeCredits,
       valueFormatter: (value: any) => value != null ? `$${Number(value).toLocaleString()}` : '$0.00',
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Created',
+      width: columnWidths.createdAt,
+      valueFormatter: (value: any) => value > 0 ? new Date(value).toLocaleString() : '',
+    },
+    {
+      field: 'updatedAt',
+      headerName: 'Last Modified',
+      width: columnWidths.updatedAt,
+      valueFormatter: (value: any) => value > 0 ? new Date(value).toLocaleString() : '',
     },
   ];
 
@@ -245,8 +272,12 @@ const StatementsPage: React.FC = () => {
     totalSpending: s.totalSpending,
     totalIncomeCredits: s.totalIncomeCredits,
     suspicious: s.suspiciousReasons.length > 0,
+    suspiciousReasons: s.suspiciousReasons,
     missingChecks: s.missingChecks.length > 0,
     manuallyVerified: s.manuallyVerified,
+    manuallyChecked: s.statementDetails.createdAt !== s.statementDetails.updatedAt,
+    createdAt: s.statementDetails.createdAt,
+    updatedAt: s.statementDetails.updatedAt,
   }));
 
   return (

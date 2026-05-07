@@ -46,6 +46,8 @@ function mapStatement(s: Statement): BankStatement {
     endingBalance: s.statementDetails.endingBalance,
     interestCharged: s.statementDetails.interestCharged,
     feesCharged: s.statementDetails.feesCharged,
+    createdAt: s.statementDetails.createdAt,
+    updatedAt: s.statementDetails.updatedAt,
     batesStamps: Object.fromEntries(
       Object.entries(s.statementDetails.batesStamps).map(([k, v]) => [Number(k), v])
     ),

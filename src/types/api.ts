@@ -230,7 +230,7 @@ export interface InitAnalyzeDocumentsResponse {
 export interface PutDocumentClassificationRequest {
   file: {
     fileId: string;
-    classifications: Array<{ pages: number[]; classificationType: string }>;
+    classifications: Array<{ pages: number[]; classification: string }>;
   };
   classificationsToRemove: string[];
 }

@@ -15,7 +15,7 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
   const dispatch = useAppDispatch();
   const { showSnackbar, snackbarOpen, snackbarMessage, snackbarSeverity, closeSnackbar } = useSnackbar();
 
-  const spending = statement.totalSpending || 0;
+  const spending = Math.abs(statement.totalSpending || 0);
   const income = statement.totalIncomeCredits || 0;
   const transactions = statement.numTransactions || 0;
   const suspicious = (statement.suspiciousReasons?.length ?? 0) > 0;
