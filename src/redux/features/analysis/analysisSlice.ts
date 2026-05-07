@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { ExternalOrchestrationStatus, PollForStatusResponse } from '../../../types/api';
+import { ExternalOrchestrationStatus, PollForStatusResponse, ProcessingOptions } from '../../../types/api';
 import apiService from '../../../services/api';
 
 export interface AnalysisResult {
@@ -35,11 +35,12 @@ const initialState: AnalysisState = {
 
 export const startAnalysis = createAsyncThunk(
   'analysis/startAnalysis',
-  async ({ clientId, files }: { clientId: string; files: Array<{ fileId: string; fileName: string }> }, { rejectWithValue }) => {
+  async ({ clientId, files, processingOptions }: { clientId: string; files: Array<{ fileId: string; fileName: string }>; processingOptions?: ProcessingOptions }, { rejectWithValue }) => {
     try {
       const response = await apiService.initAnalyzeDocuments({
         clientId,
         fileIds: files.map(f => f.fileId),
+        ...(processingOptions && { processingOptions }),
       });
 
       const results = files.map(({ fileId, fileName }) => ({

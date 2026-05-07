@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClassificationInfo } from '../../../types/api';
+import { ClassificationInfo, ProcessingOptions } from '../../../types/api';
 import apiService from '../../../services/api';
 
 export const useAnalyzePage = () => {
@@ -7,8 +7,10 @@ export const useAnalyzePage = () => {
   const [analyzePageLoading, setAnalyzePageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  // Accept either ClassificationInfo[] or classificationId string[] directly
-  const analyzePages = async (classifications: ClassificationInfo[]): Promise<boolean> => {
+  const analyzePages = async (
+    classifications: ClassificationInfo[],
+    processingOptions?: ProcessingOptions
+  ): Promise<boolean> => {
     const classificationIds = classifications
       .map(c => c.classificationId)
       .filter(id => !!id); // skip unsaved (empty id)
@@ -20,7 +22,10 @@ export const useAnalyzePage = () => {
       setError('');
       setAnalyzePageResult(null);
 
-      const result = await apiService.analyzePages({ pageRequests: classificationIds });
+      const result = await apiService.analyzePages({
+        pageRequests: classificationIds,
+        ...(processingOptions && { processingOptions }),
+      });
       setAnalyzePageResult(result);
       return true;
     } catch (err: any) {

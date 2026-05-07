@@ -7,6 +7,8 @@ import {
   Paper,
   Button,
   Alert,
+  Checkbox,
+  FormControlLabel,
   IconButton,
   Chip,
   CircularProgress,
@@ -63,6 +65,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
   const hasPendingFiles = useAppSelector(selectHasPendingFiles);
 
   const [selectionModel, setSelectionModel] = useState<string[]>([]);
+  const [forceReanalysis, setForceReanalysis] = useState(false);
+  const [forceRecreate, setForceRecreate] = useState(false);
+  const [replaceOnRecreate, setReplaceOnRecreate] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateFile, setDuplicateFile] = useState<File | null>(null);
   const [pendingFilesQueue, setPendingFilesQueue] = useState<File[]>([]);
@@ -156,7 +161,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
       const files = selectedFiles
         .filter((f): f is typeof f & { fileId: string } => !!f.fileId)
         .map(f => ({ fileId: f.fileId, fileName: f.name }));
-      const result = await dispatch(startAnalysis({ clientId, files })).unwrap();
+      const processingOptions = (forceReanalysis || forceRecreate || replaceOnRecreate)
+        ? { forceReanalysis, forceRecreate, replaceOnRecreate }
+        : undefined;
+      const result = await dispatch(startAnalysis({ clientId, files, processingOptions })).unwrap();
       onAnalysisStarted(result.statusQueryUrl);
     } catch (error: any) {
       console.error('Analysis error:', error);
@@ -366,6 +374,23 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
           >
             {isAnalyzing ? 'Starting Analysis...' : 'Start Analysis'}
           </Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, alignItems: 'center' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+            Analysis options:
+          </Typography>
+          <FormControlLabel
+            control={<Checkbox size="small" checked={forceReanalysis} onChange={e => setForceReanalysis(e.target.checked)} />}
+            label={<Typography variant="caption">Force reanalysis</Typography>}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} />}
+            label={<Typography variant="caption">Force recreate</Typography>}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={replaceOnRecreate} onChange={e => setReplaceOnRecreate(e.target.checked)} disabled={!forceRecreate} />}
+            label={<Typography variant="caption">Replace on recreate</Typography>}
+          />
         </Box>
 
         {error && (

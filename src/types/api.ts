@@ -219,6 +219,7 @@ export interface DeleteInputDocumentResponse {
 export interface InitAnalyzeDocumentsRequest {
   clientId: string;
   fileIds: string[];
+  processingOptions?: ProcessingOptions;
 }
 
 export interface InitAnalyzeDocumentsResponse {
@@ -257,8 +258,15 @@ export interface PutDocumentDataModelResponse {
 
 // --- Page analysis ---
 
+export interface ProcessingOptions {
+  forceReanalysis?: boolean;
+  forceRecreate?: boolean;
+  replaceOnRecreate?: boolean;
+}
+
 export interface AnalyzePagesRequest {
   pageRequests: string[];
+  processingOptions?: ProcessingOptions;
 }
 
 export interface AnalyzePagesResponse extends ApiResponse {

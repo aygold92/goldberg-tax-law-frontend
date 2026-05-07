@@ -8,6 +8,8 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Checkbox,
+  FormControlLabel,
   IconButton,
   Tooltip,
   Typography,
@@ -49,6 +51,9 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
   const [accumulatedConvertResults, setAccumulatedConvertResults] = useState<any[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorClassification, setEditorClassification] = useState<ClassificationInfo | null>(null);
+  const [forceReanalysis, setForceReanalysis] = useState(false);
+  const [forceRecreate, setForceRecreate] = useState(false);
+  const [replaceOnRecreate, setReplaceOnRecreate] = useState(false);
 
   const {
     classifications,
@@ -153,7 +158,10 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
       return;
     }
     clearAnalyzeResults();
-    const success = await analyzePages(selectedClassifications);
+    const processingOptions = (forceReanalysis || forceRecreate || replaceOnRecreate)
+      ? { forceReanalysis, forceRecreate, replaceOnRecreate }
+      : undefined;
+    const success = await analyzePages(selectedClassifications, processingOptions);
     if (success) {
       showSnackbar('Page analysis completed successfully!', 'success');
       if (onAnalysisComplete) onAnalysisComplete(analyzePageResult);
@@ -277,6 +285,26 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             {convertLoading ? 'Converting...' : 'Convert to Statement'}
           </Button>
         </Box>
+
+        {!readOnly && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1, alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+              Analysis options:
+            </Typography>
+            <FormControlLabel
+              control={<Checkbox size="small" checked={forceReanalysis} onChange={e => setForceReanalysis(e.target.checked)} />}
+              label={<Typography variant="caption">Force reanalysis</Typography>}
+            />
+            <FormControlLabel
+              control={<Checkbox size="small" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} />}
+              label={<Typography variant="caption">Force recreate</Typography>}
+            />
+            <FormControlLabel
+              control={<Checkbox size="small" checked={replaceOnRecreate} onChange={e => setReplaceOnRecreate(e.target.checked)} disabled={!forceRecreate} />}
+              label={<Typography variant="caption">Replace on recreate</Typography>}
+            />
+          </Box>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 1, py: 0.5 }}>
