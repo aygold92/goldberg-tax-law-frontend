@@ -6,6 +6,7 @@ import { useAppDispatch } from '../../../redux/hooks';
 import { deleteStatements } from '../../../redux/features/statementsList/statementsListSlice';
 import { useSnackbar } from '../../DocumentClassificationEditor/hooks/useSnackbar';
 import styles from '../AccountSummary.module.css';
+import { formatDateForDisplay } from '../../../utils/dateUtils';
 
 interface StatementTooltipProps {
   statement: StatementSummary;
@@ -20,7 +21,7 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
   const transactions = statement.numTransactions || 0;
   const suspicious = (statement.suspiciousReasons?.length ?? 0) > 0;
   const filename = statement.classification.inputFile.info.fileName;
-  const date = statement.statementDetails.date ?? 'null';
+  const date = formatDateForDisplay(statement.statementDetails.date) || 'null';
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -69,12 +70,12 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
 
         {(suspicious || statement.missingChecks.length > 0 || transactions === 0) && (
           <Box className={styles.tooltipIssues}>
-            {suspicious && (
-              <Box className={styles.tooltipRow}>
+            {suspicious && statement.suspiciousReasons.map((reason, i) => (
+              <Box key={i} className={styles.tooltipRow}>
                 <Error color="error" fontSize="small" />
-                <Typography variant="caption" className={styles.tooltipIssue}>Suspicious statement</Typography>
+                <Typography variant="caption" className={styles.tooltipIssue}>{reason}</Typography>
               </Box>
-            )}
+            ))}
             {statement.missingChecks.length > 0 && (
               <Box className={styles.tooltipRow}>
                 <Warning color="warning" fontSize="small" />
