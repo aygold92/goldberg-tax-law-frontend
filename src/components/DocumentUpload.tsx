@@ -203,11 +203,21 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
     }
   };
 
+  const getAnalysisStatus = (row: any): { label: string; color: 'default' | 'info' | 'warning' | 'success' } => {
+    const summary = row.inputFileSummary;
+    const numDocuments = summary?.numDocuments ?? 0;
+    const numAnalyzed = summary?.numAnalyzed ?? 0;
+    if (!numDocuments) return { label: 'Pending classification', color: 'default' };
+    if (!numAnalyzed) return { label: 'Pending analysis', color: 'info' };
+    if (numAnalyzed < numDocuments) return { label: 'Partially analyzed', color: 'warning' };
+    return { label: 'Fully analyzed', color: 'success' };
+  };
+
   const columns: GridColDef[] = [
     {
       field: 'name',
       headerName: 'Filename',
-      flex: 2,
+      width: 300,
       renderCell: (params: GridRenderCellParams<any, any>) => (
         <Tooltip title={<span style={{ userSelect: 'text' }}>{params.value}</span>} placement="top" arrow>
           <span className={styles.filenameCell}>{params.value}</span>
@@ -217,12 +227,11 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
     {
       field: 'status',
       headerName: 'Status',
-      flex: 1,
+      width: 180,
       renderCell: (params: GridRenderCellParams<any, any>) => {
-        const status = params.row.status === 'azure' ? 'uploaded' : params.row.status;
+        const { status } = params.row;
         if (status === 'pending') return <Chip label="Pending upload" color="default" size="small" />;
         if (status === 'uploading') return <Chip label="Uploading" color="info" size="small" icon={<CircularProgress size={16} />} />;
-        if (status === 'uploaded') return <Chip label="Uploaded" color="success" size="small" icon={<CheckCircle />} />;
         if (status === 'error') {
           return (
             <Tooltip title={params.row.error || 'Upload failed'} placement="top" arrow>
@@ -230,25 +239,60 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
             </Tooltip>
           );
         }
+        if (status === 'uploaded' || status === 'azure') {
+          const { label, color } = getAnalysisStatus(params.row);
+          return <Chip label={label} color={color} size="small" />;
+        }
         return null;
       },
     },
     {
-      field: 'numStatements',
-      headerName: '# Statements',
-      flex: 1,
-      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numStatements ?? '',
+      field: 'uploadedAt',
+      headerName: 'Uploaded',
+      width: 175,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.inputFile.info.uploadedAt ?? null,
+      valueFormatter: (value: any) => value ? new Date(value).toLocaleString() : '',
     },
     {
       field: 'numAnalyzed',
-      headerName: '# Analyzed',
-      flex: 1,
-      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numAnalyzed ?? '',
+      headerName: 'Analyzed',
+      width: 100,
+      valueGetter: (_value: any, row: any) => {
+        const s = row.inputFileSummary;
+        if (!s) return '';
+        const analyzed = s.numAnalyzed ?? 0;
+        const total = s.numDocuments ?? 0;
+        return total ? `${analyzed}/${total}` : '';
+      },
+    },
+    {
+      field: 'numStatements',
+      headerName: 'Statements',
+      width: 110,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numStatements ?? '',
+    },
+    {
+      field: 'numChecks',
+      headerName: 'Checks',
+      width: 90,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numChecks ?? '',
+    },
+    {
+      field: 'numTransactions',
+      headerName: 'Transactions',
+      width: 120,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.numTransactions ?? '',
+    },
+    {
+      field: 'numPages',
+      headerName: 'Pages',
+      width: 80,
+      valueGetter: (_value: any, row: any) => row.inputFileSummary?.inputFile.info.numPages ?? '',
     },
     {
       field: 'actions',
       headerName: '',
-      flex: 0.5,
+      width: 90,
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams<any, any>) => (
@@ -343,6 +387,24 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
           />
         </Box>
 
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, mb: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            Analysis options:
+          </Typography>
+          <FormControlLabel
+            control={<Checkbox size="small" checked={forceReanalysis} onChange={e => setForceReanalysis(e.target.checked)} />}
+            label={<Typography variant="caption">Force reanalysis</Typography>}
+            sx={{ ml: 0.5 }}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} />}
+            label={<Typography variant="caption">Force recreate</Typography>}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={replaceOnRecreate} onChange={e => setReplaceOnRecreate(e.target.checked)} disabled={!forceRecreate} />}
+            label={<Typography variant="caption">Replace on recreate</Typography>}
+          />
+        </Box>
         <Box className={styles.actionsContainer}>
           <Button
             variant="outlined"
@@ -374,23 +436,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
           >
             {isAnalyzing ? 'Starting Analysis...' : 'Start Analysis'}
           </Button>
-        </Box>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-            Analysis options:
-          </Typography>
-          <FormControlLabel
-            control={<Checkbox size="small" checked={forceReanalysis} onChange={e => setForceReanalysis(e.target.checked)} />}
-            label={<Typography variant="caption">Force reanalysis</Typography>}
-          />
-          <FormControlLabel
-            control={<Checkbox size="small" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} />}
-            label={<Typography variant="caption">Force recreate</Typography>}
-          />
-          <FormControlLabel
-            control={<Checkbox size="small" checked={replaceOnRecreate} onChange={e => setReplaceOnRecreate(e.target.checked)} disabled={!forceRecreate} />}
-            label={<Typography variant="caption">Replace on recreate</Typography>}
-          />
         </Box>
 
         {error && (
