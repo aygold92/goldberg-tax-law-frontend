@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackbar, Popover, Tooltip } from '@mui/material';
+import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackbar, Popover, Tooltip, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { TableChart, Delete, Edit, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh, FactCheck } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
@@ -46,6 +46,8 @@ const StatementsPage: React.FC = () => {
   const [filenamePopover, setFilenamePopover] = useState<{ anchorEl: HTMLElement | null; filename: string }>({ anchorEl: null, filename: '' });
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     status: 90,
     actions: 50,
@@ -88,6 +90,37 @@ const StatementsPage: React.FC = () => {
     });
     return ids;
   }, [statements]);
+
+  const rows = useMemo(() => statements.map((s: StatementSummary) => ({
+    id: s.statementDetails.statementId,
+    statementId: s.statementDetails.statementId,
+    accountNumber: s.statementDetails.accountNumber,
+    classification: s.classification.info.classificationType,
+    date: s.statementDetails.date,
+    filename: s.classification.inputFile.info.fileName,
+    pages: s.classification.info.pages,
+    numTransactions: s.numTransactions,
+    totalSpending: s.totalSpending,
+    totalIncomeCredits: s.totalIncomeCredits,
+    suspicious: s.suspiciousReasons.length > 0,
+    suspiciousReasons: s.suspiciousReasons,
+    missingChecks: s.missingChecks.length > 0,
+    isDuplicate: duplicateIds.has(s.statementDetails.statementId),
+    manuallyVerified: s.manuallyVerified,
+    manuallyChecked: s.statementDetails.createdAt !== s.statementDetails.updatedAt,
+    createdAt: s.statementDetails.createdAt,
+    updatedAt: s.statementDetails.updatedAt,
+  })), [statements, duplicateIds]);
+
+  const filteredRows = useMemo(() => {
+    if (activeFilters.length === 0) return rows;
+    return rows.filter(row =>
+      (activeFilters.includes('suspicious') && row.suspicious) ||
+      (activeFilters.includes('multiple') && row.isDuplicate) ||
+      (activeFilters.includes('missingChecks') && row.missingChecks) ||
+      (activeFilters.includes('noTransactions') && row.numTransactions === 0)
+    );
+  }, [rows, activeFilters]);
 
   if (!selectedClient) {
     return (
@@ -271,27 +304,6 @@ const StatementsPage: React.FC = () => {
     },
   ];
 
-  const rows = statements.map((s: StatementSummary) => ({
-    id: s.statementDetails.statementId,
-    statementId: s.statementDetails.statementId,
-    accountNumber: s.statementDetails.accountNumber,
-    classification: s.classification.info.classificationType,
-    date: s.statementDetails.date,
-    filename: s.classification.inputFile.info.fileName,
-    pages: s.classification.info.pages,
-    numTransactions: s.numTransactions,
-    totalSpending: s.totalSpending,
-    totalIncomeCredits: s.totalIncomeCredits,
-    suspicious: s.suspiciousReasons.length > 0,
-    suspiciousReasons: s.suspiciousReasons,
-    missingChecks: s.missingChecks.length > 0,
-    isDuplicate: duplicateIds.has(s.statementDetails.statementId),
-    manuallyVerified: s.manuallyVerified,
-    manuallyChecked: s.statementDetails.createdAt !== s.statementDetails.updatedAt,
-    createdAt: s.statementDetails.createdAt,
-    updatedAt: s.statementDetails.updatedAt,
-  }));
-
   return (
     <Box className={styles.pageContainer}>
       <ClientSelector />
@@ -308,7 +320,7 @@ const StatementsPage: React.FC = () => {
       <AccountSummary statements={statements} selectedClientId={selectedClientId ?? undefined} />
 
       <Paper className={styles.paperContainer}>
-        <Stack direction="row" spacing={2} className={styles.actionsContainer}>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" className={styles.actionsContainer}>
           <Button
             variant="outlined"
             color="primary"
@@ -329,6 +341,25 @@ const StatementsPage: React.FC = () => {
           >
             Delete Selected
           </Button>
+          <ToggleButtonGroup
+            value={activeFilters}
+            onChange={(_e, newFilters) => setActiveFilters(newFilters)}
+            size="small"
+            sx={{ flexWrap: 'wrap', gap: 0.5 }}
+          >
+            <ToggleButton value="suspicious" color="error" sx={{ gap: 0.5 }}>
+              <Error fontSize="small" /> Suspicious
+            </ToggleButton>
+            <ToggleButton value="multiple" color="warning" sx={{ gap: 0.5 }}>
+              <ContentCopy fontSize="small" /> Multiple
+            </ToggleButton>
+            <ToggleButton value="missingChecks" color="warning" sx={{ gap: 0.5 }}>
+              <FactCheck fontSize="small" /> Missing Checks
+            </ToggleButton>
+            <ToggleButton value="noTransactions" sx={{ gap: 0.5 }}>
+              <Warning fontSize="small" /> No Transactions
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Stack>
 
         {loading ? (
@@ -340,7 +371,7 @@ const StatementsPage: React.FC = () => {
         ) : (
           <DataGrid
             autoHeight
-            rows={rows}
+            rows={filteredRows}
             columns={columns}
             checkboxSelection
             disableRowSelectionOnClick
