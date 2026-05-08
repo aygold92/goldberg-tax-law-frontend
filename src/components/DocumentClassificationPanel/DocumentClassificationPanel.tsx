@@ -4,6 +4,10 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Snackbar,
   Card,
   CardContent,
@@ -48,6 +52,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
   onAnalysisComplete,
 }) => {
   const [showReloadDialog, setShowReloadDialog] = useState(false);
+  const [confirmAnalysisOpen, setConfirmAnalysisOpen] = useState(false);
   const [accumulatedConvertResults, setAccumulatedConvertResults] = useState<any[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorClassification, setEditorClassification] = useState<ClassificationInfo | null>(null);
@@ -134,11 +139,27 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
     setError('');
     clearAnalyzeResults();
 
+    // Snapshot pages+type of added items before save — they have classificationId: ''
+    // and won't match the real IDs returned after reload.
+    const addedSnapshot = addedClassifications.map(c => ({
+      pages: [...c.pages].sort((a, b) => a - b),
+      classificationType: c.classificationType,
+    }));
+
     const saveSuccess = await saveClassifications();
     if (saveSuccess) {
       showSnackbar('Classifications saved successfully!', 'success');
-      selectAll(addedClassifications);
-      await reloadClassifications();
+      // Reload returns fresh data with real classificationIds from the server.
+      const fresh = await reloadClassifications();
+      // Match snapshot against fresh list so selectedClassifications have real IDs.
+      const newlyAdded = fresh.filter(c =>
+        addedSnapshot.some(
+          snap =>
+            snap.classificationType === c.classificationType &&
+            JSON.stringify([...c.pages].sort((a, b) => a - b)) === JSON.stringify(snap.pages)
+        )
+      );
+      selectAll(newlyAdded);
     } else {
       showSnackbar('Failed to save classifications', 'error');
     }
@@ -152,11 +173,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
     }
   };
 
-  const handleAnalyze = async () => {
-    if (selectedClassifications.length === 0) {
-      showSnackbar('Please select at least one classification to analyze', 'error');
-      return;
-    }
+  const submitAnalyze = async () => {
     clearAnalyzeResults();
     const processingOptions = (forceReanalysis || forceRecreate || replaceOnRecreate)
       ? { forceReanalysis, forceRecreate, replaceOnRecreate }
@@ -167,6 +184,18 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
       if (onAnalysisComplete) onAnalysisComplete(analyzePageResult);
     } else {
       showSnackbar('Failed to analyze pages', 'error');
+    }
+  };
+
+  const handleAnalyze = () => {
+    if (selectedClassifications.length === 0) {
+      showSnackbar('Please select at least one classification to analyze', 'error');
+      return;
+    }
+    if (forceReanalysis) {
+      setConfirmAnalysisOpen(true);
+    } else {
+      submitAnalyze();
     }
   };
 
@@ -348,7 +377,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
               Classifications ({classifications.length}):
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 'calc(100vh - 350px)', overflowY: 'auto' }}>
               {classifications.map((c, i) => (
                 <UnifiedClassificationBadge
                   key={`active-${c.classificationId || i}`}
@@ -417,6 +446,25 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           loading={convertLoading}
           error={convertError}
         />
+
+        <Dialog open={confirmAnalysisOpen} onClose={() => setConfirmAnalysisOpen(false)}>
+          <DialogTitle>Force Reanalysis</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Force reanalysis will re-run AI analysis on the selected classifications even if they have already been analyzed. Existing analysis data will be overwritten. Are you sure you want to continue?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmAnalysisOpen(false)} variant="outlined">Cancel</Button>
+            <Button
+              onClick={() => { setConfirmAnalysisOpen(false); submitAnalyze(); }}
+              color="secondary"
+              variant="contained"
+            >
+              Yes, force reanalysis
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <ReloadConfirmationDialog
           open={showReloadDialog}

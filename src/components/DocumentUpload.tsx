@@ -68,6 +68,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
   const [forceReanalysis, setForceReanalysis] = useState(false);
   const [forceRecreate, setForceRecreate] = useState(false);
   const [replaceOnRecreate, setReplaceOnRecreate] = useState(false);
+  const [confirmAnalysisOpen, setConfirmAnalysisOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateFile, setDuplicateFile] = useState<File | null>(null);
   const [pendingFilesQueue, setPendingFilesQueue] = useState<File[]>([]);
@@ -153,21 +154,29 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
     }
   };
 
-  const handleStartAnalysis = async () => {
+  const submitAnalysis = async () => {
     const selectedFiles = files.filter(file => file.selected && (file.status === 'uploaded' || file.status === 'azure'));
     if (selectedFiles.length === 0) return;
 
     try {
-      const files = selectedFiles
+      const filesToAnalyze = selectedFiles
         .filter((f): f is typeof f & { fileId: string } => !!f.fileId)
         .map(f => ({ fileId: f.fileId, fileName: f.name }));
       const processingOptions = (forceReanalysis || forceRecreate || replaceOnRecreate)
         ? { forceReanalysis, forceRecreate, replaceOnRecreate }
         : undefined;
-      const result = await dispatch(startAnalysis({ clientId, files, processingOptions })).unwrap();
+      const result = await dispatch(startAnalysis({ clientId, files: filesToAnalyze, processingOptions })).unwrap();
       onAnalysisStarted(result.statusQueryUrl);
     } catch (error: any) {
       console.error('Analysis error:', error);
+    }
+  };
+
+  const handleStartAnalysis = () => {
+    if (forceReanalysis) {
+      setConfirmAnalysisOpen(true);
+    } else {
+      submitAnalysis();
     }
   };
 
@@ -358,6 +367,25 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
             Only PDF files are supported
           </Typography>
         </Paper>
+
+        <Dialog open={confirmAnalysisOpen} onClose={() => setConfirmAnalysisOpen(false)}>
+          <DialogTitle>Force Reanalysis</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Force reanalysis will re-run AI analysis on the selected documents even if they have already been analyzed. Existing analysis data will be overwritten. Are you sure you want to continue?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmAnalysisOpen(false)} variant="outlined">Cancel</Button>
+            <Button
+              onClick={() => { setConfirmAnalysisOpen(false); submitAnalysis(); }}
+              color="secondary"
+              variant="contained"
+            >
+              Yes, force reanalysis
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Dialog open={duplicateDialogOpen} onClose={() => handleDuplicateAction('cancel')}>
           <DialogTitle>Duplicate File Detected</DialogTitle>

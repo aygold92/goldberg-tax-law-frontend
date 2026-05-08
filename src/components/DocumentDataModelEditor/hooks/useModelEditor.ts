@@ -16,41 +16,85 @@ export function validateModel(json: string, classification: string): string | nu
     return `Invalid JSON: ${e.message}`;
   }
 
-  // pageMetadata must be present and well-formed
-  const pm = parsed?.pageMetadata;
-  if (!pm || typeof pm !== 'object') {
-    return 'Missing required field: pageMetadata';
+  // Every model type must have a top-level classification object (Classification from api.ts)
+  const cls = parsed?.classification;
+  if (!cls || typeof cls !== 'object') {
+    return 'Missing required field: classification (must be a Classification object)';
   }
-  if (typeof pm.filename !== 'string' || !pm.filename) {
-    return 'pageMetadata.filename must be a non-empty string';
+  if (!cls.info || typeof cls.info !== 'object') {
+    return 'classification.info is missing or invalid';
   }
-  if (!Array.isArray(pm.pages) || pm.pages.some((p: any) => typeof p !== 'number')) {
-    return 'pageMetadata.pages must be an array of numbers';
-  }
-  if (typeof pm.classification !== 'string' || !pm.classification) {
-    return 'pageMetadata.classification must be a non-empty string';
+  if (typeof cls.info.classificationType !== 'string' || !cls.info.classificationType) {
+    return 'classification.info.classificationType must be a non-empty string';
   }
 
   if (classification.startsWith('Checks')) {
-    const allowed = new Set(['accountNumber', 'checkNumber', 'to', 'description', 'date', 'amount', 'batesStamp', 'pageMetadata', 'checkEntries']);
+    // All CheckDataModel fields are optional — only reject unknown keys
+    const allowed = new Set([
+      'classification',
+      'accountNumber', 'checkNumber', 'to', 'description',
+      'date', 'amount', 'batesStamp', 'checkEntries',
+    ]);
     const unknown = Object.keys(parsed).filter(k => !allowed.has(k));
     if (unknown.length > 0) {
       return `CheckDataModel contains unknown fields: ${unknown.join(', ')}`;
     }
   } else if (classification.startsWith('Extra Pages')) {
-    const extra = Object.keys(parsed).filter(k => k !== 'pageMetadata');
+    const extra = Object.keys(parsed).filter(k => k !== 'classification');
     if (extra.length > 0) {
-      return `Extra Pages model must only contain pageMetadata, but found: ${extra.join(', ')}`;
+      return `Extra Pages model must only contain classification, but found: ${extra.join(', ')}`;
+    }
+  } else {
+    // Statement data model — validate against known keys
+    const allowed = new Set([
+      'classification',
+      'documentType', 'date', 'accountNumber',
+      'beginningBalance', 'endingBalance', 'feesCharged', 'interestCharged',
+      'summaryOfAccountsTable',
+      'transactionTableDepositWithdrawal', 'transactionTableAmount',
+      'transactionTableCreditsCharges', 'transactionTableDebits',
+      'transactionTableCredits', 'transactionTableChecks',
+      'batesStampsTable',
+    ]);
+    const unknown = Object.keys(parsed).filter(k => !allowed.has(k));
+    if (unknown.length > 0) {
+      return `StatementDataModel contains unknown fields: ${unknown.join(', ')}`;
     }
   }
 
   return null;
 }
 
+// Returns soft warnings for statement data models when certain expected fields are absent.
+// Only runs when the JSON is already valid (no hard errors).
+export function warnModel(json: string, classification: string): string[] {
+  if (classification.startsWith('Checks') || classification.startsWith('Extra Pages')) return [];
+  let parsed: any;
+  try { parsed = JSON.parse(json); } catch { return []; }
+
+  const warnings: string[] = [];
+
+  if (!parsed.date) {
+    warnings.push('Missing: date');
+  }
+
+  // Need either summaryOfAccountsTable OR all three of accountNumber/beginningBalance/endingBalance
+  if (!parsed.summaryOfAccountsTable) {
+    const missing = ['accountNumber', 'beginningBalance', 'endingBalance']
+      .filter(k => parsed[k] == null);
+    if (missing.length > 0) {
+      warnings.push(`Missing: ${missing.join(', ')} (or summaryOfAccountsTable)`);
+    }
+  }
+
+  return warnings;
+}
+
 export const useModelEditor = ({ classificationId, classification, initialModel }: UseModelEditorProps) => {
   const [editedJson, setEditedJson] = useState<string>(() => JSON.stringify(initialModel, null, 2));
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState<boolean>(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [showDiff, setShowDiff] = useState<boolean>(false);
   const [submitLoading, setSubmitLoading] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -60,6 +104,7 @@ export const useModelEditor = ({ classificationId, classification, initialModel 
     const err = validateModel(editedJson, classification);
     setValidationError(err);
     setIsValid(err === null);
+    setWarnings(err === null ? warnModel(editedJson, classification) : []);
   }, [editedJson, classification]);
 
   const handleShowDiff = useCallback(() => {
@@ -96,6 +141,7 @@ export const useModelEditor = ({ classificationId, classification, initialModel 
     setEditedJson,
     validationError,
     isValid,
+    warnings,
     showDiff,
     submitLoading,
     submitError,

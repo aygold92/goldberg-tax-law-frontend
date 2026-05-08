@@ -34,8 +34,8 @@ const ViewFileDataPage: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', gap: 3, alignItems: 'flex-start', p: 3 }}>
-      {/* Left column — PDF viewer */}
-      <Box sx={{ flex: 1.2, minWidth: 0 }}>
+      {/* Left column — PDF viewer, sticky so it stays visible while scrolling right column */}
+      <Box sx={{ flex: 1.2, minWidth: 0, position: 'sticky', top: 0, maxHeight: '100vh', overflow: 'auto' }}>
         <PdfDisplay fileId={fileId} />
       </Box>
 

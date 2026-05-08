@@ -10,7 +10,7 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material';
-import { CheckCircle, Cancel } from '@mui/icons-material';
+import { CheckCircle, Cancel, Warning } from '@mui/icons-material';
 import Editor from '@monaco-editor/react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
 import { useModelEditor } from './hooks/useModelEditor';
@@ -35,6 +35,7 @@ const DocumentDataModelEditor: React.FC<DocumentDataModelEditorProps> = ({
     setEditedJson,
     validationError,
     isValid,
+    warnings,
     showDiff,
     submitLoading,
     submitError,
@@ -78,17 +79,29 @@ const DocumentDataModelEditor: React.FC<DocumentDataModelEditorProps> = ({
                 fontSize: 13,
               }}
             />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
-              {isValid ? (
-                <>
-                  <CheckCircle sx={{ color: 'success.main', fontSize: 18 }} />
-                  <Typography variant="body2" sx={{ color: 'success.main' }}>Valid</Typography>
-                </>
-              ) : (
-                <>
-                  <Cancel sx={{ color: 'error.main', fontSize: 18 }} />
-                  <Typography variant="body2" sx={{ color: 'error.main' }}>{validationError}</Typography>
-                </>
+            <Box sx={{ mt: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                {isValid ? (
+                  <>
+                    <CheckCircle sx={{ color: 'success.main', fontSize: 18 }} />
+                    <Typography variant="body2" sx={{ color: 'success.main' }}>Valid</Typography>
+                  </>
+                ) : (
+                  <>
+                    <Cancel sx={{ color: 'error.main', fontSize: 18 }} />
+                    <Typography variant="body2" sx={{ color: 'error.main' }}>{validationError}</Typography>
+                  </>
+                )}
+              </Box>
+              {isValid && warnings.length > 0 && (
+                <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                  {warnings.map((w, i) => (
+                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Warning sx={{ color: 'warning.main', fontSize: 18 }} />
+                      <Typography variant="body2" sx={{ color: 'warning.main' }}>{w}</Typography>
+                    </Box>
+                  ))}
+                </Box>
               )}
             </Box>
           </Box>

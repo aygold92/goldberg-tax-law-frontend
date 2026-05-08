@@ -29,15 +29,17 @@ export const useDocumentClassifications = (fileId: string) => {
   const { added: addedClassifications, deleted: deletedClassifications } = calculateAddedDeleted();
   const hasUnsavedChanges = addedClassifications.length > 0 || deletedClassifications.length > 0;
 
-  const loadClassifications = useCallback(async () => {
+  const loadClassifications = useCallback(async (): Promise<ClassificationInfo[]> => {
     try {
       setLoading(true);
       setError('');
       const data = await apiService.getDocumentClassification(fileId);
       setClassifications(data);
       setOriginalClassifications(data);
+      return data;
     } catch (err: any) {
       setError(err.userMessage || 'Failed to load classifications');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -104,8 +106,8 @@ export const useDocumentClassifications = (fileId: string) => {
     });
   }, []);
 
-  const reloadClassifications = useCallback(async () => {
-    await loadClassifications();
+  const reloadClassifications = useCallback(async (): Promise<ClassificationInfo[]> => {
+    return loadClassifications();
   }, [loadClassifications]);
 
   useEffect(() => {
