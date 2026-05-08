@@ -1,20 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, IconButton, Snackbar, Alert } from '@mui/material';
-import { Error, Warning, Delete } from '@mui/icons-material';
+import { Error, Warning, Delete, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { StatementSummary } from '../../../types/api';
-import { useAppDispatch } from '../../../redux/hooks';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { deleteStatements } from '../../../redux/features/statementsList/statementsListSlice';
 import { useSnackbar } from '../../DocumentClassificationEditor/hooks/useSnackbar';
 import styles from '../AccountSummary.module.css';
 import { formatDateForDisplay } from '../../../utils/dateUtils';
 
 interface StatementTooltipProps {
-  statement: StatementSummary;
+  statements: StatementSummary[];
 }
 
-const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
+const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const dispatch = useAppDispatch();
+  const selectedClientId = useAppSelector(state => state.client.selectedClient?.clientId);
   const { showSnackbar, snackbarOpen, snackbarMessage, snackbarSeverity, closeSnackbar } = useSnackbar();
+
+  const statement = statements[currentIndex];
+  const isMultiple = statements.length > 1;
 
   const spending = Math.abs(statement.totalSpending || 0);
   const income = statement.totalIncomeCredits || 0;
@@ -22,6 +27,13 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
   const suspicious = (statement.suspiciousReasons?.length ?? 0) > 0;
   const filename = statement.classification.inputFile.info.fileName;
   const date = formatDateForDisplay(statement.statementDetails.date) || 'null';
+  const pages = statement.classification.info.pages;
+  const pageRange = pages.length > 0
+    ? (pages.length === 1 ? `[${pages[0]}]` : `[${pages[0]}-${pages[pages.length - 1]}]`)
+    : '';
+  const statementId = statement.statementDetails.statementId;
+
+  const editHref = `/edit?statementId=${statement.statementDetails.statementId}${selectedClientId ? `&clientId=${selectedClientId}` : ''}`;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -37,14 +49,56 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
 
   return (
     <Box className={styles.tooltipContent}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle2" className={styles.tooltipTitle}>
-          {filename}
-        </Typography>
+      {isMultiple && (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => i - 1); }}
+            disabled={currentIndex === 0}
+            sx={{ p: 0.25 }}
+          >
+            <ChevronLeft fontSize="small" />
+          </IconButton>
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+            {statements.map((_, i) => (
+              <Box
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setCurrentIndex(i); }}
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  backgroundColor: i === currentIndex ? 'primary.main' : 'grey.400',
+                  transition: 'background-color 0.15s',
+                }}
+              />
+            ))}
+          </Box>
+          <IconButton
+            size="small"
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => i + 1); }}
+            disabled={currentIndex === statements.length - 1}
+            sx={{ p: 0.25 }}
+          >
+            <ChevronRight fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Box>
+          <Typography variant="subtitle2" className={styles.tooltipTitle}>
+            {filename}{pageRange && ` ${pageRange}`}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.2 }}>
+            {statementId}
+          </Typography>
+        </Box>
         <IconButton
           size="small"
           onClick={handleDelete}
-          sx={{ color: '#d32f2f', '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.1)' } }}
+          sx={{ color: '#d32f2f', '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.1)' }, flexShrink: 0 }}
         >
           <Delete fontSize="small" />
         </IconButton>
@@ -91,7 +145,18 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statement }) => {
           </Box>
         )}
 
-        <Typography variant="caption" className={styles.tooltipClickHint}>Click to edit statement</Typography>
+        <Typography
+          variant="caption"
+          className={styles.tooltipClickHint}
+          component="a"
+          href={editHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          sx={{ cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' }}
+        >
+          Click to edit statement
+        </Typography>
       </Box>
 
       <Snackbar

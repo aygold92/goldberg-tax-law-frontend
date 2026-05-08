@@ -32,7 +32,7 @@ const InvalidDateStatements: React.FC<InvalidDateStatementsProps> = ({
           return (
             <Tooltip
               key={index}
-              title={<StatementTooltip statement={statement} />}
+              title={<StatementTooltip statements={[statement]} />}
               placement="top"
               arrow
               enterDelay={300}

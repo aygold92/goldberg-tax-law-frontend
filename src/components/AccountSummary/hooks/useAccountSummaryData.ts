@@ -43,16 +43,20 @@ function createYearlyTimeline(statements: StatementSummary[]): YearlyTimeline {
 
     for (let month = 0; month < 12; month++) {
       const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'short' });
-      const statementForMonth = yearStatements.find(s => new Date(getDate(s)).getMonth() === month);
+      const statementsForMonth = yearStatements.filter(s => new Date(getDate(s)).getMonth() === month);
+      const statementForMonth = statementsForMonth[0];
+      const hasMultiple = statementsForMonth.length > 1;
 
       months.push({
         month,
         monthName,
-        hasStatement: !!statementForMonth,
+        hasStatement: statementsForMonth.length > 0,
         statement: statementForMonth,
-        isSuspicious: statementForMonth ? isSuspicious(statementForMonth) : false,
-        hasMissingChecks: (statementForMonth?.missingChecks?.length ?? 0) > 0,
-        hasNoTransactions: statementForMonth ? statementForMonth.numTransactions === 0 : false,
+        statements: statementsForMonth,
+        hasMultipleStatements: hasMultiple,
+        isSuspicious: statementsForMonth.some(isSuspicious),
+        hasMissingChecks: statementsForMonth.some(s => (s.missingChecks?.length ?? 0) > 0),
+        hasNoTransactions: statementsForMonth.length > 0 && statementsForMonth.every(s => s.numTransactions === 0),
         isMissing: false,
         statementDate: statementForMonth ? formatStatementDate(getDate(statementForMonth)) : undefined,
       });
@@ -116,6 +120,7 @@ export function useAccountSummaryData(statements: StatementSummary[]) {
             suspiciousCount: 0,
             missingChecksCount: 0,
             noTransactionsCount: 0,
+            multipleStatementsCount: 0,
             dateRange: '',
             missingMonthsCount: 0,
             yearlyTimeline: {},
@@ -133,6 +138,7 @@ export function useAccountSummaryData(statements: StatementSummary[]) {
             suspiciousCount: 0,
             missingChecksCount: 0,
             noTransactionsCount: 0,
+            multipleStatementsCount: 0,
             yearlyTimeline: {},
             invalidDateStatements: [],
           });
@@ -166,6 +172,9 @@ export function useAccountSummaryData(statements: StatementSummary[]) {
 
       group.yearlyTimeline = createYearlyTimeline(validDateStatements);
       group.missingMonthsCount = calculateMissingMonthsCount(group.yearlyTimeline);
+      group.multipleStatementsCount = Object.values(group.yearlyTimeline)
+        .flatMap(y => y.months)
+        .filter(m => m.hasMultipleStatements).length;
     });
 
     nullGroups.forEach(nullGroup => {
@@ -185,6 +194,9 @@ export function useAccountSummaryData(statements: StatementSummary[]) {
       nullGroup.missingChecksCount = nullGroup.statements.filter(s => s.missingChecks).length;
       nullGroup.noTransactionsCount = nullGroup.statements.filter(s => s.numTransactions === 0).length;
       nullGroup.yearlyTimeline = createYearlyTimeline(validDateStatements);
+      nullGroup.multipleStatementsCount = Object.values(nullGroup.yearlyTimeline)
+        .flatMap(y => y.months)
+        .filter(m => m.hasMultipleStatements).length;
     });
 
     const sortedAccountGroups = Array.from(groups.values()).sort((a, b) => {

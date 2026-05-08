@@ -77,6 +77,14 @@ const NullAccountGroupCard: React.FC<NullAccountGroupCardProps> = ({
                   icon={<Warning />}
                 />
               )}
+              {group.multipleStatementsCount > 0 && (
+                <Chip
+                  label={`${group.multipleStatementsCount} month${group.multipleStatementsCount > 1 ? 's' : ''} with multiple statements`}
+                  size="small"
+                  color="warning"
+                  icon={<Warning />}
+                />
+              )}
             </Stack>
           </Box>
         </AccordionSummary>

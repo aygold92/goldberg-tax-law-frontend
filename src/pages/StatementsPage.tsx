@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackbar, Popover, Tooltip } from '@mui/material';
 import { TableChart, Delete, Edit, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh, FactCheck } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
@@ -72,6 +72,23 @@ const StatementsPage: React.FC = () => {
     };
   }, []);
 
+  const duplicateIds = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    statements.forEach(s => {
+      const acct = s.statementDetails.accountNumber ?? '';
+      const date = s.statementDetails.date ?? '';
+      if (!acct && !date) return;
+      const key = `${acct}::${date}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(s.statementDetails.statementId);
+    });
+    const ids = new Set<string>();
+    groups.forEach(idList => {
+      if (idList.length > 1) idList.forEach(id => ids.add(id));
+    });
+    return ids;
+  }, [statements]);
+
   if (!selectedClient) {
     return (
       <Box>
@@ -129,10 +146,11 @@ const StatementsPage: React.FC = () => {
       resizable: false,
       disableColumnMenu: true,
       renderCell: (params) => {
-        const { suspicious, missingChecks, numTransactions } = params.row;
+        const { suspicious, missingChecks, numTransactions, isDuplicate } = params.row;
         const warnings: string[] = [];
         if (missingChecks) warnings.push('Missing checks detected');
         if (numTransactions === 0) warnings.push('No transactions');
+        if (isDuplicate) warnings.push('Duplicate statement (same account and date)');
         return (
           <Box className={styles.statusCell}>
             {suspicious ? (
@@ -267,6 +285,7 @@ const StatementsPage: React.FC = () => {
     suspicious: s.suspiciousReasons.length > 0,
     suspiciousReasons: s.suspiciousReasons,
     missingChecks: s.missingChecks.length > 0,
+    isDuplicate: duplicateIds.has(s.statementDetails.statementId),
     manuallyVerified: s.manuallyVerified,
     manuallyChecked: s.statementDetails.createdAt !== s.statementDetails.updatedAt,
     createdAt: s.statementDetails.createdAt,

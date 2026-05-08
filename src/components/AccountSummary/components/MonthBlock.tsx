@@ -1,8 +1,3 @@
-/**
- * Component for rendering individual month blocks in the yearly timeline.
- * Shows month name, statement date, and status indicators with tooltip support.
- */
-
 import React from 'react';
 import { Box, Typography, Tooltip } from '@mui/material';
 import { Error, Warning, CheckCircle } from '@mui/icons-material';
@@ -17,26 +12,13 @@ interface MonthBlockProps {
 }
 
 const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) => {
-  // Generate tooltip content
   const getTooltipContent = () => {
-    if (monthBlock.hasStatement && monthBlock.statement) {
-      return <StatementTooltip statement={monthBlock.statement} />;
+    if (monthBlock.hasStatement && monthBlock.statements.length > 0) {
+      return <StatementTooltip statements={monthBlock.statements} />;
+    } else if (monthBlock.isMissing) {
+      return `${monthBlock.monthName}: Missing statement`;
     } else {
-      // Handle month blocks without statements
-      if (monthBlock.hasStatement) {
-        const issues = [];
-        if (monthBlock.isSuspicious) issues.push('Suspicious');
-        if (monthBlock.hasMissingChecks) issues.push('Missing checks');
-        
-        if (issues.length > 0) {
-          return `${monthBlock.monthName}: ${issues.join(', ')} - Click to edit`;
-        }
-        return `${monthBlock.monthName}: Statement available - Click to edit`;
-      } else if (monthBlock.isMissing) {
-        return `${monthBlock.monthName}: Missing statement`;
-      } else {
-        return `${monthBlock.monthName}: No statement expected`;
-      }
+      return `${monthBlock.monthName}: No statement expected`;
     }
   };
 
@@ -65,13 +47,17 @@ const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) 
     >
       <Box
         className={`${styles.monthBlock} ${
-          monthBlock.hasStatement 
-            ? styles.hasStatement 
-            : monthBlock.isMissing 
-              ? styles.isMissing 
+          monthBlock.hasStatement
+            ? styles.hasStatement
+            : monthBlock.isMissing
+              ? styles.isMissing
               : styles.isNeutral
-        } ${monthBlock.hasStatement ? styles.clickable : ''}`}
-        onClick={monthBlock.hasStatement ? () => onEditStatement(monthBlock.statement!) : undefined}
+        } ${monthBlock.hasStatement && !monthBlock.hasMultipleStatements ? styles.clickable : ''}`}
+        onClick={
+          monthBlock.hasStatement && !monthBlock.hasMultipleStatements
+            ? () => onEditStatement(monthBlock.statement!)
+            : undefined
+        }
       >
         <Typography variant="caption" className={styles.monthName}>
           {monthBlock.monthName}
@@ -79,7 +65,9 @@ const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) 
         {monthBlock.hasStatement && (
           <>
             <Typography variant="caption" className={styles.statementDate}>
-              {monthBlock.statementDate}
+              {monthBlock.hasMultipleStatements
+                ? `${monthBlock.statements.length} statements`
+                : monthBlock.statementDate}
             </Typography>
             <Box className={styles.statusIndicators}>
               {monthBlock.isSuspicious && (
@@ -88,7 +76,10 @@ const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) 
               {monthBlock.hasMissingChecks && (
                 <Warning color="warning" fontSize="small" />
               )}
-              {!monthBlock.isSuspicious && !monthBlock.hasMissingChecks && (
+              {monthBlock.hasMultipleStatements && (
+                <Warning color="warning" fontSize="small" />
+              )}
+              {!monthBlock.isSuspicious && !monthBlock.hasMissingChecks && !monthBlock.hasMultipleStatements && (
                 <CheckCircle color="success" fontSize="small" />
               )}
             </Box>
