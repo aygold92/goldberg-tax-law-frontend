@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, IconButton, Snackbar, Alert } from '@mui/material';
 import { Error, Warning, Delete, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { StatementSummary } from '../../../types/api';
@@ -18,8 +18,14 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
   const selectedClientId = useAppSelector(state => state.client.selectedClient?.clientId);
   const { showSnackbar, snackbarOpen, snackbarMessage, snackbarSeverity, closeSnackbar } = useSnackbar();
 
+  useEffect(() => {
+    setCurrentIndex(i => Math.min(i, Math.max(0, statements.length - 1)));
+  }, [statements.length]);
+
   const statement = statements[currentIndex];
   const isMultiple = statements.length > 1;
+
+  if (!statement) return null;
 
   const spending = Math.abs(statement.totalSpending || 0);
   const income = statement.totalIncomeCredits || 0;
