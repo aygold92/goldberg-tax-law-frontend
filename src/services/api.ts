@@ -224,8 +224,9 @@ class ApiService {
     await this.api.post('/api/DeleteStatement', { statementId } satisfies DeleteStatementRequest);
   }
 
-  async updateStatementModels(request: UpdateStatementModelsRequest): Promise<void> {
-    await this.api.post('/api/UpdateStatementModels', request);
+  async updateStatementModels(request: UpdateStatementModelsRequest): Promise<StatementSummary> {
+    const response = await this.api.post<StatementSummary>('/api/UpdateStatementModels', request);
+    return response.data;
   }
 
   async loadTransactionsFromModel(request: LoadTransactionsFromModelRequest): Promise<any> {

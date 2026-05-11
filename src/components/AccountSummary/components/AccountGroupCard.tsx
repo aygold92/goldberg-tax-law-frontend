@@ -25,7 +25,7 @@ interface AccountGroupCardProps {
   group: AccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 /**

@@ -25,7 +25,7 @@ interface NullAccountGroupCardProps {
   group: NullAccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 const NullAccountGroupCard: React.FC<NullAccountGroupCardProps> = ({ 

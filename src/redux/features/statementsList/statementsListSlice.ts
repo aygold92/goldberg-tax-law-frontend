@@ -42,7 +42,16 @@ export const deleteStatements = createAsyncThunk<string[], { statementIds: strin
 const statementsListSlice = createSlice({
   name: 'statementsList',
   initialState,
-  reducers: {},
+  reducers: {
+    updateStatementInList(state, action: PayloadAction<StatementSummary>) {
+      const idx = state.statements.findIndex(
+        s => s.statementDetails.statementId === action.payload.statementDetails.statementId
+      );
+      if (idx !== -1) {
+        state.statements[idx] = action.payload;
+      }
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchStatements.pending, (state) => {
@@ -74,5 +83,7 @@ const statementsListSlice = createSlice({
       });
   },
 });
+
+export const { updateStatementInList } = statementsListSlice.actions;
 
 export default statementsListSlice.reducer;

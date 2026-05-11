@@ -7,7 +7,7 @@ import styles from '../AccountSummary.module.css';
 
 interface InvalidDateStatementsProps {
   invalidDateStatements: StatementSummary[];
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 const InvalidDateStatements: React.FC<InvalidDateStatementsProps> = ({
@@ -32,7 +32,7 @@ const InvalidDateStatements: React.FC<InvalidDateStatementsProps> = ({
           return (
             <Tooltip
               key={index}
-              title={<StatementTooltip statements={[statement]} />}
+              title={<StatementTooltip statements={[statement]} onEditStatement={onEditStatement} />}
               placement="top"
               arrow
               enterDelay={300}
@@ -51,7 +51,7 @@ const InvalidDateStatements: React.FC<InvalidDateStatementsProps> = ({
                 },
               }}
             >
-              <Box className={styles.invalidDateItem} onClick={() => onEditStatement(statement)}>
+              <Box className={styles.invalidDateItem} onClick={(e) => onEditStatement(statement, e.metaKey || e.ctrlKey)}>
                 <Box className={styles.invalidDateHeader}>
                   <Typography variant="body2" className={styles.filename}>
                     {statement.classification.inputFile.info.fileName}

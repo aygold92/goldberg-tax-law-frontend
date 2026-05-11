@@ -8,13 +8,13 @@ import styles from '../AccountSummary.module.css';
 
 interface MonthBlockProps {
   monthBlock: MonthBlockType;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) => {
   const getTooltipContent = () => {
     if (monthBlock.hasStatement && monthBlock.statements.length > 0) {
-      return <StatementTooltip statements={monthBlock.statements} />;
+      return <StatementTooltip statements={monthBlock.statements} onEditStatement={onEditStatement} />;
     } else if (monthBlock.isMissing) {
       return `${monthBlock.monthName}: Missing statement`;
     } else {
@@ -55,7 +55,7 @@ const MonthBlock: React.FC<MonthBlockProps> = ({ monthBlock, onEditStatement }) 
         } ${monthBlock.hasStatement && !monthBlock.hasMultipleStatements ? styles.clickable : ''}`}
         onClick={
           monthBlock.hasStatement && !monthBlock.hasMultipleStatements
-            ? () => onEditStatement(monthBlock.statement!)
+            ? (e) => onEditStatement(monthBlock.statement!, e.metaKey || e.ctrlKey)
             : undefined
         }
       >

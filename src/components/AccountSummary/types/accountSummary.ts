@@ -52,35 +52,36 @@ export interface MonthBlock {
 export interface AccountSummaryProps {
   statements: StatementSummary[];
   selectedClientId?: string;
+  onOpenStatement?: (statementId: string, openInNewTab: boolean) => void;
 }
 
 export interface AccountGroupCardProps {
   group: AccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 export interface NullAccountGroupCardProps {
   group: NullAccountGroup;
   isExpanded: boolean;
   onToggle: () => void;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 export interface YearlyTimelineProps {
   yearlyTimeline: YearlyTimeline;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 export interface InvalidDateStatementsProps {
   invalidDateStatements: StatementSummary[];
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 export interface MonthBlockProps {
   monthBlock: MonthBlock;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 export interface StatementTooltipProps {

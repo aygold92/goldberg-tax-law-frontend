@@ -13,7 +13,7 @@ import styles from '../AccountSummary.module.css';
 
 interface YearlyTimelineProps {
   yearlyTimeline: YearlyTimelineType;
-  onEditStatement: (statement: StatementSummary) => void;
+  onEditStatement: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
 const YearlyTimeline: React.FC<YearlyTimelineProps> = ({ yearlyTimeline, onEditStatement }) => {

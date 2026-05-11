@@ -9,6 +9,7 @@ import { selectSelectedClient, selectSelectedClientId, selectSelectedClientName 
 import { StatementSummary } from '../types/api';
 import ClientSelector from '../components/ClientSelector';
 import { AccountSummary } from '../components/AccountSummary';
+import { StatementEditorModal } from '../components/StatementEditorModal';
 import { usePageTitle } from '../hooks/usePageTitle';
 import styles from '../styles/components/StatementsPage.module.css';
 import { formatDateForDisplay } from '../utils/dateUtils';
@@ -51,6 +52,8 @@ const StatementsPage: React.FC = () => {
 
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorStatementId, setEditorStatementId] = useState<string | null>(null);
   const [forceReanalysis, setForceReanalysis] = useState(false);
   const [forceRecreate, setForceRecreate] = useState(true);
   const [replaceOnRecreate, setReplaceOnRecreate] = useState(true);
@@ -131,6 +134,11 @@ const StatementsPage: React.FC = () => {
     );
   }, [rows, activeFilters]);
 
+  const filteredStatements = useMemo(() => {
+    const idSet = new Set(filteredRows.map(r => r.statementId));
+    return statements.filter(s => idSet.has(s.statementDetails.statementId));
+  }, [filteredRows, statements]);
+
   if (!selectedClient) {
     return (
       <Box>
@@ -182,10 +190,15 @@ const StatementsPage: React.FC = () => {
     setSnackbarOpen(true);
   };
 
-  const handleEditStatement = (statementId: string) => {
-    const params = new URLSearchParams({ statementId });
-    if (selectedClientId) params.set('clientId', selectedClientId);
-    window.open(`/edit?${params.toString()}`, '_blank');
+  const handleOpenEditor = (statementId: string, openInNewTab = false) => {
+    if (openInNewTab) {
+      const params = new URLSearchParams({ statementId });
+      if (selectedClientId) params.set('clientId', selectedClientId);
+      window.open(`/edit?${params.toString()}`, '_blank');
+    } else {
+      setEditorStatementId(statementId);
+      setEditorOpen(true);
+    }
   };
 
   const handleFilenameClick = (event: React.MouseEvent<HTMLElement>, filename: string) => {
@@ -261,10 +274,10 @@ const StatementsPage: React.FC = () => {
       resizable: false,
       disableColumnMenu: true,
       renderCell: (params) => (
-        <Tooltip title="Edit statement">
+        <Tooltip title="Edit statement (⌘+click to open in new tab)">
           <Button
             size="small"
-            onClick={() => handleEditStatement(params.row.statementId)}
+            onClick={(e) => handleOpenEditor(params.row.statementId, e.metaKey || e.ctrlKey)}
             className={styles.actionButton}
           >
             <Edit fontSize="small" />
@@ -353,7 +366,11 @@ const StatementsPage: React.FC = () => {
         )}
       </Box>
 
-      <AccountSummary statements={statements} selectedClientId={selectedClientId ?? undefined} />
+      <AccountSummary
+        statements={statements}
+        selectedClientId={selectedClientId ?? undefined}
+        onOpenStatement={handleOpenEditor}
+      />
 
       <Paper className={styles.paperContainer}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }} className={styles.actionsContainer}>
@@ -476,6 +493,15 @@ const StatementsPage: React.FC = () => {
         autoHideDuration={4000}
         onClose={() => setSnackbarOpen(false)}
         message={snackbarMsg}
+      />
+
+      <StatementEditorModal
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        statementId={editorStatementId}
+        clientId={selectedClientId ?? ''}
+        carouselStatements={filteredStatements}
+        onNavigate={(id) => setEditorStatementId(id)}
       />
     </Box>
   );

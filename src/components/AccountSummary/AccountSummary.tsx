@@ -18,10 +18,10 @@ import AccountGroupCard from './components/AccountGroupCard';
 import NullAccountGroupCard from './components/NullAccountGroupCard';
 import styles from './AccountSummary.module.css';
 
-const AccountSummary: React.FC<AccountSummaryProps> = ({ statements, selectedClientId }) => {
+const AccountSummary: React.FC<AccountSummaryProps> = ({ statements, selectedClientId, onOpenStatement }) => {
   const { accountGroups, nullAccountGroups } = useAccountSummaryData(statements);
   const { expandedAccounts, handleAccountToggle } = useAccountExpansion();
-  const { handleEditStatement } = useStatementNavigation(selectedClientId);
+  const { handleEditStatement } = useStatementNavigation(selectedClientId, onOpenStatement);
 
 
   if (accountGroups.length === 0 && nullAccountGroups.length === 0) {

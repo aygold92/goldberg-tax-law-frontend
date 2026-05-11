@@ -11,9 +11,10 @@ import { formatDateForDisplay } from '../../../utils/dateUtils';
 
 interface StatementTooltipProps {
   statements: StatementSummary[];
+  onEditStatement?: (statement: StatementSummary, openInNewTab?: boolean) => void;
 }
 
-const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
+const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements, onEditStatement }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const dispatch = useAppDispatch();
@@ -163,18 +164,29 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
           </Box>
         )}
 
-        <Typography
-          variant="caption"
-          className={styles.tooltipClickHint}
-          component="a"
-          href={editHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-          sx={{ cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' }}
-        >
-          Click to edit statement
-        </Typography>
+        {onEditStatement ? (
+          <Typography
+            variant="caption"
+            className={styles.tooltipClickHint}
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEditStatement(statement, e.metaKey || e.ctrlKey); }}
+            sx={{ cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' }}
+          >
+            Click to edit statement
+          </Typography>
+        ) : (
+          <Typography
+            variant="caption"
+            className={styles.tooltipClickHint}
+            component="a"
+            href={editHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            sx={{ cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' }}
+          >
+            Click to edit statement
+          </Typography>
+        )}
       </Box>
 
       <DeleteStatementConfirmDialog

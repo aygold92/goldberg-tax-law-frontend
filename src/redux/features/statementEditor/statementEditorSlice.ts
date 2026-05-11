@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Statement, StatementDetails, UpdateStatementModelsRequest } from '../../../types/api';
+import { Statement, StatementDetails, StatementSummary, UpdateStatementModelsRequest } from '../../../types/api';
 import { BankStatement, TransactionHistoryRecord, mapTransaction, unmapTransaction } from '../../../types/bankStatement';
 import apiService from '../../../services/api';
+import { updateStatementInList } from '../statementsList/statementsListSlice';
 
 const createHash = (obj: any): string => {
   if (obj === null || obj === undefined) return 'null';
@@ -102,9 +103,9 @@ export const loadBankStatement = createAsyncThunk<BankStatement, { statementId: 
   }
 );
 
-export const saveStatementChanges = createAsyncThunk<void, void>(
+export const saveStatementChanges = createAsyncThunk<StatementSummary, void>(
   'statementEditor/saveStatementChanges',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState, dispatch, rejectWithValue }) => {
     try {
       const state = getState() as { statementEditor: StatementEditorState };
       const statement = state.statementEditor.currentStatement;
@@ -149,7 +150,9 @@ export const saveStatementChanges = createAsyncThunk<void, void>(
         deletes,
       };
 
-      await apiService.updateStatementModels(request);
+      const updatedSummary = await apiService.updateStatementModels(request);
+      dispatch(updateStatementInList(updatedSummary));
+      return updatedSummary;
     } catch (error: any) {
       return rejectWithValue(error.userMessage || error.message || 'Failed to save statement changes');
     }
@@ -371,9 +374,13 @@ const statementEditorSlice = createSlice({
         state.saveLoading = true;
         state.saveError = null;
       })
-      .addCase(saveStatementChanges.fulfilled, (state) => {
+      .addCase(saveStatementChanges.fulfilled, (state, action: PayloadAction<StatementSummary>) => {
         state.saveLoading = false;
         state.hasUnsavedChanges = false;
+        if (state.currentStatement) {
+          state.currentStatement.updatedAt = action.payload.statementDetails.updatedAt;
+          state.currentStatement.suspiciousReasons = action.payload.suspiciousReasons;
+        }
       })
       .addCase(saveStatementChanges.rejected, (state, action) => {
         state.saveLoading = false;
