@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Box, Typography, Paper, Button, Alert, CircularProgress, Stack, Snackbar, Popover, Tooltip, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import { TableChart, Delete, Edit, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh, FactCheck } from '@mui/icons-material';
+import { TableChart, Delete, Edit, ContentCopy, CheckCircle, Warning, Error, AccountBalance, CreditCard, Refresh, FactCheck, Analytics } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridToolbar } from '@mui/x-data-grid';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { selectStatements, selectStatementsLoading, selectStatementsError } from '../redux/features/statementsList/statementsListSelectors';
@@ -12,6 +12,9 @@ import { AccountSummary } from '../components/AccountSummary';
 import { usePageTitle } from '../hooks/usePageTitle';
 import styles from '../styles/components/StatementsPage.module.css';
 import { formatDateForDisplay } from '../utils/dateUtils';
+import { useAnalyzePages } from '../hooks/useAnalyzePages';
+import ProcessingOptionsCheckboxes from '../components/ProcessingOptionsCheckboxes';
+import DeleteStatementConfirmDialog from '../components/DeleteStatementConfirmDialog';
 
 const formatPages = (pages: number[]): string => {
   if (!pages || pages.length === 0) return '';
@@ -47,6 +50,11 @@ const StatementsPage: React.FC = () => {
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [forceReanalysis, setForceReanalysis] = useState(false);
+  const [forceRecreate, setForceRecreate] = useState(true);
+  const [replaceOnRecreate, setReplaceOnRecreate] = useState(true);
+  const { analyzePages, analyzing } = useAnalyzePages();
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     status: 90,
@@ -110,6 +118,7 @@ const StatementsPage: React.FC = () => {
     manuallyChecked: s.statementDetails.createdAt !== s.statementDetails.updatedAt,
     createdAt: s.statementDetails.createdAt,
     updatedAt: s.statementDetails.updatedAt,
+    classificationId: s.classification.info.classificationId,
   })), [statements, duplicateIds]);
 
   const filteredRows = useMemo(() => {
@@ -133,17 +142,44 @@ const StatementsPage: React.FC = () => {
 
   const selectedIds = selectionModel as string[];
 
+  const selectedManuallyReviewedCount = selectedIds.filter(
+    id => rows.find(r => r.id === id)?.manuallyChecked
+  ).length;
+
   const handleDelete = () => {
-    if (selectedIds.length > 0) {
-      dispatch(deleteStatements({ statementIds: selectedIds }));
-      setSelectionModel([]);
+    if (selectedIds.length === 0) return;
+    if (selectedManuallyReviewedCount > 0) {
+      setDeleteConfirmOpen(true);
+    } else {
+      confirmDelete();
     }
+  };
+
+  const confirmDelete = () => {
+    dispatch(deleteStatements({ statementIds: selectedIds }));
+    setSelectionModel([]);
+    setDeleteConfirmOpen(false);
   };
 
   const handleRefresh = () => {
     if (selectedClientId) {
       dispatch(fetchStatements({ clientId: selectedClientId }));
     }
+  };
+
+  const handleAnalyzePages = async () => {
+    const classificationIds = selectedIds
+      .map(id => rows.find(r => r.id === id)?.classificationId)
+      .filter((id): id is string => !!id);
+    if (classificationIds.length === 0) return;
+
+    const processingOptions = (forceReanalysis || forceRecreate || replaceOnRecreate)
+      ? { forceReanalysis, forceRecreate, replaceOnRecreate }
+      : undefined;
+
+    const success = await analyzePages(classificationIds, processingOptions);
+    setSnackbarMsg(success ? 'Analysis started successfully!' : 'Analysis failed. Please try again.');
+    setSnackbarOpen(true);
   };
 
   const handleEditStatement = (statementId: string) => {
@@ -320,47 +356,72 @@ const StatementsPage: React.FC = () => {
       <AccountSummary statements={statements} selectedClientId={selectedClientId ?? undefined} />
 
       <Paper className={styles.paperContainer}>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" className={styles.actionsContainer}>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<Refresh />}
-            disabled={loading}
-            onClick={handleRefresh}
-            className={styles.actionButton}
-          >
-            Refresh
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            startIcon={<Delete />}
-            disabled={selectedIds.length === 0 || loading}
-            onClick={handleDelete}
-            className={styles.actionButton}
-          >
-            Delete Selected
-          </Button>
-          <ToggleButtonGroup
-            value={activeFilters}
-            onChange={(_e, newFilters) => setActiveFilters(newFilters)}
-            size="small"
-            sx={{ flexWrap: 'wrap', gap: 0.5 }}
-          >
-            <ToggleButton value="suspicious" color="error" sx={{ gap: 0.5 }}>
-              <Error fontSize="small" /> Suspicious
-            </ToggleButton>
-            <ToggleButton value="multiple" color="warning" sx={{ gap: 0.5 }}>
-              <ContentCopy fontSize="small" /> Multiple
-            </ToggleButton>
-            <ToggleButton value="missingChecks" color="warning" sx={{ gap: 0.5 }}>
-              <FactCheck fontSize="small" /> Missing Checks
-            </ToggleButton>
-            <ToggleButton value="noTransactions" sx={{ gap: 0.5 }}>
-              <Warning fontSize="small" /> No Transactions
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }} className={styles.actionsContainer}>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<Refresh />}
+              disabled={loading}
+              onClick={handleRefresh}
+              className={styles.actionButton}
+            >
+              Refresh
+            </Button>
+            <ToggleButtonGroup
+              value={activeFilters}
+              onChange={(_e, newFilters) => setActiveFilters(newFilters)}
+              size="small"
+              sx={{ flexWrap: 'wrap', gap: 0.5 }}
+            >
+              <ToggleButton value="suspicious" color="error" sx={{ gap: 0.5 }}>
+                <Error fontSize="small" /> Suspicious
+              </ToggleButton>
+              <ToggleButton value="multiple" color="warning" sx={{ gap: 0.5 }}>
+                <ContentCopy fontSize="small" /> Multiple
+              </ToggleButton>
+              <ToggleButton value="missingChecks" color="warning" sx={{ gap: 0.5 }}>
+                <FactCheck fontSize="small" /> Missing Checks
+              </ToggleButton>
+              <ToggleButton value="noTransactions" sx={{ gap: 0.5 }}>
+                <Warning fontSize="small" /> No Transactions
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ProcessingOptionsCheckboxes
+              forceReanalysis={forceReanalysis}
+              forceRecreate={forceRecreate}
+              replaceOnRecreate={replaceOnRecreate}
+              onChange={({ forceReanalysis: fr, forceRecreate: fc, replaceOnRecreate: rr }) => {
+                setForceReanalysis(fr);
+                setForceRecreate(fc);
+                setReplaceOnRecreate(rr);
+              }}
+              disabled={analyzing}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={analyzing ? <CircularProgress size={16} color="inherit" /> : <Analytics />}
+              disabled={selectedIds.length === 0 || analyzing}
+              onClick={handleAnalyzePages}
+              className={styles.actionButton}
+            >
+              {analyzing ? 'Analyzing...' : 'Analyze Pages'}
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<Delete />}
+              disabled={selectedIds.length === 0 || loading}
+              onClick={handleDelete}
+              className={styles.actionButton}
+            >
+              Delete Selected
+            </Button>
+          </Stack>
+        </Box>
 
         {loading ? (
           <Box className={styles.loadingContainer}>
@@ -401,6 +462,14 @@ const StatementsPage: React.FC = () => {
           <Button size="small" startIcon={<ContentCopy />} onClick={handleCopyFilename}>Copy</Button>
         </Box>
       </Popover>
+
+      <DeleteStatementConfirmDialog
+        open={deleteConfirmOpen}
+        totalCount={selectedIds.length}
+        manuallyReviewedCount={selectedManuallyReviewedCount}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
 
       <Snackbar
         open={snackbarOpen}

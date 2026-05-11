@@ -12,13 +12,11 @@ import {
   Card,
   CardContent,
   CardHeader,
-  Checkbox,
-  FormControlLabel,
   IconButton,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Refresh, Save, PlayArrow, SelectAll, Clear, Transform, HelpOutline } from '@mui/icons-material';
+import { Refresh, Save, PlayArrow, SelectAll, Clear, HelpOutline } from '@mui/icons-material';
 import { ClassificationType } from '../../types/bankStatement';
 import { ClassificationInfo } from '../../types/api';
 
@@ -28,15 +26,14 @@ import { useSnackbar } from '../DocumentClassificationEditor/hooks/useSnackbar';
 import { useValidation } from '../DocumentClassificationEditor/hooks/useValidation';
 import { useSelection } from '../AnalyzePagesSelector/hooks/useSelection';
 import { useDocumentDataModel } from '../AnalyzePagesSelector/hooks/useDocumentDataModel';
-import { useConvertToStatement } from '../AnalyzePagesSelector/hooks/useConvertToStatement';
 
 import ClassificationInput from '../DocumentClassificationEditor/components/ClassificationInput';
 import AnalyzePageResult from '../DocumentClassificationEditor/components/AnalyzePageResult';
 import ReloadConfirmationDialog from '../DocumentClassificationEditor/components/ReloadConfirmationDialog';
 import DocumentDataModelResult from '../AnalyzePagesSelector/components/DocumentDataModelResult';
-import ConvertToStatementResult from '../AnalyzePagesSelector/components/ConvertToStatementResult';
 import { DocumentDataModelEditor } from '../DocumentDataModelEditor';
 import UnifiedClassificationBadge from './components/UnifiedClassificationBadge';
+import ProcessingOptionsCheckboxes from '../ProcessingOptionsCheckboxes';
 
 interface DocumentClassificationPanelProps {
   fileId: string;
@@ -53,7 +50,6 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
 }) => {
   const [showReloadDialog, setShowReloadDialog] = useState(false);
   const [confirmAnalysisOpen, setConfirmAnalysisOpen] = useState(false);
-  const [accumulatedConvertResults, setAccumulatedConvertResults] = useState<any[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorClassification, setEditorClassification] = useState<ClassificationInfo | null>(null);
   const [forceReanalysis, setForceReanalysis] = useState(false);
@@ -100,14 +96,6 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
     getDocumentDataModel,
     clearResults: clearDataModelResults,
   } = useDocumentDataModel();
-
-  const {
-    convertResult,
-    loading: convertLoading,
-    error: convertError,
-    convertToStatement: convertToStatementHook,
-    clearResults: clearConvertResults,
-  } = useConvertToStatement();
 
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
   const { validationErrors, validateInput, clearValidationErrors } = useValidation();
@@ -199,23 +187,6 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
     }
   };
 
-  const handleConvertToStatement = async () => {
-    clearConvertResults();
-    setAccumulatedConvertResults([]);
-    try {
-      const result = await convertToStatementHook(clientId);
-      setAccumulatedConvertResults([result]);
-      const matchCount = result.length;
-      if (matchCount > 0) {
-        showSnackbar(`Successfully matched ${matchCount} transaction${matchCount !== 1 ? 's' : ''} to checks!`, 'success');
-      } else {
-        showSnackbar('No matches found', 'error');
-      }
-    } catch {
-      showSnackbar('Failed to process classifications', 'error');
-    }
-  };
-
   const handleFetchDataModel = async (c: ClassificationInfo) => {
     if (!c.classificationId) {
       showSnackbar('Save classifications before loading data model', 'error');
@@ -275,7 +246,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
       />
 
       <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2, alignItems: 'center' }}>
           <Button
             variant="outlined"
             size="small"
@@ -294,6 +265,18 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           >
             Clear
           </Button>
+          {!readOnly && (
+            <ProcessingOptionsCheckboxes
+              forceReanalysis={forceReanalysis}
+              forceRecreate={forceRecreate}
+              replaceOnRecreate={replaceOnRecreate}
+              onChange={({ forceReanalysis: fr, forceRecreate: fc, replaceOnRecreate: rr }) => {
+                setForceReanalysis(fr);
+                setForceRecreate(fc);
+                setReplaceOnRecreate(rr);
+              }}
+            />
+          )}
           <Button
             variant="contained"
             size="small"
@@ -303,37 +286,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           >
             {analyzePageLoading ? 'Analyzing...' : `Analyze (${selectionCount})`}
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            size="small"
-            startIcon={convertLoading ? <CircularProgress size={16} /> : <Transform />}
-            onClick={handleConvertToStatement}
-            disabled={convertLoading}
-          >
-            {convertLoading ? 'Converting...' : 'Convert to Statement'}
-          </Button>
         </Box>
-
-        {!readOnly && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1, alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-              Analysis options:
-            </Typography>
-            <FormControlLabel
-              control={<Checkbox size="small" checked={forceReanalysis} onChange={e => setForceReanalysis(e.target.checked)} />}
-              label={<Typography variant="caption">Force reanalysis</Typography>}
-            />
-            <FormControlLabel
-              control={<Checkbox size="small" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} />}
-              label={<Typography variant="caption">Force recreate</Typography>}
-            />
-            <FormControlLabel
-              control={<Checkbox size="small" checked={replaceOnRecreate} onChange={e => setReplaceOnRecreate(e.target.checked)} disabled={!forceRecreate} />}
-              label={<Typography variant="caption">Replace on recreate</Typography>}
-            />
-          </Box>
-        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 1, py: 0.5 }}>
@@ -440,12 +393,6 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             initialModel={dataModelResult}
           />
         )}
-
-        <ConvertToStatementResult
-          result={accumulatedConvertResults.length > 0 ? accumulatedConvertResults : convertResult}
-          loading={convertLoading}
-          error={convertError}
-        />
 
         <Dialog open={confirmAnalysisOpen} onClose={() => setConfirmAnalysisOpen(false)}>
           <DialogTitle>Force Reanalysis</DialogTitle>

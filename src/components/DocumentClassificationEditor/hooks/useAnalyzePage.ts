@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { ClassificationInfo, ProcessingOptions } from '../../../types/api';
-import apiService from '../../../services/api';
+import { useAnalyzePages } from '../../../hooks/useAnalyzePages';
 
 export const useAnalyzePage = () => {
-  const [analyzePageResult, setAnalyzePageResult] = useState<any>(null);
-  const [analyzePageLoading, setAnalyzePageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const { analyzePages: runAnalyzePages, analyzing: analyzePageLoading, result: analyzePageResult, clearResult } = useAnalyzePages();
 
   const analyzePages = async (
     classifications: ClassificationInfo[],
@@ -15,29 +14,15 @@ export const useAnalyzePage = () => {
       .map(c => c.classificationId)
       .filter(id => !!id); // skip unsaved (empty id)
 
-    if (classificationIds.length === 0) return true;
+    setError('');
 
-    try {
-      setAnalyzePageLoading(true);
-      setError('');
-      setAnalyzePageResult(null);
-
-      const result = await apiService.analyzePages({
-        pageRequests: classificationIds,
-        ...(processingOptions && { processingOptions }),
-      });
-      setAnalyzePageResult(result);
-      return true;
-    } catch (err: any) {
-      setError(err.userMessage || 'Failed to analyze pages');
-      return false;
-    } finally {
-      setAnalyzePageLoading(false);
-    }
+    const success = await runAnalyzePages(classificationIds, processingOptions);
+    if (!success) setError('Failed to analyze pages');
+    return success;
   };
 
   const clearResults = () => {
-    setAnalyzePageResult(null);
+    clearResult();
     setError('');
   };
 

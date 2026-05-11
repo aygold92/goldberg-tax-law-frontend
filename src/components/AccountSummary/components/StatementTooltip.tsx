@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, IconButton, Snackbar, Alert } from '@mui/material';
 import { Error, Warning, Delete, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import DeleteStatementConfirmDialog from '../../DeleteStatementConfirmDialog';
 import { StatementSummary } from '../../../types/api';
 import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
 import { deleteStatements } from '../../../redux/features/statementsList/statementsListSlice';
@@ -14,6 +15,7 @@ interface StatementTooltipProps {
 
 const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const dispatch = useAppDispatch();
   const selectedClientId = useAppSelector(state => state.client.selectedClient?.clientId);
   const { showSnackbar, snackbarOpen, snackbarMessage, snackbarSeverity, closeSnackbar } = useSnackbar();
@@ -38,11 +40,21 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
     ? (pages.length === 1 ? `[${pages[0]}]` : `[${pages[0]}-${pages[pages.length - 1]}]`)
     : '';
   const statementId = statement.statementDetails.statementId;
+  const manuallyChecked = statement.statementDetails.createdAt !== statement.statementDetails.updatedAt;
 
   const editHref = `/edit?statementId=${statement.statementDetails.statementId}${selectedClientId ? `&clientId=${selectedClientId}` : ''}`;
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (manuallyChecked) {
+      setDeleteConfirmOpen(true);
+    } else {
+      confirmDelete();
+    }
+  };
+
+  const confirmDelete = async () => {
+    setDeleteConfirmOpen(false);
     try {
       await dispatch(deleteStatements({
         statementIds: [statement.statementDetails.statementId],
@@ -164,6 +176,14 @@ const StatementTooltip: React.FC<StatementTooltipProps> = ({ statements }) => {
           Click to edit statement
         </Typography>
       </Box>
+
+      <DeleteStatementConfirmDialog
+        open={deleteConfirmOpen}
+        totalCount={1}
+        manuallyReviewedCount={1}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
 
       <Snackbar
         open={snackbarOpen}

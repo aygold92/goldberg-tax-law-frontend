@@ -7,8 +7,6 @@ import {
   Paper,
   Button,
   Alert,
-  Checkbox,
-  FormControlLabel,
   IconButton,
   Chip,
   CircularProgress,
@@ -45,6 +43,7 @@ import {
 } from '../redux/features/files/filesSlice';
 import { startAnalysis } from '../redux/features/analysis/analysisSlice';
 import { selectAnalysisError } from '../redux/features/analysis/analysisSelectors';
+import ProcessingOptionsCheckboxes from './ProcessingOptionsCheckboxes';
 
 interface DocumentUploadProps {
   clientId: string;
@@ -415,22 +414,16 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ clientId, clientName, o
           />
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, mb: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            Analysis options:
-          </Typography>
-          <FormControlLabel
-            control={<Checkbox size="small" checked={forceReanalysis} onChange={e => setForceReanalysis(e.target.checked)} />}
-            label={<Typography variant="caption">Force reanalysis</Typography>}
-            sx={{ ml: 0.5 }}
-          />
-          <FormControlLabel
-            control={<Checkbox size="small" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} />}
-            label={<Typography variant="caption">Force recreate</Typography>}
-          />
-          <FormControlLabel
-            control={<Checkbox size="small" checked={replaceOnRecreate} onChange={e => setReplaceOnRecreate(e.target.checked)} disabled={!forceRecreate} />}
-            label={<Typography variant="caption">Replace on recreate</Typography>}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+          <ProcessingOptionsCheckboxes
+            forceReanalysis={forceReanalysis}
+            forceRecreate={forceRecreate}
+            replaceOnRecreate={replaceOnRecreate}
+            onChange={({ forceReanalysis: fr, forceRecreate: fc, replaceOnRecreate: rr }) => {
+              setForceReanalysis(fr);
+              setForceRecreate(fc);
+              setReplaceOnRecreate(rr);
+            }}
           />
         </Box>
         <Box className={styles.actionsContainer}>
