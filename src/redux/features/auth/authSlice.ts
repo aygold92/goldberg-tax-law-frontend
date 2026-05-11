@@ -51,9 +51,6 @@ export const initializeAuth = createAsyncThunk(
   'auth/initialize',
   async (_, { rejectWithValue }) => {
     try {
-      await authService.initialize();
-      
-      // Check if user is already signed in
       const accounts = authService.getAllAccounts();
       if (accounts.length > 0) {
         authService.setActiveAccount(accounts[0]);

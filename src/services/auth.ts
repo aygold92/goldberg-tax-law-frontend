@@ -11,52 +11,29 @@
  * Provides methods for authentication state management and token handling.
  */
 
-import { PublicClientApplication, Configuration, AccountInfo, AuthenticationResult } from '@azure/msal-browser';
+import { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
+import { msalInstance } from './msalInstance';
 
-// MSAL configuration
-const msalConfig: Configuration = {
-  auth: {
-    clientId: process.env.REACT_APP_AZURE_CLIENT_ID || '',
-    authority: `https://login.microsoftonline.com/${process.env.REACT_APP_AZURE_TENANT_ID || 'common'}`,
-    redirectUri: window.location.origin,
-  },
-  cache: {
-    cacheLocation: 'localStorage',
-    storeAuthStateInCookie: false,
-  },
-  system: {
-    allowRedirectInIframe: true,
-  },
-};
-
-// Note: Update the scopes below to match your Azure AD app registration
-// For custom APIs, you'll need to add the appropriate API permissions in Azure AD
-
-// Scopes for API access
+// Scopes for API access — offline_access is required so Azure AD issues a refresh token,
+// which MSAL uses for silent renewal instead of the throttled prompt=none iframe flow.
 const loginRequest = {
-  scopes: ['api://727a2ca0-2e37-4749-9a79-bfe79a780251/invoke'],
+  scopes: ['api://727a2ca0-2e37-4749-9a79-bfe79a780251/invoke', 'offline_access'],
 };
 
 // API scopes for backend calls
 const apiRequest = {
-  scopes: ['api://727a2ca0-2e37-4749-9a79-bfe79a780251/invoke'],
+  scopes: ['api://727a2ca0-2e37-4749-9a79-bfe79a780251/invoke', 'offline_access'],
 };
 
 class AuthService {
-  private msalInstance: PublicClientApplication;
-
-  constructor() {
-    this.msalInstance = new PublicClientApplication(msalConfig);
-  }
-
   async initialize(): Promise<void> {
-    await this.msalInstance.initialize();
+    // Initialization is handled by msalInstance.initialize() in index.tsx before render
   }
 
   async login(): Promise<AuthenticationResult> {
     try {
       console.log('Starting login process...');
-      const result = await this.msalInstance.loginPopup(loginRequest);
+      const result = await msalInstance.loginPopup(loginRequest);
       console.log('Login successful:', result);
       return result;
     } catch (error) {
@@ -67,7 +44,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      await this.msalInstance.logoutPopup();
+      await msalInstance.logoutPopup();
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
@@ -81,7 +58,7 @@ class AuthService {
         throw new Error('No active account found');
       }
 
-      const response = await this.msalInstance.acquireTokenSilent({
+      const response = await msalInstance.acquireTokenSilent({
         ...apiRequest,
         account,
       });
@@ -94,15 +71,15 @@ class AuthService {
   }
 
   getActiveAccount(): AccountInfo | null {
-    return this.msalInstance.getActiveAccount();
+    return msalInstance.getActiveAccount();
   }
 
   getAllAccounts(): AccountInfo[] {
-    return this.msalInstance.getAllAccounts();
+    return msalInstance.getAllAccounts();
   }
 
   setActiveAccount(account: AccountInfo): void {
-    this.msalInstance.setActiveAccount(account);
+    msalInstance.setActiveAccount(account);
   }
 
   isAuthenticated(): boolean {

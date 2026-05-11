@@ -17,9 +17,11 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Provider } from 'react-redux';
+import { MsalProvider } from '@azure/msal-react';
 import { store } from './redux/store';
 import { useAppDispatch } from './redux/hooks';
 import { initializeAuth } from './redux/features/auth/authSlice';
+import { msalInstance } from './services/msalInstance';
 import { theme } from './theme';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -44,6 +46,7 @@ const AuthInitializer: React.FC = () => {
 function App() {
   return (
     <Provider store={store}>
+      <MsalProvider instance={msalInstance}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthInitializer />
@@ -94,6 +97,7 @@ function App() {
           </Routes>
         </Router>
       </ThemeProvider>
+      </MsalProvider>
     </Provider>
   );
 }
