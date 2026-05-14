@@ -31,6 +31,7 @@ import {
   TransactionCheckMatch,
   Statement,
   StatementSummary,
+  TransactionWithCheck,
   WriteCsvSummaryRequest,
   WriteCsvSummaryResponse,
   RetrieveOutputFileRequest,
@@ -205,6 +206,13 @@ class ApiService {
   }
 
   // --- Statements ---
+
+  async listTransactions(clientId: string): Promise<TransactionWithCheck[]> {
+    const response = await this.api.get<TransactionWithCheck[]>(
+      `/api/ListTransactions?clientId=${encodeURIComponent(clientId)}`
+    );
+    return response.data;
+  }
 
   async listStatements(clientId: string): Promise<StatementSummary[]> {
     const response = await this.api.get<StatementSummary[]>(

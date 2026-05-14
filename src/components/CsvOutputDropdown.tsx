@@ -1,44 +1,25 @@
-/**
- * CSV Output Dropdown component for the Bank Statement Frontend application.
- * 
- * This component provides a dropdown menu for CSV output options:
- * - Create Google Sheets (requires Google sign-in)
- * - Download CSV files directly
- * - Handles loading states and error feedback
- * 
- * Integrates with Redux for state management and the CSV output slice.
- * 
- * Dependencies:
- * - @mui/material: https://mui.com/
- * - Redux for state management
- * - CSV output slice for operations
- */
-
 import React, { useState } from 'react';
-import { 
-  Button, 
-  Menu, 
-  MenuItem, 
-  Box, 
+import {
+  Button,
+  Menu,
+  MenuItem,
+  Box,
   Typography,
   CircularProgress,
   Alert,
-  Chip
 } from '@mui/material';
-import { 
-  ArrowDropDown, 
-  TableChart, 
+import {
+  ArrowDropDown,
+  TableChart,
   Download,
   Google,
-  CheckCircle,
-  Error as ErrorIcon
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { 
+import {
   selectIsGoogleSignedIn,
   selectGoogleUser
 } from '../redux/features/googleAuth/googleAuthSelectors';
-import { 
+import {
   selectIsAnyLoading,
   selectGoogleSheetsLoading,
   selectGoogleSheetsError,
@@ -46,25 +27,18 @@ import {
   selectDownloadLoading,
   selectDownloadError
 } from '../redux/features/csvOutput/csvOutputSelectors';
-import { 
+import {
   createGoogleSheets,
   downloadCsvFiles,
   clearGoogleSheetsResult,
   clearDownloadResult
 } from '../redux/features/csvOutput/csvOutputSlice';
-import { StatementRequest } from '../types/api';
 
 interface CsvOutputDropdownProps {
-  clientName: string;
-  selectedStatements: StatementRequest[];
   disabled?: boolean;
 }
 
-const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
-  clientName,
-  selectedStatements,
-  disabled = false
-}) => {
+const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({ disabled = false }) => {
   const dispatch = useAppDispatch();
   const isGoogleSignedIn = useAppSelector(selectIsGoogleSignedIn);
   const googleUser = useAppSelector(selectGoogleUser);
@@ -74,7 +48,7 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
   const googleSheetsUrl = useAppSelector(selectGoogleSheetsUrl);
   const downloadLoading = useAppSelector(selectDownloadLoading);
   const downloadError = useAppSelector(selectDownloadError);
-  
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -89,11 +63,7 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
   const handleCreateGoogleSheets = async () => {
     handleClose();
     try {
-      await dispatch(createGoogleSheets({
-        clientName,
-        keys: selectedStatements,
-        outputDirectory: ''
-      })).unwrap();
+      await dispatch(createGoogleSheets()).unwrap();
     } catch (error) {
       console.error('Failed to create Google Sheets:', error);
     }
@@ -102,11 +72,7 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
   const handleDownloadCsv = async () => {
     handleClose();
     try {
-      await dispatch(downloadCsvFiles({
-        clientName,
-        keys: selectedStatements,
-        outputDirectory: ''
-      })).unwrap();
+      await dispatch(downloadCsvFiles()).unwrap();
     } catch (error) {
       console.error('Failed to download CSV files:', error);
     }
@@ -118,9 +84,8 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
     }
   };
 
-  const canCreateGoogleSheets = isGoogleSignedIn && !isAnyLoading && selectedStatements.length > 0;
-  const canDownloadCsv = !isAnyLoading && selectedStatements.length > 0;
-  const isDisabled = disabled || selectedStatements.length === 0;
+  const canCreateGoogleSheets = isGoogleSignedIn && !isAnyLoading;
+  const canDownloadCsv = !isAnyLoading;
 
   return (
     <Box>
@@ -128,7 +93,7 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
         variant="contained"
         endIcon={<ArrowDropDown />}
         onClick={handleClick}
-        disabled={isDisabled}
+        disabled={disabled || isAnyLoading}
         startIcon={isAnyLoading ? <CircularProgress size={16} /> : <TableChart />}
         sx={{ minWidth: 200 }}
       >
@@ -139,20 +104,10 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
-        {/* Google Sheets Option */}
-        <MenuItem 
-          onClick={handleCreateGoogleSheets}
-          disabled={!canCreateGoogleSheets}
-        >
+        <MenuItem onClick={handleCreateGoogleSheets} disabled={!canCreateGoogleSheets}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
             <Google color={isGoogleSignedIn ? 'primary' : 'disabled'} />
             <Box sx={{ flexGrow: 1 }}>
@@ -173,11 +128,7 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
           </Box>
         </MenuItem>
 
-        {/* Download CSV Option */}
-        <MenuItem 
-          onClick={handleDownloadCsv}
-          disabled={!canDownloadCsv}
-        >
+        <MenuItem onClick={handleDownloadCsv} disabled={!canDownloadCsv}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
             <Download color={canDownloadCsv ? 'primary' : 'disabled'} />
             <Box sx={{ flexGrow: 1 }}>
@@ -193,18 +144,12 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
         </MenuItem>
       </Menu>
 
-      {/* Success/Error Messages */}
       {googleSheetsUrl && (
-        <Alert 
-          severity="success" 
+        <Alert
+          severity="success"
           sx={{ mt: 1 }}
           action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={handleOpenGoogleSheets}
-              startIcon={<Google />}
-            >
+            <Button color="inherit" size="small" onClick={handleOpenGoogleSheets} startIcon={<Google />}>
               Open Sheet
             </Button>
           }
@@ -214,15 +159,11 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
       )}
 
       {googleSheetsError && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           sx={{ mt: 1 }}
           action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={() => dispatch(clearGoogleSheetsResult())}
-            >
+            <Button color="inherit" size="small" onClick={() => dispatch(clearGoogleSheetsResult())}>
               Dismiss
             </Button>
           }
@@ -232,15 +173,11 @@ const CsvOutputDropdown: React.FC<CsvOutputDropdownProps> = ({
       )}
 
       {downloadError && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           sx={{ mt: 1 }}
           action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={() => dispatch(clearDownloadResult())}
-            >
+            <Button color="inherit" size="small" onClick={() => dispatch(clearDownloadResult())}>
               Dismiss
             </Button>
           }

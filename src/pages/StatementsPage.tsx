@@ -10,6 +10,7 @@ import { StatementSummary } from '../types/api';
 import ClientSelector from '../components/ClientSelector';
 import { AccountSummary } from '../components/AccountSummary';
 import { StatementEditorModal } from '../components/StatementEditorModal';
+import CsvOutputDropdown from '../components/CsvOutputDropdown';
 import { usePageTitle } from '../hooks/usePageTitle';
 import styles from '../styles/components/StatementsPage.module.css';
 import { formatDateForDisplay } from '../utils/dateUtils';
@@ -437,6 +438,7 @@ const StatementsPage: React.FC = () => {
             >
               Delete Selected
             </Button>
+            <CsvOutputDropdown disabled={statements.length === 0 || loading} />
           </Stack>
         </Box>
 

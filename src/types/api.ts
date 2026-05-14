@@ -109,8 +109,19 @@ export interface CheckDetails {
   amount: number | null;
   to: string | null;
   batesStamp: string | null;
+  // TODO: add filename and filePages when backend endpoint provides them
   createdAt: number;
   updatedAt: number;
+}
+
+export interface TransactionWithCheck {
+  statementId: string;
+  transactionDetails: TransactionDetails;
+  checkDetails: CheckDetails | null;
+}
+
+export interface ListTransactionsResponse {
+  transactions: TransactionWithCheck[];
 }
 
 export interface TransactionCheckMatch {

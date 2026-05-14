@@ -27,7 +27,7 @@ declare global {
 // Google API configuration
 const CLIENT_ID = '337640530335-85k0ifb0bq4mm63qungn860fm67bniir.apps.googleusercontent.com';
 const API_KEY = 'AIzaSyDg8UhNO0hCyeS2Vij-4ziAVZAv7JldkqY';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
 export interface GoogleUser {
   id: string;
@@ -90,7 +90,7 @@ class GoogleSheetsService {
 
     try {
       const authInstance = (gapi as any).auth2.getAuthInstance();
-      const user = await authInstance.signIn();
+      const user = await authInstance.signIn({ scope: SCOPES });
       this.isSignedIn = true;
       await this.updateCurrentUser();
       return this.currentUser!;
@@ -158,181 +158,229 @@ class GoogleSheetsService {
    */
   async createSpreadsheet(
     title: string,
-    recordsData: string,
-    accountSummaryData: string,
-    statementSummaryData: string,
-    checkSummaryData: string
+    csvSheets: { name: string; csvContent: string }[],
+    billSheetData: any[][]
   ): Promise<string> {
     if (!this.isSignedIn) {
       throw new Error('User must be signed in to create spreadsheets');
     }
 
     try {
-      // Create the spreadsheet
+      // Bill sheet is appended after the CSV sheets
+      const allSheetNames = [...csvSheets.map(s => s.name), 'Bill'];
+
+      // Frozen columns per sheet: Records=3, Account Summary=2, Statement Summary=3, Check Summary=1, Bill=0
+      const frozenCols = [3, 2, 3, 1, 0];
+
       const createResponse = await (gapi as any).client.sheets.spreadsheets.create({
         resource: {
-          properties: {
-            title: title
-          },
-          sheets: [
-            {
-              properties: {
-                title: "Records",
-                gridProperties: {
-                  frozenRowCount: 1,
-                  frozenColumnCount: 1
-                }
-              }
+          properties: { title },
+          sheets: allSheetNames.map((name, i) => ({
+            properties: {
+              title: name,
+              gridProperties: {
+                frozenRowCount: i < csvSheets.length ? 1 : 0,
+                frozenColumnCount: frozenCols[i] ?? 0,
+              },
             },
-            {
-              properties: {
-                title: "Account Summary",
-                gridProperties: {
-                  frozenRowCount: 1,
-                  frozenColumnCount: 1
-                }
-              }
-            },
-            {
-              properties: {
-                title: "Statement Summary",
-                gridProperties: {
-                  frozenRowCount: 1,
-                  frozenColumnCount: 1
-                }
-              }
-            },
-            {
-              properties: {
-                title: "Check Summary",
-                gridProperties: {
-                  frozenRowCount: 1,
-                  frozenColumnCount: 1
-                }
-              }
-            }
-          ]
-        }
+          })),
+        },
       });
 
       const spreadsheetId = createResponse.result.spreadsheetId!;
-      const recordsSheetId = createResponse.result.sheets![0].properties!.sheetId!;
+      const sheetIds: number[] = createResponse.result.sheets!.map(
+        (sh: any) => sh.properties!.sheetId!
+      );
 
-      // Batch update with data and formatting
-      await (gapi as any).client.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: spreadsheetId,
-        resource: {
-          requests: [
-            // Paste record data
-            {
-              pasteData: {
-                coordinate: {
-                  sheetId: recordsSheetId,
-                  rowIndex: 0,
-                  columnIndex: 0
-                },
-                data: recordsData,
-                delimiter: ","
-              }
-            },
-            // Paste account summary data
-            {
-              pasteData: {
-                coordinate: {
-                  sheetId: createResponse.result.sheets![1].properties!.sheetId!,
-                  rowIndex: 0,
-                  columnIndex: 0
-                },
-                data: accountSummaryData,
-                delimiter: ","
-              }
-            },
-            // Paste statement summary data
-            {
-              pasteData: {
-                coordinate: {
-                  sheetId: createResponse.result.sheets![2].properties!.sheetId!,
-                  rowIndex: 0,
-                  columnIndex: 0
-                },
-                data: statementSummaryData,
-                delimiter: ","
-              }
-            },
-            // Paste check summary data
-            {
-              pasteData: {
-                coordinate: {
-                  sheetId: createResponse.result.sheets![3].properties!.sheetId!,
-                  rowIndex: 0,
-                  columnIndex: 0
-                },
-                data: checkSummaryData,
-                delimiter: ","
-              }
-            },
-            // (Records) Bold the entire first row
-            {
-              repeatCell: {
-                range: {
-                  sheetId: recordsSheetId,
-                  startRowIndex: 0,
-                  endRowIndex: 1
-                },
-                cell: { userEnteredFormat: { textFormat: { bold: true } } },
-                fields: "userEnteredFormat.textFormat.bold"
-              }
-            },
-            // (Records) Bold the entire first column
-            {
-              repeatCell: {
-                range: {
-                  sheetId: recordsSheetId,
-                  startColumnIndex: 0,
-                  endColumnIndex: 1
-                },
-                cell: { userEnteredFormat: { textFormat: { bold: true } } },
-                fields: "userEnteredFormat.textFormat.bold"
-              }
-            },
-            // (Records) Format the first column as a date
-            {
-              repeatCell: {
-                range: {
-                  sheetId: recordsSheetId,
-                  startColumnIndex: 0,
-                  endColumnIndex: 1
-                },
-                cell: { userEnteredFormat: { numberFormat: { type: "DATE" } } },
-                fields: "userEnteredFormat.numberFormat"
-              }
-            },
-            // (Records) Format the 3rd column as currency
-            {
-              repeatCell: {
-                range: {
-                  sheetId: recordsSheetId,
-                  startColumnIndex: 2,
-                  endColumnIndex: 3
-                },
-                cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY" } } },
-                fields: "userEnteredFormat.numberFormat"
-              }
-            },
-            // (Records) Format the 7th column as a date
-            {
-              repeatCell: {
-                range: {
-                  sheetId: recordsSheetId,
-                  startColumnIndex: 6,
-                  endColumnIndex: 7
-                },
-                cell: { userEnteredFormat: { numberFormat: { type: "DATE" } } },
-                fields: "userEnteredFormat.numberFormat"
-              }
-            }
-          ]
+      const requests: any[] = [];
+
+      // Paste CSV data into the non-Bill sheets
+      csvSheets.forEach((sheet, i) => {
+        requests.push({
+          pasteData: {
+            coordinate: { sheetId: sheetIds[i], rowIndex: 0, columnIndex: 0 },
+            data: sheet.csvContent,
+            delimiter: ',',
+          },
+        });
+      });
+
+      // Bold header row on every sheet
+      sheetIds.forEach(sheetId => {
+        requests.push({
+          repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        });
+      });
+
+      // ── Records (index 0) ───────────────────────────────────────────────────
+      const recordsId = sheetIds[0];
+      requests.push(
+        // Col A bold
+        {
+          repeatCell: {
+            range: { sheetId: recordsId, startColumnIndex: 0, endColumnIndex: 1 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        },
+        // Col A = date
+        {
+          repeatCell: {
+            range: { sheetId: recordsId, startColumnIndex: 0, endColumnIndex: 1 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'DATE' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // Col C = currency (Amount)
+        {
+          repeatCell: {
+            range: { sheetId: recordsId, startColumnIndex: 2, endColumnIndex: 3 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // Col G = date (Statement Date)
+        {
+          repeatCell: {
+            range: { sheetId: recordsId, startColumnIndex: 6, endColumnIndex: 7 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'DATE' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
         }
+      );
+
+      // ── Account Summary (index 1) ───────────────────────────────────────────
+      const accountSummaryId = sheetIds[1];
+      requests.push(
+        // Col A bold
+        {
+          repeatCell: {
+            range: { sheetId: accountSummaryId, startColumnIndex: 0, endColumnIndex: 1 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        },
+        // Cols C & D = date (First/Last Statement)
+        {
+          repeatCell: {
+            range: { sheetId: accountSummaryId, startColumnIndex: 2, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'DATE' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        }
+      );
+
+      // ── Statement Summary (index 2) ─────────────────────────────────────────
+      const statementSummaryId = sheetIds[2];
+      requests.push(
+        // Col A bold (Account)
+        {
+          repeatCell: {
+            range: { sheetId: statementSummaryId, startColumnIndex: 0, endColumnIndex: 1 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        },
+        // Col C = date
+        {
+          repeatCell: {
+            range: { sheetId: statementSummaryId, startColumnIndex: 2, endColumnIndex: 3 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'DATE' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // Cols D–F = currency (Beginning Balance, Ending Balance, Net Transactions)
+        {
+          repeatCell: {
+            range: { sheetId: statementSummaryId, startColumnIndex: 3, endColumnIndex: 6 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        }
+      );
+
+      // ── Check Summary (index 3) ─────────────────────────────────────────────
+      // Header is on row 4 (index 3); data starts at row 5 (index 4)
+      const checkSummaryId = sheetIds[3];
+      requests.push(
+        // Bold actual header row (row 4)
+        {
+          repeatCell: {
+            range: { sheetId: checkSummaryId, startRowIndex: 3, endRowIndex: 4 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        },
+        // Col D (data rows) = date
+        {
+          repeatCell: {
+            range: { sheetId: checkSummaryId, startRowIndex: 4, startColumnIndex: 3, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'DATE' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // Col E (data rows) = currency
+        {
+          repeatCell: {
+            range: { sheetId: checkSummaryId, startRowIndex: 4, startColumnIndex: 4, endColumnIndex: 5 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        }
+      );
+
+      // ── Bill (index 4) ──────────────────────────────────────────────────────
+      const billId = sheetIds[4];
+      requests.push(
+        // Col A bold (row labels: Amount, Price, Total)
+        {
+          repeatCell: {
+            range: { sheetId: billId, startColumnIndex: 0, endColumnIndex: 1 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        },
+        // Row 3 (Price, index 2) cols B–G = currency
+        {
+          repeatCell: {
+            range: { sheetId: billId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 1, endColumnIndex: 7 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // Row 4 (Total, index 3) cols B–G = currency
+        {
+          repeatCell: {
+            range: { sheetId: billId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 1, endColumnIndex: 7 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // G4 (grand total cell, row index 3, col index 6) bold
+        {
+          repeatCell: {
+            range: { sheetId: billId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 6, endColumnIndex: 7 },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        }
+      );
+
+      await (gapi as any).client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        resource: { requests },
+      });
+
+      // Write Bill sheet with formulas via values API (USER_ENTERED interprets = as formulas)
+      await (gapi as any).client.sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'Bill!A1',
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: billSheetData },
       });
 
       return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
